@@ -13,9 +13,9 @@
     }
     
     .container {
-      max-width: 680px; /* 460px → 680px (720px幅に対応) */
+      max-width: 900px; /* 680px → 900px (950px幅に対応) */
       margin: 0 auto;
-      padding: 0 20px; /* 12px → 20px (余白拡大) */
+      padding: 0 25px; /* 20px → 25px (余白さらに拡大) */
     }
     
     .card {
@@ -109,6 +109,13 @@
     
     .button-group {
       margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr; /* 2列レイアウト */
+      gap: 16px; /* ボタン間の間隔 */
+    }
+    
+    .button-group .btn {
+      margin-bottom: 0; /* グリッドレイアウトでは不要 */
     }
     
     .advanced-options {
@@ -307,7 +314,7 @@
         </div>
       </div>
       
-      <button id="setupBtn" class="btn btn-setup pulse">
+      <button id="setupBtn" class="btn btn-setup pulse" style="font-size: 21px; padding: 24px 40px;">
         <span id="setupSpinner" class="spinner hidden"></span>
         🔧 初期セットアップ
       </button>

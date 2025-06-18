@@ -151,7 +151,7 @@ function showSidebar() {
   try {
     const html = HtmlService.createHtmlOutputFromFile("Sidebar")
       .setTitle("🎨 DALL-E 画像生成ツール")
-      .setWidth(720); // 480px → 720px (画面の30%以上！)
+      .setWidth(950); // 720px → 950px (画面の40-50%！)
     SpreadsheetApp.getUi().showSidebar(html);
   } catch (error) {
     // 権限エラーの場合は自動的に権限承認を案内
@@ -194,7 +194,7 @@ function requestPermissions() {
     // 5. サイドバー表示権限をテスト（これが最も重要）
     const html = HtmlService.createHtmlOutput("<p>権限テスト</p>")
       .setTitle("権限テスト")
-      .setWidth(300);
+      .setWidth(950);
     ui.showSidebar(html);
 
     // テスト用サイドバーを即座に閉じる
@@ -1179,7 +1179,7 @@ function forcePermissionRequest() {
       '<div style="padding:20px;text-align:center;"><h3>✅ 権限承認完了！</h3><p>このメッセージが表示されれば、<br>すべての権限が正常に承認されました。</p><p><strong>メニューから「📱 サイドバーを開く」<br>をクリックしてツールを開始してください。</strong></p></div>'
     )
       .setTitle("🎉 権限承認成功")
-      .setWidth(400);
+      .setWidth(950);
     ui.showSidebar(html);
 
     console.log("✅ すべての権限承認が完了しました");
