@@ -7,54 +7,80 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     body {
-      font-family: 'Roboto', Arial, sans-serif;
-      margin: 20px;
-      background-color: #f5f5f5;
+      font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-size: 13px;
     }
     
     .container {
-      max-width: 460px; /* サイドバー500px幅に最適化 */
-      margin: 0 auto;
-      padding: 0 20px; /* サイドバー用余白 */
+      max-width: 100%;
+      margin: 0;
+      padding: 0 8px;
     }
     
     .card {
-      background: white;
-      border-radius: 16px; /* 12px → 16px (より丸く) */
-      padding: 32px; /* 24px → 32px (大画面対応) */
-      margin-bottom: 24px; /* 18px → 24px */
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* 影をさらに強化 */
-      border: 1px solid rgba(0,0,0,0.08); /* ボーダーを少し濃く */
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
     }
     
     h2 {
       color: #1a73e8;
-      margin-top: 0;
-      font-size: 28px; /* 22px → 28px (大画面対応) */
+      margin: 0 0 16px 0;
+      font-size: 20px;
       text-align: center;
-      font-weight: 700; /* フォント太字強化 */
-      letter-spacing: 0.8px; /* 0.5px → 0.8px (文字間隔拡大) */
-      margin-bottom: 8px; /* 下余白追加 */
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
     .btn {
-      background-color: #1a73e8;
+      background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
       color: white;
       border: none;
-      padding: 22px 36px; /* 18px 28px → 22px 36px (大画面対応) */
-      border-radius: 12px; /* 8px → 12px (より丸く) */
+      padding: 12px 16px;
+      border-radius: 12px;
       cursor: pointer;
-      font-size: 19px; /* 17px → 19px (大きな文字) */
+      font-size: 13px;
       font-weight: 600;
       width: 100%;
-      margin-bottom: 20px; /* 16px → 20px */
-      transition: all 0.3s;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.18); /* 影をさらに強化 */
-      letter-spacing: 0.8px; /* 0.5px → 0.8px (文字間隔拡大) */
+      margin-bottom: 8px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+      letter-spacing: 0.3px;
+      position: relative;
+      overflow: hidden;
     }
     
     .btn:hover {
-      background-color: #1557b0;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+    
+    .btn:hover::before {
+      left: 100%;
     }
     
     .btn:disabled {
@@ -108,10 +134,10 @@
     }
     
     .button-group {
-      margin-top: 12px;
+      margin-top: 8px;
       display: grid;
-      grid-template-columns: 1fr 1fr; /* 2列レイアウト（サイドバー用） */
-      gap: 16px; /* ボタン間の間隔 */
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
     }
     
     .button-group .btn {
@@ -163,15 +189,16 @@
     }
     
     .instructions {
-      background-color: #fff3e0;
-      border: 1px solid #ff9800;
+      background: linear-gradient(135deg, rgba(255, 243, 224, 0.9) 0%, rgba(255, 248, 225, 0.9) 100%);
+      border: 1px solid rgba(255, 152, 0, 0.3);
       color: #ef6c00;
-      padding: 24px; /* 18px → 24px (大画面対応) */
-      border-radius: 12px; /* 8px → 12px (より丸く) */
-      font-size: 17px; /* 15px → 17px (大きな文字) */
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 12px;
       font-weight: 500;
-      margin-bottom: 24px; /* 20px → 24px */
-      line-height: 1.6; /* 1.5 → 1.6 (行間さらに拡大) */
+      margin-bottom: 12px;
+      line-height: 1.5;
+      backdrop-filter: blur(5px);
     }
     
     .spinner {
@@ -201,8 +228,8 @@
     .step-indicator {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 24px; /* 16px → 24px */
-      padding: 0 20px; /* 左右に余白追加 */
+      margin-bottom: 16px;
+      padding: 0 8px;
     }
     
     .step {
@@ -227,29 +254,38 @@
     }
     
     .step-number {
-      width: 40px; /* 30px → 40px (大きく) */
-      height: 40px; /* 30px → 40px (大きく) */
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
-      background-color: #e0e0e0;
+      background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%);
       color: #666;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 6px; /* 4px → 6px */
+      margin: 0 auto 4px;
       font-weight: bold;
-      font-size: 16px; /* 12px → 16px (文字拡大) */
+      font-size: 12px;
       position: relative;
       z-index: 2;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
     .step.active .step-number {
-      background-color: #1a73e8;
+      background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
       color: white;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+      animation: glow 2s ease-in-out infinite alternate;
     }
     
     .step.completed .step-number {
-      background-color: #34a853;
+      background: linear-gradient(135deg, #34a853 0%, #4caf50 100%);
       color: white;
+      box-shadow: 0 4px 12px rgba(52, 168, 83, 0.4);
+    }
+    
+    @keyframes glow {
+      from { box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4); }
+      to { box-shadow: 0 6px 20px rgba(26, 115, 232, 0.6); }
     }
     
     .step-text {
@@ -314,9 +350,9 @@
         </div>
       </div>
       
-      <button id="setupBtn" class="btn btn-setup pulse" style="font-size: 21px; padding: 24px 40px;">
+      <button id="setupBtn" class="btn btn-setup pulse" style="font-size: 14px; padding: 16px 20px; background: linear-gradient(135deg, #ff6f00 0%, #ff8f00 100%); box-shadow: 0 4px 16px rgba(255, 111, 0, 0.4);">
         <span id="setupSpinner" class="spinner hidden"></span>
-        🔧 初期セットアップ
+        🚀 初期セットアップ
       </button>
       
       <div class="button-group" id="mainButtons" style="display: none;">
