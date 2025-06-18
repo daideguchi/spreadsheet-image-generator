@@ -29,16 +29,26 @@ function onOpen() {
     .addItem("⚙️ 設定を確認", "checkSettings")
     .addToUi();
 
-  // サイドバーを自動で表示（少し遅延を入れて確実に表示）
+  // サイドバーを自動で表示（権限チェック付き）
   try {
     Utilities.sleep(100); // 100ms待機で確実な表示
-    showSidebar();
-    console.log("✅ サイドバーを自動表示しました");
+
+    // 初回使用時は権限チェックをスキップして安全に実行
+    if (isFirstTimeUser()) {
+      console.log("💡 初回使用者: 権限承認が必要な場合があります");
+      showWelcomeMessage();
+    } else {
+      showSidebar();
+      console.log("✅ サイドバーを自動表示しました");
+    }
   } catch (error) {
     console.log("⚠️ サイドバーの自動表示をスキップ:", error.message);
-    // 権限エラーの場合は再試行
-    if (error.message.includes("container.ui")) {
-      console.log("💡 権限承認後にサイドバーが表示されます");
+    // 権限エラーの場合は歓迎メッセージを表示
+    if (
+      error.message.includes("container.ui") ||
+      error.message.includes("permissions")
+    ) {
+      showWelcomeMessage();
     }
   }
 }
@@ -122,21 +132,86 @@ function initialSetup() {
 }
 
 /**
- * サイドバーを表示
+ * サイドバーを表示（権限チェック付き）
  */
 function showSidebar() {
   try {
+    // 権限チェック
+    if (!checkPermissions()) {
+      showPermissionDialog();
+      return;
+    }
+
     const html = HtmlService.createHtmlOutputFromFile("Sidebar")
       .setTitle("🎨 DALL-E 画像生成ツール")
       .setWidth(480); // 350px → 480px (+37%拡大)
     SpreadsheetApp.getUi().showSidebar(html);
   } catch (error) {
-    SpreadsheetApp.getUi().alert(
-      "エラー",
-      "サイドバーの表示に失敗しました: " + error.message,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
+    if (error.message.includes("container.ui")) {
+      showPermissionDialog();
+    } else {
+      SpreadsheetApp.getUi().alert(
+        "エラー",
+        "サイドバーの表示に失敗しました: " + error.message,
+        SpreadsheetApp.getUi().ButtonSet.OK
+      );
+    }
   }
+}
+
+/**
+ * 権限チェック
+ */
+function checkPermissions() {
+  try {
+    // 基本的な権限をテスト
+    SpreadsheetApp.getActiveSpreadsheet();
+    DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+    return true;
+  } catch (error) {
+    console.log("権限チェック失敗:", error.message);
+    return false;
+  }
+}
+
+/**
+ * 権限承認ダイアログ
+ */
+function showPermissionDialog() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert(
+    "🔐 権限承認が必要です",
+    "このツールを使用するには、以下の権限承認が必要です：\n\n" +
+      "✅ スプレッドシートへのアクセス\n" +
+      "✅ サイドバー表示\n" +
+      "✅ 外部API呼び出し（画像生成）\n\n" +
+      "「承認する」をクリックして権限を許可してください。\n" +
+      "承認後、メニューから「📱 サイドバーを開く」を再度実行してください。",
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response === ui.Button.OK) {
+    // 権限承認を促すためのダミー関数実行
+    try {
+      requestPermissions();
+    } catch (error) {
+      ui.alert(
+        "権限承認",
+        "権限承認ダイアログが表示されます。\n「許可」をクリックして承認してください。",
+        ui.ButtonSet.OK
+      );
+    }
+  }
+}
+
+/**
+ * 権限要求（ダミー関数）
+ */
+function requestPermissions() {
+  // 各権限を要求するダミー処理
+  SpreadsheetApp.getActiveSpreadsheet();
+  DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+  UrlFetchApp.fetch("https://httpbin.org/get", { muteHttpExceptions: true });
 }
 
 /**
@@ -1006,4 +1081,69 @@ function checkOtherData() {
 function logError(functionName, error) {
   console.error(`[${functionName}] エラー:`, error);
   // 必要に応じてスプレッドシートにログを記録することも可能
+}
+
+/**
+ * 初回使用者かどうか判定
+ */
+function isFirstTimeUser() {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    const hasUsed = properties.getProperty("TOOL_USED_BEFORE");
+    return !hasUsed;
+  } catch (error) {
+    return true; // エラーの場合は初回とみなす
+  }
+}
+
+/**
+ * 使用記録を保存
+ */
+function markAsUsed() {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    properties.setProperty("TOOL_USED_BEFORE", "true");
+  } catch (error) {
+    console.log("使用記録の保存に失敗:", error.message);
+  }
+}
+
+/**
+ * 歓迎メッセージ表示
+ */
+function showWelcomeMessage() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const response = ui.alert(
+      "🎨 DALL-E 画像生成ツールへようこそ！",
+      "このツールを使用するには権限承認が必要です。\n\n" +
+        "🔧 セットアップ手順:\n" +
+        "1️⃣ メニューから「🎨 画像ツール」→「📱 サイドバーを開く」\n" +
+        "2️⃣ 権限承認ダイアログで「許可」をクリック\n" +
+        "3️⃣ OpenAI APIキーを設定\n" +
+        "4️⃣ 画像生成開始！\n\n" +
+        "今すぐセットアップを開始しますか？",
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response === ui.Button.YES) {
+      // 権限承認を試行
+      try {
+        requestPermissions();
+        markAsUsed();
+        showSidebar();
+      } catch (error) {
+        ui.alert(
+          "権限承認",
+          "権限承認ダイアログが表示されます。\n" +
+            "「許可」をクリックした後、メニューから\n" +
+            "「🎨 画像ツール」→「📱 サイドバーを開く」\n" +
+            "を実行してください。",
+          ui.ButtonSet.OK
+        );
+      }
+    }
+  } catch (error) {
+    console.log("歓迎メッセージの表示に失敗:", error.message);
+  }
 }
