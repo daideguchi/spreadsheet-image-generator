@@ -88,7 +88,8 @@ function initialSetup() {
       // 空のシートの場合
       const response = ui.alert(
         "🚀 初期セットアップ",
-        "空のシートに画像生成用のワークスペースを作成します。\n\n" +
+        "画像生成用のワークスペースを作成します。\n\n" +
+          "⚠️ シートを完全にクリアして綺麗に配置します\n" +
           "📝 プロンプト入力エリア\n" +
           "🎨 見やすいタイトルとガイド\n" +
           "✨ 美しいレイアウト\n\n" +
@@ -560,7 +561,8 @@ function executeSetup(option) {
         break;
 
       case "new":
-        // 新規作成
+        // 新規作成 - シートを完全にクリアしてから作成
+        clearSheetCompletely();
         startRow = 1;
         break;
     }
@@ -572,6 +574,38 @@ function executeSetup(option) {
   } catch (error) {
     console.error("セットアップ実行エラー:", error);
     throw new Error(`セットアップの実行に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * シートを完全にクリア
+ */
+function clearSheetCompletely() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // シート全体をクリア
+    sheet.clear();
+
+    // フォーマットもクリア
+    sheet.clearFormats();
+
+    // 行の高さと列の幅をデフォルトに戻す
+    const maxRows = sheet.getMaxRows();
+    const maxCols = sheet.getMaxColumns();
+
+    if (maxRows > 0 && maxCols > 0) {
+      // 行の高さをデフォルトに
+      sheet.setRowHeights(1, maxRows, 21);
+
+      // 列の幅をデフォルトに
+      sheet.setColumnWidths(1, maxCols, 100);
+    }
+
+    console.log("シートを完全にクリアしました");
+  } catch (error) {
+    console.error("シートクリアエラー:", error);
+    throw new Error(`シートのクリアに失敗しました: ${error.message}`);
   }
 }
 
@@ -617,8 +651,8 @@ function backupAndClearSheet() {
     const backupSheet = currentSheet.copyTo(ss);
     backupSheet.setName(backupName);
 
-    // 元のシートをクリア
-    currentSheet.clear();
+    // 元のシートを完全にクリア
+    clearSheetCompletely();
 
     SpreadsheetApp.getUi().alert(
       "📁 バックアップ完了",
