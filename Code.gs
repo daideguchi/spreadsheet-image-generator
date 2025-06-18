@@ -151,8 +151,9 @@ function showSidebar() {
   try {
     const html = HtmlService.createHtmlOutputFromFile("Sidebar")
       .setTitle("🎨 DALL-E 画像生成ツール")
-      .setWidth(950); // 720px → 950px (画面の40-50%！)
-    SpreadsheetApp.getUi().showSidebar(html);
+      .setWidth(1200) // 大幅拡大
+      .setHeight(800); // 高さも指定
+    SpreadsheetApp.getUi().showModalDialog(html, "🎨 DALL-E 画像生成ツール");
   } catch (error) {
     // 権限エラーの場合は自動的に権限承認を案内
     if (
