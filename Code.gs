@@ -225,6 +225,76 @@ function findPromptInputArea() {
 }
 
 /**
+ * 既存のプロンプト入力エリアに行を追加
+ */
+function addPromptRows(numRows = 5) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const dataRange = sheet.getDataRange();
+
+    if (dataRange.getNumRows() < 1) {
+      throw new Error("プロンプト入力エリアが見つかりません");
+    }
+
+    // "プロンプト入力エリア" のヘッダーを探す
+    let headerRow = -1;
+    for (let row = 1; row <= dataRange.getNumRows(); row++) {
+      const cellValue = sheet.getRange(row, 1).getValue().toString();
+      if (cellValue.includes("プロンプト入力エリア")) {
+        headerRow = row;
+        break;
+      }
+    }
+
+    if (headerRow === -1) {
+      throw new Error("プロンプト入力エリアのヘッダーが見つかりません");
+    }
+
+    // 既存の入力エリアの最後の行を見つける
+    let lastInputRow = headerRow;
+    for (let r = headerRow + 1; r <= sheet.getLastRow(); r++) {
+      const cellValue = sheet.getRange(r, 1).getValue();
+      if (cellValue !== null && cellValue !== "") {
+        lastInputRow = r;
+      } else {
+        // 空行が見つかったら、そこまでが入力エリア
+        break;
+      }
+    }
+
+    // 新しい行を追加する位置
+    const insertRow = lastInputRow + 1;
+
+    // 新しい入力行を追加
+    for (let i = 0; i < numRows; i++) {
+      const newRow = insertRow + i;
+      const cellRange = sheet.getRange(newRow, 1);
+
+      // 空のセルを作成
+      cellRange.setValue("");
+
+      // スタイル設定（既存のスタイルに合わせる）
+      cellRange.setBorder(true, true, true, true, true, true);
+      sheet.setRowHeight(newRow, 30);
+    }
+
+    // 列幅を調整
+    sheet.setColumnWidth(1, 400);
+
+    // 新しく追加された範囲を選択
+    const newRange = sheet.getRange(insertRow, 1, numRows, 1);
+    sheet.setActiveRange(newRange);
+
+    return `プロンプト入力エリアに${numRows}行を追加しました（行 ${insertRow}～${
+      insertRow + numRows - 1
+    }）`;
+  } catch (error) {
+    console.error("プロンプト行追加エラー:", error);
+    throw new Error(`プロンプト行の追加に失敗しました: ${error.message}`);
+  }
+}
+
+/**
  * 指定範囲の値を取得
  */
 function getRangeValues(a1Notation) {
@@ -531,41 +601,52 @@ function createImageTable(imageResults) {
 }
 
 /**
- * プロンプト入力用の簡単な表を作成
+ * プロンプト入力テーブルを作成（重複防止機能付き）
  */
 function createPromptInputTable() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
 
-    // 空いている行を見つける
-    const lastRow = sheet.getLastRow();
-    const startRow = lastRow + 2;
+    // 既存のプロンプト入力エリアをチェック
+    const existingArea = findPromptInputArea();
 
-    // 見出しを作成
-    const headers = ["プロンプト入力欄"];
-    const headerRange = sheet.getRange(startRow, 1, 1, 1);
-    headerRange.setValues([headers]);
-    headerRange.setBackground("#34a853");
-    headerRange.setFontColor("white");
-    headerRange.setFontWeight("bold");
-    headerRange.setHorizontalAlignment("center");
+    if (existingArea) {
+      // 既存エリアがある場合は追加行を提案
+      const ui = SpreadsheetApp.getUi();
+      const response = ui.alert(
+        "📝 プロンプト入力エリアが既に存在します",
+        "既にプロンプト入力エリアがあります。\n\n" +
+          "✅ はい：既存エリアに行を追加\n" +
+          "❌ いいえ：新しいエリアを下に作成\n" +
+          "🚫 キャンセル：操作を中止",
+        ui.ButtonSet.YES_NO_CANCEL
+      );
 
-    // 入力欄を5行作成
-    const inputRows = Array(5).fill([""]);
-    const inputRange = sheet.getRange(startRow + 1, 1, 5, 1);
-    inputRange.setValues(inputRows);
-    inputRange.setBorder(true, true, true, true, true, true);
-
-    // 列幅を調整
-    sheet.setColumnWidth(1, 300);
-
-    // 入力範囲を選択状態にする
-    sheet.setActiveRange(inputRange);
-
-    return `プロンプト入力表を作成しました（行 ${startRow}～${startRow + 5}）`;
+      if (response === ui.Button.YES) {
+        return addPromptRows();
+      } else if (response === ui.Button.NO) {
+        // 新しいエリアを作成
+        const lastRow = findLastDataRow();
+        const startRow = lastRow + 3;
+        createPromptInputAreaAt(startRow);
+        return `新しいプロンプト入力エリアを作成しました（行 ${startRow}～${
+          startRow + 8
+        }）`;
+      } else {
+        return "操作をキャンセルしました";
+      }
+    } else {
+      // 既存エリアがない場合は新規作成
+      const lastRow = findLastDataRow();
+      const startRow = lastRow + 3;
+      createPromptInputAreaAt(startRow);
+      return `プロンプト入力エリアを作成しました（行 ${startRow}～${
+        startRow + 8
+      }）`;
+    }
   } catch (error) {
-    console.error("入力表作成エラー:", error);
-    throw new Error(`入力表の作成に失敗しました: ${error.message}`);
+    console.error("入力テーブル作成エラー:", error);
+    throw new Error(`入力テーブルの作成に失敗しました: ${error.message}`);
   }
 }
 

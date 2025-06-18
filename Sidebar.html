@@ -308,7 +308,7 @@
       <div class="button-group" id="mainButtons" style="display: none;">
         <button id="createInputBtn" class="btn btn-create">
           <span id="createSpinner" class="spinner hidden"></span>
-          📝 プロンプト入力欄を追加
+          ➕ プロンプト行を追加
         </button>
         
         <button id="generateTableBtn" class="btn">
@@ -418,7 +418,7 @@
           button: 'setupBtn'
         },
         step2: {
-          text: '<strong>✨ プロンプトの入力:</strong><br>シートのプロンプト入力エリアに画像生成したい内容を入力しよう！<br><small style="color: #666;">例: "a cute cat in a wizard hat" - 複数行入力可能</small>',
+          text: '<strong>✨ プロンプトの入力:</strong><br>シートのプロンプト入力エリアに画像生成したい内容を入力しよう！<br><small style="color: #666;">例: "a cute cat in a wizard hat" - 行が足りない場合は「プロンプト行を追加」</small>',
           button: 'createInputBtn'
         },
         step3: {
@@ -464,10 +464,10 @@
       clearSpinner.classList.toggle('hidden', !isCreating);
       
       if (isCreating) {
-        createInputBtn.innerHTML = '<span class="spinner"></span>作成中...';
+        createInputBtn.innerHTML = '<span class="spinner"></span>追加中...';
         clearSheetBtn.innerHTML = '<span class="spinner"></span>クリア中...';
       } else {
-        createInputBtn.innerHTML = '📝 入力表を作成';
+        createInputBtn.innerHTML = '➕ プロンプト行を追加';
         clearSheetBtn.innerHTML = '🧹 シートを完全クリア';
       }
       
@@ -522,7 +522,7 @@
     });
 
     /**
-     * 入力表作成処理
+     * プロンプト行追加処理
      */
     createInputBtn.addEventListener('click', async () => {
       if (isCreating) return;
@@ -530,7 +530,7 @@
       try {
         isCreating = true;
         updateButtonStates();
-        showStatus('プロンプト入力表を作成中...', 'info');
+        showStatus('プロンプト行を追加中...', 'info');
         
         const result = await new Promise((resolve, reject) => {
           google.script.run
@@ -542,7 +542,7 @@
         showStatus(result, 'success');
         
       } catch (error) {
-        console.error('入力表作成エラー:', error);
+        console.error('プロンプト行追加エラー:', error);
         showStatus(`エラー: ${error.message}`, 'error');
       } finally {
         isCreating = false;
