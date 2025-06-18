@@ -129,93 +129,42 @@ function initialSetup() {
     return executeSetup(setupOption);
   } catch (error) {
     console.error("初期セットアップエラー:", error);
+
+    // 権限エラーの場合は統一ハンドラーを使用
+    if (
+      error.message.includes("permissions") ||
+      error.message.includes("container.ui") ||
+      error.message.includes("spreadsheets")
+    ) {
+      handlePermissionError("初期セットアップ");
+      return;
+    }
+
     throw new Error(`初期セットアップに失敗しました: ${error.message}`);
   }
 }
 
 /**
- * サイドバーを表示（権限チェック付き）
+ * サイドバーを表示（透明な権限承認付き）
  */
 function showSidebar() {
   try {
-    // 権限チェック
-    if (!checkPermissions()) {
-      showPermissionDialog();
-      return;
-    }
-
     const html = HtmlService.createHtmlOutputFromFile("Sidebar")
       .setTitle("🎨 DALL-E 画像生成ツール")
       .setWidth(480); // 350px → 480px (+37%拡大)
     SpreadsheetApp.getUi().showSidebar(html);
   } catch (error) {
-    if (error.message.includes("container.ui")) {
-      showPermissionDialog();
+    // 権限エラーの場合は自動的に権限承認を案内
+    if (
+      error.message.includes("container.ui") ||
+      error.message.includes("permissions")
+    ) {
+      handlePermissionError("サイドバーを開く");
     } else {
       SpreadsheetApp.getUi().alert(
         "エラー",
         "サイドバーの表示に失敗しました: " + error.message,
         SpreadsheetApp.getUi().ButtonSet.OK
-      );
-    }
-  }
-}
-
-/**
- * 権限チェック
- */
-function checkPermissions() {
-  try {
-    // 基本的な権限をテスト
-    SpreadsheetApp.getActiveSpreadsheet();
-    DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
-    return true;
-  } catch (error) {
-    console.log("権限チェック失敗:", error.message);
-    return false;
-  }
-}
-
-/**
- * 権限承認ダイアログ
- */
-function showPermissionDialog() {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.alert(
-    "🔐 権限承認が必要です",
-    "このツールを使用するには、以下の権限承認が必要です：\n\n" +
-      "✅ スプレッドシートへのアクセス\n" +
-      "✅ サイドバー表示\n" +
-      "✅ 外部API呼び出し（画像生成）\n\n" +
-      "「承認する」をクリックして権限を許可してください。\n" +
-      "承認後、メニューから「📱 サイドバーを開く」を再度実行してください。",
-    ui.ButtonSet.OK_CANCEL
-  );
-
-  if (response === ui.Button.OK) {
-    // 権限承認を促すための処理実行
-    try {
-      const result = requestPermissions();
-      ui.alert(
-        "✅ 権限承認完了",
-        "権限承認が完了しました！\n" +
-          "これでツールを使用できます。\n\n" +
-          "メニューから「📱 サイドバーを開く」をクリックして開始してください。",
-        ui.ButtonSet.OK
-      );
-    } catch (error) {
-      // 権限エラーの場合は詳細な説明を表示
-      ui.alert(
-        "🔐 権限承認が必要です",
-        "Google Apps Scriptから権限承認を求められます。\n\n" +
-          "📋 手順:\n" +
-          "1. 「承認が必要」ダイアログで「権限を確認」をクリック\n" +
-          "2. Googleアカウントを選択\n" +
-          "3. 「詳細」をクリック（安全ではないページと表示される場合）\n" +
-          "4. 「〜に移動（安全ではないページ）」をクリック\n" +
-          "5. 「許可」をクリック\n\n" +
-          "承認後、メニューから「📱 サイドバーを開く」を実行してください。",
-        ui.ButtonSet.OK
       );
     }
   }
@@ -1250,5 +1199,63 @@ function forcePermissionRequest() {
       ui.ButtonSet.OK
     );
     throw error;
+  }
+}
+
+/**
+ * 権限エラーを統一的に処理
+ */
+function handlePermissionError(actionName) {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert(
+    `🔐 「${actionName}」には権限承認が必要です`,
+    `「${actionName}」を実行するために、Googleアカウントの権限承認が必要です。\n\n` +
+      "🚀 今すぐ権限承認を行いますか？\n\n" +
+      "✅ はい：権限承認を開始\n" +
+      "❌ いいえ：後で手動で実行",
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response === ui.Button.YES) {
+    try {
+      // 権限承認を実行
+      const result = forcePermissionRequest();
+
+      // 成功した場合、元の操作を再試行
+      ui.alert(
+        "✅ 権限承認完了",
+        `権限承認が完了しました！\n\n` + `「${actionName}」を再度実行します。`,
+        ui.ButtonSet.OK
+      );
+
+      // 元の操作に応じて適切な関数を再実行
+      if (actionName === "サイドバーを開く") {
+        showSidebar();
+      } else if (actionName === "初期セットアップ") {
+        initialSetup();
+      }
+    } catch (error) {
+      ui.alert(
+        "🔐 権限承認の手順",
+        "権限承認ダイアログが表示されます。\n\n" +
+          "📋 手順:\n" +
+          "1. 「権限を確認」をクリック\n" +
+          "2. Googleアカウントを選択\n" +
+          "3. 「このアプリは確認されていません」が表示されたら\n" +
+          "   「詳細」→「安全ではないページに移動」をクリック\n" +
+          "4. 「許可」をクリック\n\n" +
+          `承認後、メニューから「${actionName}」を再度実行してください。`,
+        ui.ButtonSet.OK
+      );
+    }
+  } else {
+    ui.alert(
+      "💡 手動で権限承認する方法",
+      "後で権限承認を行う場合:\n\n" +
+        "メニュー「🎨 画像ツール」→「🔐 権限承認を実行」\n" +
+        "をクリックしてください。\n\n" +
+        `権限承認完了後、「${actionName}」が使用できます。`,
+      ui.ButtonSet.OK
+    );
   }
 }
