@@ -13,43 +13,44 @@
     }
     
     .container {
-      max-width: 460px; /* 300px → 460px (幅拡大に対応) */
+      max-width: 680px; /* 460px → 680px (720px幅に対応) */
       margin: 0 auto;
-      padding: 0 12px; /* 左右の余白を追加 */
+      padding: 0 20px; /* 12px → 20px (余白拡大) */
     }
     
     .card {
       background: white;
-      border-radius: 12px; /* 8px → 12px (角を丸く) */
-      padding: 24px; /* 20px → 24px (余白拡大) */
-      margin-bottom: 18px; /* 16px → 18px */
-      box-shadow: 0 3px 8px rgba(0,0,0,0.12); /* 影を強化 */
-      border: 1px solid rgba(0,0,0,0.05); /* 薄いボーダー追加 */
+      border-radius: 16px; /* 12px → 16px (より丸く) */
+      padding: 32px; /* 24px → 32px (大画面対応) */
+      margin-bottom: 24px; /* 18px → 24px */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* 影をさらに強化 */
+      border: 1px solid rgba(0,0,0,0.08); /* ボーダーを少し濃く */
     }
     
     h2 {
       color: #1a73e8;
       margin-top: 0;
-      font-size: 22px; /* 18px → 22px (タイトル拡大) */
+      font-size: 28px; /* 22px → 28px (大画面対応) */
       text-align: center;
       font-weight: 700; /* フォント太字強化 */
-      letter-spacing: 0.5px; /* 文字間隔を追加 */
+      letter-spacing: 0.8px; /* 0.5px → 0.8px (文字間隔拡大) */
+      margin-bottom: 8px; /* 下余白追加 */
     }
     
     .btn {
       background-color: #1a73e8;
       color: white;
       border: none;
-      padding: 18px 28px; /* 16px 24px → 18px 28px (余白拡大) */
-      border-radius: 8px; /* 6px → 8px (角を丸く) */
+      padding: 22px 36px; /* 18px 28px → 22px 36px (大画面対応) */
+      border-radius: 12px; /* 8px → 12px (より丸く) */
       cursor: pointer;
-      font-size: 17px; /* 16px → 17px (文字サイズ拡大) */
+      font-size: 19px; /* 17px → 19px (大きな文字) */
       font-weight: 600;
       width: 100%;
-      margin-bottom: 16px; /* 14px → 16px */
+      margin-bottom: 20px; /* 16px → 20px */
       transition: all 0.3s;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.15); /* 影を強化 */
-      letter-spacing: 0.5px; /* 文字間隔を追加 */
+      box-shadow: 0 4px 8px rgba(0,0,0,0.18); /* 影をさらに強化 */
+      letter-spacing: 0.8px; /* 0.5px → 0.8px (文字間隔拡大) */
     }
     
     .btn:hover {
@@ -158,12 +159,12 @@
       background-color: #fff3e0;
       border: 1px solid #ff9800;
       color: #ef6c00;
-      padding: 18px; /* 14px → 18px (余白拡大) */
-      border-radius: 8px; /* 6px → 8px (角を丸く) */
-      font-size: 15px; /* 14px → 15px (文字サイズ拡大) */
+      padding: 24px; /* 18px → 24px (大画面対応) */
+      border-radius: 12px; /* 8px → 12px (より丸く) */
+      font-size: 17px; /* 15px → 17px (大きな文字) */
       font-weight: 500;
-      margin-bottom: 20px; /* 18px → 20px */
-      line-height: 1.5; /* 1.4 → 1.5 (行間拡大) */
+      margin-bottom: 24px; /* 20px → 24px */
+      line-height: 1.6; /* 1.5 → 1.6 (行間さらに拡大) */
     }
     
     .spinner {
@@ -193,7 +194,8 @@
     .step-indicator {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 16px;
+      margin-bottom: 24px; /* 16px → 24px */
+      padding: 0 20px; /* 左右に余白追加 */
     }
     
     .step {
@@ -218,17 +220,17 @@
     }
     
     .step-number {
-      width: 30px;
-      height: 30px;
+      width: 40px; /* 30px → 40px (大きく) */
+      height: 40px; /* 30px → 40px (大きく) */
       border-radius: 50%;
       background-color: #e0e0e0;
       color: #666;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 4px;
+      margin: 0 auto 6px; /* 4px → 6px */
       font-weight: bold;
-      font-size: 12px;
+      font-size: 16px; /* 12px → 16px (文字拡大) */
       position: relative;
       z-index: 2;
     }
@@ -244,7 +246,7 @@
     }
     
     .step-text {
-      font-size: 10px;
+      font-size: 13px; /* 10px → 13px (読みやすく) */
       color: #666;
       font-weight: 500;
     }

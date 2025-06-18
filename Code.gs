@@ -151,7 +151,7 @@ function showSidebar() {
   try {
     const html = HtmlService.createHtmlOutputFromFile("Sidebar")
       .setTitle("🎨 DALL-E 画像生成ツール")
-      .setWidth(480); // 350px → 480px (+37%拡大)
+      .setWidth(720); // 480px → 720px (画面の30%以上！)
     SpreadsheetApp.getUi().showSidebar(html);
   } catch (error) {
     // 権限エラーの場合は自動的に権限承認を案内
