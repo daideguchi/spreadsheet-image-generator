@@ -35,27 +35,42 @@ function onOpen() {
 }
 
 /**
- * 初期セットアップ（プロンプト入力エリアを作成）- 安全で選択肢豊富版
+ * 初期セットアップ（プロンプト入力エリアを作成）- 改良版
  */
 function initialSetup() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
     const ui = SpreadsheetApp.getUi();
 
-    // 既存データの確認
-    const dataRange = sheet.getDataRange();
-    const hasData =
-      dataRange.getNumRows() > 1 ||
-      dataRange.getNumColumns() > 1 ||
-      dataRange.getCell(1, 1).getValue() !== "";
+    // より正確な既存データの確認
+    const hasExistingWorkspace = checkExistingWorkspace();
+    const hasOtherData = checkOtherData();
 
     let setupOption;
 
-    if (hasData) {
-      // 既存データがある場合の選択肢
+    if (hasExistingWorkspace) {
+      // 既存のワークスペースがある場合
+      const response = ui.alert(
+        "🎨 画像生成ワークスペースが既に存在します",
+        "画像生成ツールのワークスペースが既に作成されています。\n\n" +
+          "✅ はい：新しいワークスペースを下に追加\n" +
+          "❌ いいえ：既存データをバックアップして再作成\n" +
+          "🚫 キャンセル：セットアップを中止",
+        ui.ButtonSet.YES_NO_CANCEL
+      );
+
+      if (response === ui.Button.YES) {
+        setupOption = "append";
+      } else if (response === ui.Button.NO) {
+        setupOption = "backup";
+      } else {
+        return "初期セットアップをキャンセルしました";
+      }
+    } else if (hasOtherData) {
+      // 他のデータがある場合
       const response = ui.alert(
         "⚠️ 既存データが検出されました",
-        "既存のデータが見つかりました。どのようにセットアップしますか？\n\n" +
+        "シートに他のデータが見つかりました。\n\n" +
           "✅ はい：データを保持して下に追加\n" +
           "❌ いいえ：バックアップして新規作成\n" +
           "🚫 キャンセル：セットアップを中止",
@@ -540,8 +555,8 @@ function executeSetup(option) {
         break;
 
       case "append":
-        // 既存データの下に追加
-        startRow = sheet.getLastRow() + 3;
+        // 既存データの下に追加（正確な最終行を検出）
+        startRow = findLastDataRow() + 3; // 2行空白を追加
         break;
 
       case "new":
@@ -557,6 +572,34 @@ function executeSetup(option) {
   } catch (error) {
     console.error("セットアップ実行エラー:", error);
     throw new Error(`セットアップの実行に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 最後のデータ行を正確に見つける
+ */
+function findLastDataRow() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    let lastRow = 0;
+
+    // 各列の最後のデータ行をチェック
+    for (let col = 1; col <= Math.max(5, sheet.getLastColumn()); col++) {
+      const columnData = sheet
+        .getRange(1, col, sheet.getLastRow() || 1, 1)
+        .getValues();
+      for (let row = columnData.length - 1; row >= 0; row--) {
+        if (columnData[row][0] !== "" && columnData[row][0] != null) {
+          lastRow = Math.max(lastRow, row + 1);
+          break;
+        }
+      }
+    }
+
+    return lastRow || sheet.getLastRow() || 0;
+  } catch (error) {
+    console.error("最後のデータ行検索エラー:", error);
+    return sheet.getLastRow() || 0;
   }
 }
 
@@ -682,6 +725,54 @@ function createPromptInputAreaAt(startRow) {
   } catch (error) {
     console.error("入力エリア作成エリア:", error);
     throw new Error(`入力エリアの作成に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 既存のワークスペースをチェック
+ */
+function checkExistingWorkspace() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const dataRange = sheet.getDataRange();
+
+    if (dataRange.getNumRows() < 1) return false;
+
+    // タイトル行をチェック
+    for (let row = 1; row <= dataRange.getNumRows(); row++) {
+      const cellValue = sheet.getRange(row, 1).getValue().toString();
+      if (
+        cellValue.includes("DALL-E") &&
+        cellValue.includes("画像生成ツール")
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch (error) {
+    console.error("ワークスペースチェックエラー:", error);
+    return false;
+  }
+}
+
+/**
+ * 他のデータをチェック
+ */
+function checkOtherData() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const dataRange = sheet.getDataRange();
+
+    if (dataRange.getNumRows() <= 1 && dataRange.getNumColumns() <= 1) {
+      const cellValue = sheet.getRange(1, 1).getValue();
+      return cellValue !== "" && cellValue != null;
+    }
+
+    return dataRange.getNumRows() > 1 || dataRange.getNumColumns() > 1;
+  } catch (error) {
+    console.error("データチェックエラー:", error);
+    return false;
   }
 }
 
