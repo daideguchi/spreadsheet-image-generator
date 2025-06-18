@@ -1120,8 +1120,7 @@ function showWelcomeMessage() {
         "🔧 セットアップ手順:\n" +
         "1️⃣ メニューから「🎨 画像ツール」→「📱 サイドバーを開く」\n" +
         "2️⃣ 権限承認ダイアログで「許可」をクリック\n" +
-        "3️⃣ サイドバーの詳細オプションでOpenAI APIキーを設定\n" +
-        "4️⃣ 画像生成開始！\n\n" +
+        "3️⃣ 画像生成開始！（APIキーは既に設定済み）\n\n" +
         "今すぐセットアップを開始しますか？",
       ui.ButtonSet.YES_NO
     );
@@ -1145,26 +1144,5 @@ function showWelcomeMessage() {
     }
   } catch (error) {
     console.log("歓迎メッセージの表示に失敗:", error.message);
-  }
-}
-
-/**
- * APIキーを保存
- */
-function saveApiKey(apiKey) {
-  try {
-    if (!apiKey || !apiKey.startsWith("sk-")) {
-      throw new Error(
-        "正しいOpenAI APIキー形式で入力してください（sk-で始まる）"
-      );
-    }
-
-    const properties = PropertiesService.getScriptProperties();
-    properties.setProperty("OPENAI_API_KEY", apiKey);
-
-    return "✅ APIキーを保存しました";
-  } catch (error) {
-    console.error("APIキー保存エラー:", error);
-    throw new Error(`APIキーの保存に失敗しました: ${error.message}`);
   }
 }

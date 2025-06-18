@@ -330,16 +330,6 @@
       <details class="advanced-options">
         <summary>⚙️ 詳細オプション</summary>
         
-        <!-- APIキー設定 -->
-        <div style="margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef;">
-          <div style="font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 8px;">🔑 OpenAI API キー設定</div>
-          <input type="password" id="apiKeyInput" placeholder="sk-..." style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; margin-bottom: 6px;">
-          <div style="display: flex; gap: 6px;">
-            <button id="saveApiKeyBtn" class="btn" style="flex: 1; font-size: 12px; padding: 6px 12px;">💾 保存</button>
-            <button id="checkApiKeyBtn" class="btn btn-secondary" style="flex: 1; font-size: 12px; padding: 6px 12px;">✅ 確認</button>
-          </div>
-        </div>
-        
         <button id="generateBtn" class="btn btn-classic">
           <span id="generateSpinner" class="spinner hidden"></span>
           画像を生成（従来版）
@@ -369,9 +359,6 @@
     const generateBtn = document.getElementById('generateBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const clearSheetBtn = document.getElementById('clearSheetBtn');
-    const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
-    const checkApiKeyBtn = document.getElementById('checkApiKeyBtn');
-    const apiKeyInput = document.getElementById('apiKeyInput');
     const status = document.getElementById('status');
     const instructionText = document.getElementById('instruction-text');
     const setupSpinner = document.getElementById('setupSpinner');
@@ -475,8 +462,6 @@
       generateBtn.disabled = isBusy;
       downloadBtn.disabled = isBusy;
       clearSheetBtn.disabled = isBusy;
-      saveApiKeyBtn.disabled = isBusy;
-      checkApiKeyBtn.disabled = isBusy;
       
       createSpinner.classList.toggle('hidden', !isCreating);
       generateTableSpinner.classList.toggle('hidden', !isGenerating);
@@ -801,63 +786,6 @@
       }
     });
     
-    /**
-     * APIキー保存処理
-     */
-    saveApiKeyBtn.addEventListener('click', async () => {
-      const apiKey = apiKeyInput.value.trim();
-      
-      if (!apiKey) {
-        showStatus('APIキーを入力してください', 'error');
-        return;
-      }
-      
-      if (!apiKey.startsWith('sk-')) {
-        showStatus('正しいOpenAI APIキー形式で入力してください（sk-で始まる）', 'error');
-        return;
-      }
-      
-      try {
-        showStatus('APIキーを保存中...', 'info');
-        
-        const result = await new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)
-            .saveApiKey(apiKey);
-        });
-        
-        showStatus('✅ APIキーを保存しました', 'success');
-        apiKeyInput.value = ''; // 入力フィールドをクリア
-        
-      } catch (error) {
-        console.error('APIキー保存エラー:', error);
-        showStatus(`エラー: ${error.message}`, 'error');
-      }
-    });
-    
-    /**
-     * APIキー確認処理
-     */
-    checkApiKeyBtn.addEventListener('click', async () => {
-      try {
-        showStatus('APIキーを確認中...', 'info');
-        
-        const result = await new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)
-            .checkSettings();
-        });
-        
-        showStatus('✅ APIキー確認完了', 'success');
-        
-      } catch (error) {
-        console.error('APIキー確認エラー:', error);
-        showStatus(`エラー: ${error.message}`, 'error');
-      }
-    });
-
     // 初期状態の設定
     updateButtonStates();
     updateStepIndicator('step1');
