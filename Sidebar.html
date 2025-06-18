@@ -62,6 +62,23 @@
       background-color: #2e7d32;
     }
     
+    .btn-create {
+      background-color: #ff9800;
+    }
+    
+    .btn-create:hover {
+      background-color: #f57c00;
+    }
+    
+    .btn-classic {
+      background-color: #9e9e9e;
+      font-size: 12px;
+    }
+    
+    .btn-classic:hover {
+      background-color: #757575;
+    }
+    
     .status {
       margin-top: 16px;
       padding: 12px;
@@ -125,20 +142,31 @@
       <h2>🎨 DALL-E 画像生成</h2>
       
       <div class="instructions">
-        <strong>使い方:</strong><br>
-        1. セルにプロンプトを入力<br>
-        2. 範囲を選択して「画像生成」<br>
-        3. 「画像をダウンロード」でZIP取得
+        <strong>新しい使い方:</strong><br>
+        1. 「入力表を作成」でプロンプト入力欄を準備<br>
+        2. プロンプトを入力して範囲選択<br>
+        3. 「表形式で生成」で整理された表を作成<br>
+        4. 「画像をダウンロード」でZIP取得
       </div>
       
-      <button id="generateBtn" class="btn">
+      <button id="createInputBtn" class="btn btn-create">
+        <span id="createSpinner" class="spinner hidden"></span>
+        📝 入力表を作成
+      </button>
+      
+      <button id="generateTableBtn" class="btn">
+        <span id="generateTableSpinner" class="spinner hidden"></span>
+        🎨 表形式で生成
+      </button>
+      
+      <button id="generateBtn" class="btn btn-classic">
         <span id="generateSpinner" class="spinner hidden"></span>
-        画像を生成
+        画像を生成（従来）
       </button>
       
       <button id="downloadBtn" class="btn btn-secondary">
         <span id="downloadSpinner" class="spinner hidden"></span>
-        画像をダウンロード
+        📦 画像をダウンロード
       </button>
       
       <div id="status" class="status"></div>
@@ -149,11 +177,16 @@
     // 状態管理
     let isGenerating = false;
     let isDownloading = false;
+    let isCreating = false;
     
     // DOM要素の取得
+    const createInputBtn = document.getElementById('createInputBtn');
+    const generateTableBtn = document.getElementById('generateTableBtn');
     const generateBtn = document.getElementById('generateBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const status = document.getElementById('status');
+    const createSpinner = document.getElementById('createSpinner');
+    const generateTableSpinner = document.getElementById('generateTableSpinner');
     const generateSpinner = document.getElementById('generateSpinner');
     const downloadSpinner = document.getElementById('downloadSpinner');
     
@@ -177,27 +210,124 @@
      * ボタンの状態を更新
      */
     function updateButtonStates() {
-      generateBtn.disabled = isGenerating || isDownloading;
-      downloadBtn.disabled = isGenerating || isDownloading;
+      const isBusy = isGenerating || isDownloading || isCreating;
       
+      createInputBtn.disabled = isBusy;
+      generateTableBtn.disabled = isBusy;
+      generateBtn.disabled = isBusy;
+      downloadBtn.disabled = isBusy;
+      
+      createSpinner.classList.toggle('hidden', !isCreating);
+      generateTableSpinner.classList.toggle('hidden', !isGenerating);
       generateSpinner.classList.toggle('hidden', !isGenerating);
       downloadSpinner.classList.toggle('hidden', !isDownloading);
       
+      if (isCreating) {
+        createInputBtn.innerHTML = '<span class="spinner"></span>作成中...';
+      } else {
+        createInputBtn.innerHTML = '📝 入力表を作成';
+      }
+      
       if (isGenerating) {
+        generateTableBtn.innerHTML = '<span class="spinner"></span>生成中...';
         generateBtn.innerHTML = '<span class="spinner"></span>生成中...';
       } else {
-        generateBtn.innerHTML = '画像を生成';
+        generateTableBtn.innerHTML = '🎨 表形式で生成';
+        generateBtn.innerHTML = '画像を生成（従来）';
       }
       
       if (isDownloading) {
         downloadBtn.innerHTML = '<span class="spinner"></span>ダウンロード中...';
       } else {
-        downloadBtn.innerHTML = '画像をダウンロード';
+        downloadBtn.innerHTML = '📦 画像をダウンロード';
       }
     }
     
     /**
-     * 画像生成処理
+     * 入力表作成処理
+     */
+    createInputBtn.addEventListener('click', async () => {
+      if (isCreating) return;
+      
+      try {
+        isCreating = true;
+        updateButtonStates();
+        showStatus('プロンプト入力表を作成中...', 'info');
+        
+        const result = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .createPromptInputTable();
+        });
+        
+        showStatus(result, 'success');
+        
+      } catch (error) {
+        console.error('入力表作成エラー:', error);
+        showStatus(`エラー: ${error.message}`, 'error');
+      } finally {
+        isCreating = false;
+        updateButtonStates();
+      }
+    });
+    
+    /**
+     * 表形式画像生成処理
+     */
+    generateTableBtn.addEventListener('click', async () => {
+      if (isGenerating) return;
+      
+      try {
+        isGenerating = true;
+        updateButtonStates();
+        showStatus('選択範囲を確認中...', 'info');
+        
+        // アクティブレンジを取得
+        const rangeA1 = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getActiveRangeA1();
+        });
+        
+        showStatus('プロンプトを取得中...', 'info');
+        
+        // プロンプトを取得
+        const prompts = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getRangeValues(rangeA1);
+        });
+        
+        if (!prompts || prompts.length === 0) {
+          throw new Error('選択範囲にプロンプトが見つかりません');
+        }
+        
+        showStatus(`${prompts.length}個のプロンプトで画像を生成中...`, 'info');
+        
+        // 画像生成と表作成を同時実行
+        const result = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .generateImagesAndCreateTable(prompts);
+        });
+        
+        showStatus(result.tableMessage, 'success');
+        
+      } catch (error) {
+        console.error('表形式生成エラー:', error);
+        showStatus(`エラー: ${error.message}`, 'error');
+      } finally {
+        isGenerating = false;
+        updateButtonStates();
+      }
+    });
+
+    /**
+     * 画像生成処理（従来版）
      */
     generateBtn.addEventListener('click', async () => {
       if (isGenerating) return;

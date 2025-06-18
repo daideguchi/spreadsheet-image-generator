@@ -257,6 +257,141 @@ function getAllImageUrls() {
 }
 
 /**
+ * シートに見出し付きの表を作成
+ */
+function createImageTable(imageResults) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // 空いている行を見つける（最後のデータの下）
+    const lastRow = sheet.getLastRow();
+    const startRow = lastRow + 2; // 2行空けて開始
+
+    // 見出し行を作成
+    const headers = [
+      "No.",
+      "プロンプト",
+      "生成画像",
+      "修正プロンプト",
+      "生成日時",
+    ];
+    const headerRange = sheet.getRange(startRow, 1, 1, headers.length);
+    headerRange.setValues([headers]);
+
+    // 見出し行のスタイルを設定
+    headerRange.setBackground("#4285f4");
+    headerRange.setFontColor("white");
+    headerRange.setFontWeight("bold");
+    headerRange.setHorizontalAlignment("center");
+
+    // データ行を作成
+    const currentTime = new Date().toLocaleString("ja-JP");
+    const dataRows = imageResults.map((result, index) => [
+      index + 1,
+      result.prompt,
+      `=IMAGE("${result.url}", 1)`,
+      result.revised_prompt || result.prompt,
+      currentTime,
+    ]);
+
+    if (dataRows.length > 0) {
+      const dataRange = sheet.getRange(
+        startRow + 1,
+        1,
+        dataRows.length,
+        headers.length
+      );
+      dataRange.setValues(dataRows);
+
+      // データ行のスタイルを設定
+      dataRange.setBorder(true, true, true, true, true, true);
+      dataRange.setVerticalAlignment("middle");
+
+      // 列幅を調整
+      sheet.setColumnWidth(1, 50); // No.
+      sheet.setColumnWidth(2, 200); // プロンプト
+      sheet.setColumnWidth(3, 150); // 生成画像
+      sheet.setColumnWidth(4, 200); // 修正プロンプト
+      sheet.setColumnWidth(5, 120); // 生成日時
+
+      // 画像行の高さを調整
+      for (let i = 0; i < dataRows.length; i++) {
+        sheet.setRowHeight(startRow + 1 + i, 120);
+      }
+    }
+
+    return `${
+      imageResults.length
+    }件のデータを表形式で追加しました（行 ${startRow}～${
+      startRow + dataRows.length
+    }）`;
+  } catch (error) {
+    console.error("表作成エラー:", error);
+    throw new Error(`表の作成に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * プロンプト入力用の簡単な表を作成
+ */
+function createPromptInputTable() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // 空いている行を見つける
+    const lastRow = sheet.getLastRow();
+    const startRow = lastRow + 2;
+
+    // 見出しを作成
+    const headers = ["プロンプト入力欄"];
+    const headerRange = sheet.getRange(startRow, 1, 1, 1);
+    headerRange.setValues([headers]);
+    headerRange.setBackground("#34a853");
+    headerRange.setFontColor("white");
+    headerRange.setFontWeight("bold");
+    headerRange.setHorizontalAlignment("center");
+
+    // 入力欄を5行作成
+    const inputRows = Array(5).fill([""]);
+    const inputRange = sheet.getRange(startRow + 1, 1, 5, 1);
+    inputRange.setValues(inputRows);
+    inputRange.setBorder(true, true, true, true, true, true);
+
+    // 列幅を調整
+    sheet.setColumnWidth(1, 300);
+
+    // 入力範囲を選択状態にする
+    sheet.setActiveRange(inputRange);
+
+    return `プロンプト入力表を作成しました（行 ${startRow}～${startRow + 5}）`;
+  } catch (error) {
+    console.error("入力表作成エラー:", error);
+    throw new Error(`入力表の作成に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 画像生成と表作成を同時に実行
+ */
+function generateImagesAndCreateTable(prompts) {
+  try {
+    // 画像を生成
+    const imageResults = generateImages(prompts);
+
+    // 表を作成
+    const tableResult = createImageTable(imageResults);
+
+    return {
+      imageResults: imageResults,
+      tableMessage: tableResult,
+    };
+  } catch (error) {
+    console.error("画像生成・表作成エラー:", error);
+    throw new Error(`処理に失敗しました: ${error.message}`);
+  }
+}
+
+/**
  * エラーログを記録
  */
 function logError(functionName, error) {
