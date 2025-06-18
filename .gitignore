@@ -7,6 +7,9 @@ secrets/
 # SpecStoryの履歴ファイル（機密情報が含まれる可能性があるため）
 .specstory/
 
+# GAS pull時に不要なファイル
+# docs/ フォルダは保持して、プライベートリポジトリで参照可能にする
+
 # macOS
 .DS_Store
 .DS_Store?
