@@ -79,6 +79,16 @@
       background-color: #757575;
     }
     
+    .btn-danger {
+      background-color: #dc3545;
+      color: white;
+      font-size: 12px;
+    }
+    
+    .btn-danger:hover {
+      background-color: #c82333;
+    }
+    
     .btn-setup {
       background-color: #ff6f00;
       font-size: 14px;
@@ -314,6 +324,11 @@
           <span id="generateSpinner" class="spinner hidden"></span>
           画像を生成（従来版）
         </button>
+        
+        <button id="clearSheetBtn" class="btn btn-danger" style="margin-top: 8px;">
+          <span id="clearSpinner" class="spinner hidden"></span>
+          🧹 シートを完全クリア
+        </button>
       </details>
       
       <div id="status" class="status"></div>
@@ -333,6 +348,7 @@
     const generateTableBtn = document.getElementById('generateTableBtn');
     const generateBtn = document.getElementById('generateBtn');
     const downloadBtn = document.getElementById('downloadBtn');
+    const clearSheetBtn = document.getElementById('clearSheetBtn');
     const status = document.getElementById('status');
     const instructionText = document.getElementById('instruction-text');
     const setupSpinner = document.getElementById('setupSpinner');
@@ -340,6 +356,7 @@
     const generateTableSpinner = document.getElementById('generateTableSpinner');
     const generateSpinner = document.getElementById('generateSpinner');
     const downloadSpinner = document.getElementById('downloadSpinner');
+    const clearSpinner = document.getElementById('clearSpinner');
     
     // ステップ要素
     const steps = {
@@ -434,16 +451,20 @@
       generateTableBtn.disabled = isBusy;
       generateBtn.disabled = isBusy;
       downloadBtn.disabled = isBusy;
+      clearSheetBtn.disabled = isBusy;
       
       createSpinner.classList.toggle('hidden', !isCreating);
       generateTableSpinner.classList.toggle('hidden', !isGenerating);
       generateSpinner.classList.toggle('hidden', !isGenerating);
       downloadSpinner.classList.toggle('hidden', !isDownloading);
+      clearSpinner.classList.toggle('hidden', !isCreating);
       
       if (isCreating) {
         createInputBtn.innerHTML = '<span class="spinner"></span>作成中...';
+        clearSheetBtn.innerHTML = '<span class="spinner"></span>クリア中...';
       } else {
         createInputBtn.innerHTML = '📝 入力表を作成';
+        clearSheetBtn.innerHTML = '🧹 シートを完全クリア';
       }
       
       if (isGenerating) {
@@ -716,6 +737,41 @@
         showStatus(`エラー: ${error.message}`, 'error');
       } finally {
         isDownloading = false;
+        updateButtonStates();
+      }
+    });
+    
+    /**
+     * シート完全クリア処理
+     */
+    clearSheetBtn.addEventListener('click', async () => {
+      if (isCreating) return;
+      
+      try {
+        isCreating = true;
+        updateButtonStates();
+        showStatus('シートをクリア中...', 'info');
+        
+        const result = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .clearSheetMenu();
+        });
+        
+        showStatus('✅ シートクリア完了', 'success');
+        
+        // UIを初期状態にリセット
+        setupBtn.style.display = 'block';
+        mainButtons.style.display = 'none';
+        updateStepIndicator('step1');
+        updateInstructions('step1');
+        
+      } catch (error) {
+        console.error('シートクリアエラー:', error);
+        showStatus(`エラー: ${error.message}`, 'error');
+      } finally {
+        isCreating = false;
         updateButtonStates();
       }
     });

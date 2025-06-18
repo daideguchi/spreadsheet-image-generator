@@ -22,8 +22,11 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu("🎨 画像ツール")
     .addItem("📱 サイドバーを開く", "showSidebar")
-    .addItem("⚙️ 設定を確認", "checkSettings")
     .addItem("🔧 初期セットアップ", "initialSetup")
+    .addSeparator()
+    .addItem("🧹 シートを完全クリア", "clearSheetMenu")
+    .addSeparator()
+    .addItem("⚙️ 設定を確認", "checkSettings")
     .addToUi();
 
   // サイドバーを自動で表示
@@ -606,6 +609,51 @@ function clearSheetCompletely() {
   } catch (error) {
     console.error("シートクリアエラー:", error);
     throw new Error(`シートのクリアに失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * メニューからのシートクリア（確認ダイアログ付き）
+ */
+function clearSheetMenu() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+
+    const response = ui.alert(
+      "🧹 シートを完全クリア",
+      "⚠️ 警告：この操作は元に戻せません！\n\n" +
+        "以下の内容が完全に削除されます：\n" +
+        "• 全てのデータ\n" +
+        "• 全てのフォーマット\n" +
+        "• 行の高さと列の幅\n\n" +
+        "本当にシートを完全にクリアしますか？",
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response === ui.Button.YES) {
+      clearSheetCompletely();
+
+      ui.alert(
+        "✅ クリア完了",
+        "シートを完全にクリアしました！\n\n" +
+          "💡 新しいワークスペースを作成するには\n" +
+          "「🔧 初期セットアップ」をご利用ください。",
+        ui.ButtonSet.OK
+      );
+    } else {
+      ui.alert(
+        "キャンセル",
+        "シートクリアをキャンセルしました。",
+        ui.ButtonSet.OK
+      );
+    }
+  } catch (error) {
+    console.error("メニュークリアエラー:", error);
+    SpreadsheetApp.getUi().alert(
+      "エラー",
+      `シートクリアに失敗しました: ${error.message}`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
   }
 }
 
