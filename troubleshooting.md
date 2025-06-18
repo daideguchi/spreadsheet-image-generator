@@ -78,6 +78,17 @@ Apps Script エディタで実行ログを確認：
 **原因**: OpenAI API キーが設定されていない  
 **解決方法**: プロジェクトの設定で API キーを設定
 
+#### エラー: OAuth2 スコープエラー
+
+**症状**: `script.container.ui` などのスコープエラーが表示される  
+**原因**: `appsscript.json` で古いまたは無効なスコープが指定されている  
+**解決方法**:
+
+1. **推奨**: `appsscript.json` からスコープ設定を削除（自動検出に任せる）
+2. または正しいスコープに更新：
+   - スプレッドシート: `https://www.googleapis.com/auth/spreadsheets`
+   - 外部リクエスト: `https://www.googleapis.com/auth/script.external_request`
+
 ## 5. 🔍 段階的な確認手順
 
 ### ステップ 1: コードの確認
