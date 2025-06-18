@@ -24,6 +24,8 @@ function onOpen() {
     .addItem("📱 サイドバーを開く", "showSidebar")
     .addItem("🔧 初期セットアップ", "initialSetup")
     .addSeparator()
+    .addItem("🔐 権限承認を実行", "forcePermissionRequest")
+    .addSeparator()
     .addItem("🧹 シートを完全クリア", "clearSheetMenu")
     .addSeparator()
     .addItem("⚙️ 設定を確認", "checkSettings")
@@ -191,13 +193,28 @@ function showPermissionDialog() {
   );
 
   if (response === ui.Button.OK) {
-    // 権限承認を促すためのダミー関数実行
+    // 権限承認を促すための処理実行
     try {
-      requestPermissions();
-    } catch (error) {
+      const result = requestPermissions();
       ui.alert(
-        "権限承認",
-        "権限承認ダイアログが表示されます。\n「許可」をクリックして承認してください。",
+        "✅ 権限承認完了",
+        "権限承認が完了しました！\n" +
+          "これでツールを使用できます。\n\n" +
+          "メニューから「📱 サイドバーを開く」をクリックして開始してください。",
+        ui.ButtonSet.OK
+      );
+    } catch (error) {
+      // 権限エラーの場合は詳細な説明を表示
+      ui.alert(
+        "🔐 権限承認が必要です",
+        "Google Apps Scriptから権限承認を求められます。\n\n" +
+          "📋 手順:\n" +
+          "1. 「承認が必要」ダイアログで「権限を確認」をクリック\n" +
+          "2. Googleアカウントを選択\n" +
+          "3. 「詳細」をクリック（安全ではないページと表示される場合）\n" +
+          "4. 「〜に移動（安全ではないページ）」をクリック\n" +
+          "5. 「許可」をクリック\n\n" +
+          "承認後、メニューから「📱 サイドバーを開く」を実行してください。",
         ui.ButtonSet.OK
       );
     }
@@ -205,13 +222,40 @@ function showPermissionDialog() {
 }
 
 /**
- * 権限要求（ダミー関数）
+ * 権限要求（実際に権限承認ダイアログを表示）
  */
 function requestPermissions() {
-  // 各権限を要求するダミー処理
-  SpreadsheetApp.getActiveSpreadsheet();
-  DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
-  UrlFetchApp.fetch("https://httpbin.org/get", { muteHttpExceptions: true });
+  try {
+    // 1. スプレッドシート権限をテスト
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getActiveSheet();
+
+    // 2. Drive権限をテスト
+    const file = DriveApp.getFileById(spreadsheet.getId());
+
+    // 3. UI権限をテスト（これが重要）
+    const ui = SpreadsheetApp.getUi();
+
+    // 4. 外部リクエスト権限をテスト
+    UrlFetchApp.fetch("https://httpbin.org/get", {
+      muteHttpExceptions: true,
+      headers: { "User-Agent": "DALL-E Image Generator" },
+    });
+
+    // 5. サイドバー表示権限をテスト（これが最も重要）
+    const html = HtmlService.createHtmlOutput("<p>権限テスト</p>")
+      .setTitle("権限テスト")
+      .setWidth(300);
+    ui.showSidebar(html);
+
+    // テスト用サイドバーを即座に閉じる
+    Utilities.sleep(100);
+
+    return "✅ 権限承認が完了しました";
+  } catch (error) {
+    console.error("権限要求エラー:", error);
+    throw error; // エラーを再スローして権限承認ダイアログを表示
+  }
 }
 
 /**
@@ -1128,21 +1172,83 @@ function showWelcomeMessage() {
     if (response === ui.Button.YES) {
       // 権限承認を試行
       try {
-        requestPermissions();
+        const result = requestPermissions();
         markAsUsed();
+        ui.alert(
+          "✅ セットアップ完了",
+          "権限承認が完了しました！\n" +
+            "これでツールを使用できます。\n\n" +
+            "メニューから「📱 サイドバーを開く」をクリックして開始してください。",
+          ui.ButtonSet.OK
+        );
         showSidebar();
       } catch (error) {
         ui.alert(
-          "権限承認",
-          "権限承認ダイアログが表示されます。\n" +
-            "「許可」をクリックした後、メニューから\n" +
-            "「🎨 画像ツール」→「📱 サイドバーを開く」\n" +
-            "を実行してください。",
+          "🔐 権限承認が必要です",
+          "Google Apps Scriptから権限承認を求められます。\n\n" +
+            "📋 詳細手順:\n" +
+            "1. 「承認が必要」ダイアログで「権限を確認」をクリック\n" +
+            "2. Googleアカウントを選択\n" +
+            "3. 「このアプリは確認されていません」→「詳細」をクリック\n" +
+            "4. 「〜に移動（安全ではないページ）」をクリック\n" +
+            "5. 「許可」をクリック\n\n" +
+            "承認後、メニューから「📱 サイドバーを開く」を実行してください。",
           ui.ButtonSet.OK
         );
       }
     }
   } catch (error) {
     console.log("歓迎メッセージの表示に失敗:", error.message);
+  }
+}
+
+/**
+ * 手動で権限承認を実行（メニューから実行可能）
+ */
+function forcePermissionRequest() {
+  try {
+    // この関数を直接実行することで確実に権限承認ダイアログを表示
+    const ui = SpreadsheetApp.getUi();
+
+    // 全ての必要な権限を順番に要求
+    console.log("1. スプレッドシート権限をテスト中...");
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getActiveSheet();
+
+    console.log("2. Drive権限をテスト中...");
+    const file = DriveApp.getFileById(spreadsheet.getId());
+
+    console.log("3. 外部リクエスト権限をテスト中...");
+    UrlFetchApp.fetch("https://httpbin.org/get", {
+      muteHttpExceptions: true,
+      headers: { "User-Agent": "DALL-E Image Generator Test" },
+    });
+
+    console.log("4. UI権限をテスト中...");
+    // サイドバー権限をテスト
+    const html = HtmlService.createHtmlOutput(
+      '<div style="padding:20px;text-align:center;"><h3>✅ 権限承認完了！</h3><p>このメッセージが表示されれば、<br>すべての権限が正常に承認されました。</p><p><strong>メニューから「📱 サイドバーを開く」<br>をクリックしてツールを開始してください。</strong></p></div>'
+    )
+      .setTitle("🎉 権限承認成功")
+      .setWidth(400);
+    ui.showSidebar(html);
+
+    console.log("✅ すべての権限承認が完了しました");
+
+    // 使用記録を保存
+    markAsUsed();
+
+    return "✅ 権限承認が完了しました";
+  } catch (error) {
+    console.error("権限承認エラー:", error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      "⚠️ 権限承認が必要です",
+      "この関数の実行により権限承認ダイアログが表示されます。\n\n" +
+        "表示されたダイアログで「許可」をクリックしてください。\n" +
+        "承認後、この関数を再度実行してください。",
+      ui.ButtonSet.OK
+    );
+    throw error;
   }
 }
