@@ -35,60 +35,64 @@ function onOpen() {
 }
 
 /**
- * 初期セットアップ（プロンプト入力エリアを作成）
+ * 初期セットアップ（プロンプト入力エリアを作成）- 安全で選択肢豊富版
  */
 function initialSetup() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
-
-    // シートをクリア（確認ダイアログ）
     const ui = SpreadsheetApp.getUi();
-    const response = ui.alert(
-      "初期セットアップ",
-      "シートに画像生成用のプロンプト入力エリアを作成しますか？\n（既存のデータは保持されます）",
-      ui.ButtonSet.YES_NO
-    );
 
-    if (response === ui.Button.YES) {
-      // タイトルエリアを作成
-      const titleRange = sheet.getRange(1, 1, 1, 5);
-      titleRange.merge();
-      titleRange.setValue("🎨 DALL-E 画像生成ツール");
-      titleRange.setBackground("#1a73e8");
-      titleRange.setFontColor("white");
-      titleRange.setFontSize(16);
-      titleRange.setFontWeight("bold");
-      titleRange.setHorizontalAlignment("center");
-      titleRange.setVerticalAlignment("middle");
-      sheet.setRowHeight(1, 50);
+    // 既存データの確認
+    const dataRange = sheet.getDataRange();
+    const hasData =
+      dataRange.getNumRows() > 1 ||
+      dataRange.getNumColumns() > 1 ||
+      dataRange.getCell(1, 1).getValue() !== "";
 
-      // 説明エリア
-      const instructionRange = sheet.getRange(2, 1, 1, 5);
-      instructionRange.merge();
-      instructionRange.setValue(
-        "📝 下記にプロンプトを入力して、範囲選択後にサイドバーから「表形式で生成」をクリック"
+    let setupOption;
+
+    if (hasData) {
+      // 既存データがある場合の選択肢
+      const response = ui.alert(
+        "⚠️ 既存データが検出されました",
+        "既存のデータが見つかりました。どのようにセットアップしますか？\n\n" +
+          "✅ はい：データを保持して下に追加\n" +
+          "❌ いいえ：バックアップして新規作成\n" +
+          "🚫 キャンセル：セットアップを中止",
+        ui.ButtonSet.YES_NO_CANCEL
       );
-      instructionRange.setBackground("#fff3e0");
-      instructionRange.setFontColor("#ef6c00");
-      instructionRange.setHorizontalAlignment("center");
-      instructionRange.setWrap(true);
-      sheet.setRowHeight(2, 40);
 
-      // プロンプト入力エリアを作成
-      createPromptInputArea();
-
-      ui.alert(
-        "セットアップ完了",
-        "プロンプト入力エリアを作成しました！\n画像を生成したいプロンプトを入力してください。",
-        ui.ButtonSet.OK
+      if (response === ui.Button.YES) {
+        setupOption = "append";
+      } else if (response === ui.Button.NO) {
+        setupOption = "backup";
+      } else {
+        return "初期セットアップをキャンセルしました";
+      }
+    } else {
+      // 空のシートの場合
+      const response = ui.alert(
+        "🚀 初期セットアップ",
+        "空のシートに画像生成用のワークスペースを作成します。\n\n" +
+          "📝 プロンプト入力エリア\n" +
+          "🎨 見やすいタイトルとガイド\n" +
+          "✨ 美しいレイアウト\n\n" +
+          "続行しますか？",
+        ui.ButtonSet.YES_NO
       );
+
+      if (response === ui.Button.YES) {
+        setupOption = "new";
+      } else {
+        return "初期セットアップをキャンセルしました";
+      }
     }
+
+    // セットアップ実行
+    return executeSetup(setupOption);
   } catch (error) {
-    SpreadsheetApp.getUi().alert(
-      "エラー",
-      "初期セットアップに失敗しました: " + error.message,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
+    console.error("初期セットアップエラー:", error);
+    throw new Error(`初期セットアップに失敗しました: ${error.message}`);
   }
 }
 
@@ -399,14 +403,7 @@ function createImageTable(imageResults) {
       dataRange.setValues(dataRows);
 
       // データ行の高度なスタイル設定
-      dataRange.setBorder(
-        true,
-        true,
-        true,
-        true,
-        "#1a73e8",
-        SpreadsheetApp.BorderStyle.SOLID
-      );
+      dataRange.setBorder(true, true, true, true, true, true);
       dataRange.setVerticalAlignment("middle");
 
       // 交互の行色設定
@@ -502,9 +499,140 @@ function createPromptInputTable() {
  * 改善されたプロンプト入力エリアを作成
  */
 function createPromptInputArea() {
+  return createPromptInputAreaAt(4);
+}
+
+/**
+ * 画像生成と表作成を同時に実行
+ */
+function generateImagesAndCreateTable(prompts) {
+  try {
+    // 画像を生成
+    const imageResults = generateImages(prompts);
+
+    // 表を作成
+    const tableResult = createImageTable(imageResults);
+
+    return {
+      imageResults: imageResults,
+      tableMessage: tableResult,
+    };
+  } catch (error) {
+    console.error("画像生成・表作成エラー:", error);
+    throw new Error(`処理に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * セットアップを実行
+ */
+function executeSetup(option) {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
-    const startRow = 4; // タイトルと説明の下から開始
+
+    let startRow = 1;
+
+    switch (option) {
+      case "backup":
+        // 既存データをバックアップしてクリア
+        backupAndClearSheet();
+        startRow = 1;
+        break;
+
+      case "append":
+        // 既存データの下に追加
+        startRow = sheet.getLastRow() + 3;
+        break;
+
+      case "new":
+        // 新規作成
+        startRow = 1;
+        break;
+    }
+
+    // ワークスペースを作成
+    createWorkspace(startRow);
+
+    return "🎉 セットアップ完了！プロンプト入力エリアを作成しました！";
+  } catch (error) {
+    console.error("セットアップ実行エラー:", error);
+    throw new Error(`セットアップの実行に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 既存データをバックアップしてシートをクリア
+ */
+function backupAndClearSheet() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const currentSheet = ss.getActiveSheet();
+
+    // バックアップシートを作成
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+    const backupName = `バックアップ_${timestamp}`;
+    const backupSheet = currentSheet.copyTo(ss);
+    backupSheet.setName(backupName);
+
+    // 元のシートをクリア
+    currentSheet.clear();
+
+    SpreadsheetApp.getUi().alert(
+      "📁 バックアップ完了",
+      `既存データを「${backupName}」シートにバックアップしました。\n元のシートは新しいワークスペースとして利用できます。`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (error) {
+    console.error("バックアップエラー:", error);
+    throw new Error(`データのバックアップに失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * ワークスペースを作成
+ */
+function createWorkspace(startRow) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // タイトルエリアを作成
+    const titleRange = sheet.getRange(startRow, 1, 1, 5);
+    titleRange.merge();
+    titleRange.setValue("🎨 DALL-E 画像生成ツール");
+    titleRange.setBackground("#1a73e8");
+    titleRange.setFontColor("white");
+    titleRange.setFontSize(16);
+    titleRange.setFontWeight("bold");
+    titleRange.setHorizontalAlignment("center");
+    titleRange.setVerticalAlignment("middle");
+    sheet.setRowHeight(startRow, 50);
+
+    // 説明エリア
+    const instructionRange = sheet.getRange(startRow + 1, 1, 1, 5);
+    instructionRange.merge();
+    instructionRange.setValue(
+      "📝 下記にプロンプトを入力して、範囲選択後にサイドバーから「表形式で生成」をクリック"
+    );
+    instructionRange.setBackground("#fff3e0");
+    instructionRange.setFontColor("#ef6c00");
+    instructionRange.setHorizontalAlignment("center");
+    instructionRange.setWrap(true);
+    sheet.setRowHeight(startRow + 1, 40);
+
+    // プロンプト入力エリアを作成
+    createPromptInputAreaAt(startRow + 3);
+  } catch (error) {
+    console.error("ワークスペース作成エラー:", error);
+    throw new Error(`ワークスペースの作成に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 指定位置にプロンプト入力エリアを作成
+ */
+function createPromptInputAreaAt(startRow) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
 
     // プロンプト入力見出し
     const headerRange = sheet.getRange(startRow, 1, 1, 1);
@@ -536,15 +664,8 @@ function createPromptInputArea() {
         cellRange.setFontStyle("italic");
       }
 
-      // スタイル設定
-      cellRange.setBorder(
-        true,
-        true,
-        true,
-        true,
-        "#cccccc",
-        SpreadsheetApp.BorderStyle.SOLID
-      );
+      // スタイル設定（エラーを修正）
+      cellRange.setBorder(true, true, true, true, true, true);
       sheet.setRowHeight(row, 30);
     }
 
@@ -559,29 +680,8 @@ function createPromptInputArea() {
       startRow + 8
     }）`;
   } catch (error) {
-    console.error("入力エリア作成エラー:", error);
+    console.error("入力エリア作成エリア:", error);
     throw new Error(`入力エリアの作成に失敗しました: ${error.message}`);
-  }
-}
-
-/**
- * 画像生成と表作成を同時に実行
- */
-function generateImagesAndCreateTable(prompts) {
-  try {
-    // 画像を生成
-    const imageResults = generateImages(prompts);
-
-    // 表を作成
-    const tableResult = createImageTable(imageResults);
-
-    return {
-      imageResults: imageResults,
-      tableMessage: tableResult,
-    };
-  } catch (error) {
-    console.error("画像生成・表作成エラー:", error);
-    throw new Error(`処理に失敗しました: ${error.message}`);
   }
 }
 
