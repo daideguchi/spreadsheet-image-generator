@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <title>DALL-E 画像生成ツール</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    body {
+      font-family: 'Roboto', Arial, sans-serif;
+      margin: 20px;
+      background-color: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 300px;
+      margin: 0 auto;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    h2 {
+      color: #1a73e8;
+      margin-top: 0;
+      font-size: 18px;
+      text-align: center;
+    }
+    
+    .btn {
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      width: 100%;
+      margin-bottom: 12px;
+      transition: background-color 0.3s;
+    }
+    
+    .btn:hover {
+      background-color: #1557b0;
+    }
+    
+    .btn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .btn-secondary {
+      background-color: #34a853;
+    }
+    
+    .btn-secondary:hover {
+      background-color: #2e7d32;
+    }
+    
+    .status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 14px;
+      display: none;
+    }
+    
+    .status.success {
+      background-color: #e8f5e8;
+      color: #2e7d32;
+      border: 1px solid #4caf50;
+    }
+    
+    .status.error {
+      background-color: #ffeaea;
+      color: #d32f2f;
+      border: 1px solid #f44336;
+    }
+    
+    .status.info {
+      background-color: #e3f2fd;
+      color: #1976d2;
+      border: 1px solid #2196f3;
+    }
+    
+    .instructions {
+      background-color: #fff3e0;
+      border: 1px solid #ff9800;
+      color: #ef6c00;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .spinner {
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #1a73e8;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h2>🎨 DALL-E 画像生成</h2>
+      
+      <div class="instructions">
+        <strong>使い方:</strong><br>
+        1. セルにプロンプトを入力<br>
+        2. 範囲を選択して「画像生成」<br>
+        3. 「画像をダウンロード」でZIP取得
+      </div>
+      
+      <button id="generateBtn" class="btn">
+        <span id="generateSpinner" class="spinner hidden"></span>
+        画像を生成
+      </button>
+      
+      <button id="downloadBtn" class="btn btn-secondary">
+        <span id="downloadSpinner" class="spinner hidden"></span>
+        画像をダウンロード
+      </button>
+      
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+
+  <script>
+    // 状態管理
+    let isGenerating = false;
+    let isDownloading = false;
+    
+    // DOM要素の取得
+    const generateBtn = document.getElementById('generateBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const status = document.getElementById('status');
+    const generateSpinner = document.getElementById('generateSpinner');
+    const downloadSpinner = document.getElementById('downloadSpinner');
+    
+    /**
+     * ステータスメッセージを表示
+     */
+    function showStatus(message, type = 'info') {
+      status.textContent = message;
+      status.className = `status ${type}`;
+      status.style.display = 'block';
+      
+      // 自動で消去（エラー以外）
+      if (type !== 'error') {
+        setTimeout(() => {
+          status.style.display = 'none';
+        }, 5000);
+      }
+    }
+    
+    /**
+     * ボタンの状態を更新
+     */
+    function updateButtonStates() {
+      generateBtn.disabled = isGenerating || isDownloading;
+      downloadBtn.disabled = isGenerating || isDownloading;
+      
+      generateSpinner.classList.toggle('hidden', !isGenerating);
+      downloadSpinner.classList.toggle('hidden', !isDownloading);
+      
+      if (isGenerating) {
+        generateBtn.innerHTML = '<span class="spinner"></span>生成中...';
+      } else {
+        generateBtn.innerHTML = '画像を生成';
+      }
+      
+      if (isDownloading) {
+        downloadBtn.innerHTML = '<span class="spinner"></span>ダウンロード中...';
+      } else {
+        downloadBtn.innerHTML = '画像をダウンロード';
+      }
+    }
+    
+    /**
+     * 画像生成処理
+     */
+    generateBtn.addEventListener('click', async () => {
+      if (isGenerating) return;
+      
+      try {
+        isGenerating = true;
+        updateButtonStates();
+        showStatus('選択範囲を確認中...', 'info');
+        
+        // アクティブレンジを取得
+        const rangeA1 = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getActiveRangeA1();
+        });
+        
+        showStatus('プロンプトを取得中...', 'info');
+        
+        // プロンプトを取得
+        const prompts = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getRangeValues(rangeA1);
+        });
+        
+        if (!prompts || prompts.length === 0) {
+          throw new Error('選択範囲にプロンプトが見つかりません');
+        }
+        
+        showStatus(`${prompts.length}個のプロンプトで画像を生成中...`, 'info');
+        
+        // 画像生成
+        const imageResults = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .generateImages(prompts);
+        });
+        
+        showStatus('画像をシートに挿入中...', 'info');
+        
+        // 画像をシートに挿入
+        const insertResult = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .insertImages(imageResults, rangeA1);
+        });
+        
+        showStatus(insertResult, 'success');
+        
+      } catch (error) {
+        console.error('画像生成エラー:', error);
+        showStatus(`エラー: ${error.message}`, 'error');
+      } finally {
+        isGenerating = false;
+        updateButtonStates();
+      }
+    });
+    
+    /**
+     * 画像ダウンロード処理
+     */
+    downloadBtn.addEventListener('click', async () => {
+      if (isDownloading) return;
+      
+      try {
+        isDownloading = true;
+        updateButtonStates();
+        showStatus('画像URLを取得中...', 'info');
+        
+        // 画像URLを取得
+        const urls = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getAllImageUrls();
+        });
+        
+        if (!urls || urls.length === 0) {
+          throw new Error('ダウンロード可能な画像が見つかりません');
+        }
+        
+        showStatus(`${urls.length}枚の画像をダウンロード中...`, 'info');
+        
+        // JSZipでZIPファイルを作成
+        const zip = new JSZip();
+        const imagePromises = [];
+        
+        urls.forEach((url, index) => {
+          const promise = fetch(url)
+            .then(response => {
+              if (!response.ok) {
+                throw new Error(`画像の取得に失敗: ${response.status}`);
+              }
+              return response.blob();
+            })
+            .then(blob => {
+              zip.file(`image_${index + 1}.png`, blob);
+            })
+            .catch(error => {
+              console.warn(`画像 ${index + 1} の取得をスキップ:`, error);
+            });
+          
+          imagePromises.push(promise);
+        });
+        
+        // すべての画像の処理を待機
+        await Promise.all(imagePromises);
+        
+        showStatus('ZIPファイルを生成中...', 'info');
+        
+        // ZIPファイルを生成してダウンロード
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(zipBlob);
+        link.download = `generated_images_${new Date().toISOString().slice(0, 10)}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showStatus(`${urls.length}枚の画像をダウンロードしました`, 'success');
+        
+      } catch (error) {
+        console.error('ダウンロードエラー:', error);
+        showStatus(`エラー: ${error.message}`, 'error');
+      } finally {
+        isDownloading = false;
+        updateButtonStates();
+      }
+    });
+    
+    // 初期状態の設定
+    updateButtonStates();
+    showStatus('準備完了', 'success');
+  </script>
+</body>
+</html> 
