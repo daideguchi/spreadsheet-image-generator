@@ -13,38 +13,43 @@
     }
     
     .container {
-      max-width: 300px;
+      max-width: 460px; /* 300px → 460px (幅拡大に対応) */
       margin: 0 auto;
+      padding: 0 12px; /* 左右の余白を追加 */
     }
     
     .card {
       background: white;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border-radius: 12px; /* 8px → 12px (角を丸く) */
+      padding: 24px; /* 20px → 24px (余白拡大) */
+      margin-bottom: 18px; /* 16px → 18px */
+      box-shadow: 0 3px 8px rgba(0,0,0,0.12); /* 影を強化 */
+      border: 1px solid rgba(0,0,0,0.05); /* 薄いボーダー追加 */
     }
     
     h2 {
       color: #1a73e8;
       margin-top: 0;
-      font-size: 18px;
+      font-size: 22px; /* 18px → 22px (タイトル拡大) */
       text-align: center;
+      font-weight: 700; /* フォント太字強化 */
+      letter-spacing: 0.5px; /* 文字間隔を追加 */
     }
     
     .btn {
       background-color: #1a73e8;
       color: white;
       border: none;
-      padding: 16px 24px;
-      border-radius: 6px;
+      padding: 18px 28px; /* 16px 24px → 18px 28px (余白拡大) */
+      border-radius: 8px; /* 6px → 8px (角を丸く) */
       cursor: pointer;
-      font-size: 16px;
+      font-size: 17px; /* 16px → 17px (文字サイズ拡大) */
       font-weight: 600;
       width: 100%;
-      margin-bottom: 14px;
+      margin-bottom: 16px; /* 14px → 16px */
       transition: all 0.3s;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.15); /* 影を強化 */
+      letter-spacing: 0.5px; /* 文字間隔を追加 */
     }
     
     .btn:hover {
@@ -153,12 +158,12 @@
       background-color: #fff3e0;
       border: 1px solid #ff9800;
       color: #ef6c00;
-      padding: 14px;
-      border-radius: 6px;
-      font-size: 14px;
+      padding: 18px; /* 14px → 18px (余白拡大) */
+      border-radius: 8px; /* 6px → 8px (角を丸く) */
+      font-size: 15px; /* 14px → 15px (文字サイズ拡大) */
       font-weight: 500;
-      margin-bottom: 18px;
-      line-height: 1.4;
+      margin-bottom: 20px; /* 18px → 20px */
+      line-height: 1.5; /* 1.4 → 1.5 (行間拡大) */
     }
     
     .spinner {

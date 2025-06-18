@@ -29,11 +29,17 @@ function onOpen() {
     .addItem("⚙️ 設定を確認", "checkSettings")
     .addToUi();
 
-  // サイドバーを自動で表示
+  // サイドバーを自動で表示（少し遅延を入れて確実に表示）
   try {
+    Utilities.sleep(100); // 100ms待機で確実な表示
     showSidebar();
+    console.log("✅ サイドバーを自動表示しました");
   } catch (error) {
-    console.log("サイドバーの自動表示をスキップ:", error.message);
+    console.log("⚠️ サイドバーの自動表示をスキップ:", error.message);
+    // 権限エラーの場合は再試行
+    if (error.message.includes("container.ui")) {
+      console.log("💡 権限承認後にサイドバーが表示されます");
+    }
   }
 }
 
@@ -121,8 +127,8 @@ function initialSetup() {
 function showSidebar() {
   try {
     const html = HtmlService.createHtmlOutputFromFile("Sidebar")
-      .setTitle("DALL-E 画像生成ツール")
-      .setWidth(350);
+      .setTitle("🎨 DALL-E 画像生成ツール")
+      .setWidth(480); // 350px → 480px (+37%拡大)
     SpreadsheetApp.getUi().showSidebar(html);
   } catch (error) {
     SpreadsheetApp.getUi().alert(
