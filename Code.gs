@@ -156,16 +156,71 @@ function checkSettings() {
 }
 
 /**
- * アクティブレンジのA1表記を取得
+ * アクティブレンジのA1表記を取得（自動検出機能付き）
  */
 function getActiveRangeA1() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
-    const range = sheet.getActiveRange();
+    let range = sheet.getActiveRange();
+
+    // 単一セルが選択されている場合、プロンプト入力エリアを自動検出
+    if (range.getNumRows() === 1 && range.getNumColumns() === 1) {
+      const autoRange = findPromptInputArea();
+      if (autoRange) {
+        range = autoRange;
+        console.log(
+          "プロンプト入力エリアを自動検出しました:",
+          range.getA1Notation()
+        );
+      }
+    }
+
     return range.getA1Notation();
   } catch (error) {
     console.error("アクティブレンジの取得エラー:", error);
     throw new Error("アクティブレンジの取得に失敗しました");
+  }
+}
+
+/**
+ * プロンプト入力エリアを自動検出
+ */
+function findPromptInputArea() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const dataRange = sheet.getDataRange();
+
+    if (dataRange.getNumRows() < 1) return null;
+
+    // "プロンプト入力エリア" のヘッダーを探す
+    for (let row = 1; row <= dataRange.getNumRows(); row++) {
+      const cellValue = sheet.getRange(row, 1).getValue().toString();
+      if (cellValue.includes("プロンプト入力エリア")) {
+        // ヘッダーの下の行から入力データを検索
+        const startRow = row + 1;
+        let endRow = startRow;
+
+        // 連続するデータ行を検出
+        for (let r = startRow; r <= sheet.getLastRow(); r++) {
+          const value = sheet.getRange(r, 1).getValue();
+          if (value && value.toString().trim() !== "") {
+            endRow = r;
+          } else if (r > startRow && endRow === r - 1) {
+            // 空行が見つかったら終了
+            break;
+          }
+        }
+
+        if (endRow >= startRow) {
+          return sheet.getRange(startRow, 1, endRow - startRow + 1, 1);
+        }
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error("プロンプト入力エリア検出エラー:", error);
+    return null;
   }
 }
 

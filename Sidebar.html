@@ -36,13 +36,15 @@
       background-color: #1a73e8;
       color: white;
       border: none;
-      padding: 12px 24px;
-      border-radius: 4px;
+      padding: 16px 24px;
+      border-radius: 6px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 16px;
+      font-weight: 600;
       width: 100%;
-      margin-bottom: 12px;
-      transition: background-color 0.3s;
+      margin-bottom: 14px;
+      transition: all 0.3s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
     .btn:hover {
@@ -151,10 +153,12 @@
       background-color: #fff3e0;
       border: 1px solid #ff9800;
       color: #ef6c00;
-      padding: 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      margin-bottom: 16px;
+      padding: 14px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 18px;
+      line-height: 1.4;
     }
     
     .spinner {
@@ -309,7 +313,7 @@
         
         <button id="generateTableBtn" class="btn">
           <span id="generateTableSpinner" class="spinner hidden"></span>
-          🎨 表形式で画像生成
+          🎨 画像を生成する
         </button>
         
         <button id="downloadBtn" class="btn btn-secondary">
@@ -414,11 +418,11 @@
           button: 'setupBtn'
         },
         step2: {
-          text: '<strong>✨ プロンプトの入力:</strong><br>シートのプロンプト入力エリアに画像生成したい内容を入力しよう！<br><small style="color: #666;">例: "a cute cat in a wizard hat"</small>',
+          text: '<strong>✨ プロンプトの入力:</strong><br>シートのプロンプト入力エリアに画像生成したい内容を入力しよう！<br><small style="color: #666;">例: "a cute cat in a wizard hat" - 複数行入力可能</small>',
           button: 'createInputBtn'
         },
         step3: {
-          text: '<strong>🎨 画像生成:</strong><br>プロンプトを入力したセル範囲を選択して「表形式で画像生成」をクリック！<br><small style="color: #666;">整理された表形式で画像が生成されます</small>',
+          text: '<strong>🎨 画像生成:</strong><br>どこでもいいのでセルをクリックして「画像を生成する」をクリック！<br><small style="color: #666;">プロンプト入力エリアを自動検出して美しい表形式で生成されます</small>',
           button: 'generateTableBtn'
         },
         step4: {
@@ -471,7 +475,7 @@
         generateTableBtn.innerHTML = '<span class="spinner"></span>生成中...';
         generateBtn.innerHTML = '<span class="spinner"></span>生成中...';
       } else {
-        generateTableBtn.innerHTML = '🎨 表形式で生成';
+        generateTableBtn.innerHTML = '🎨 画像を生成する';
         generateBtn.innerHTML = '画像を生成（従来）';
       }
       
