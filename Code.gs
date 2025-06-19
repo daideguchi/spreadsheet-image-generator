@@ -276,6 +276,104 @@ function getRangeValues(a1Notation) {
 }
 
 /**
+ * 高度なプロンプト解析による最適設定判定
+ * ブラウザ版DALL-Eの判定ロジックを模倣した自動設定システム
+ */
+function analyzePromptForOptimalSettings(prompt) {
+  // スタイル判定のための詳細解析
+  const styleAnalysis = {
+    // アニメ・イラスト系キーワード
+    anime:
+      /(anime|manga|cartoon|illustration|イラスト|アニメ|漫画|キャラクター)/i.test(
+        prompt
+      ),
+    flat: /(flat|フラット|ベタ塗り|2D|太線|太め|outline|輪郭)/i.test(prompt),
+    simple: /(simple|シンプル|minimalist|clean|すっきり|スッキリ)/i.test(
+      prompt
+    ),
+
+    // リアル系キーワード
+    photorealistic: /(photo|photograph|realistic|real|写真|リアル|実写)/i.test(
+      prompt
+    ),
+    cinematic: /(cinematic|movie|film|映画|シネマ|dramatic)/i.test(prompt),
+    detailed: /(detailed|intricate|complex|精密|詳細|elaborate)/i.test(prompt),
+
+    // アート系キーワード
+    painting: /(painting|oil|watercolor|acrylic|絵画|油彩|水彩|アクリル)/i.test(
+      prompt
+    ),
+    digital: /(digital art|CG|3D|render|レンダー|デジタル)/i.test(prompt),
+
+    // 特殊スタイル
+    pixel: /(pixel|ピクセル|8bit|16bit|retro|レトロ)/i.test(prompt),
+    sketch: /(sketch|drawing|pencil|鉛筆|スケッチ|ドローイング)/i.test(prompt),
+  };
+
+  // サイズ判定のための解析
+  const sizeAnalysis = {
+    square: /(1:1|正方形|square|icon|アイコン|profile|プロフィール)/i.test(
+      prompt
+    ),
+    portrait: /(portrait|vertical|縦|人物|顔|face|9:16)/i.test(prompt),
+    landscape: /(landscape|horizontal|横|風景|panorama|16:9)/i.test(prompt),
+    wide: /(wide|panoramic|パノラマ|ワイド|横長)/i.test(prompt),
+  };
+
+  // スタイル決定ロジック（ブラウザ版の判定を模倣）
+  let selectedStyle = "vivid"; // デフォルト
+
+  // アニメ・フラット系の場合はnatural
+  if (styleAnalysis.anime || styleAnalysis.flat || styleAnalysis.simple) {
+    selectedStyle = "natural";
+  }
+
+  // ピクセルアート・スケッチ系もnatural
+  if (styleAnalysis.pixel || styleAnalysis.sketch) {
+    selectedStyle = "natural";
+  }
+
+  // 明確にリアル系を指定している場合はvivid
+  if (styleAnalysis.photorealistic || styleAnalysis.cinematic) {
+    selectedStyle = "vivid";
+  }
+
+  // デジタルアート・3D系もvivid
+  if (styleAnalysis.digital && !styleAnalysis.anime) {
+    selectedStyle = "vivid";
+  }
+
+  // サイズ決定ロジック
+  let selectedSize = "1024x1024"; // デフォルト（正方形）
+
+  if (sizeAnalysis.square) {
+    selectedSize = "1024x1024";
+  } else if (sizeAnalysis.portrait) {
+    selectedSize = "1024x1792";
+  } else if (sizeAnalysis.landscape || sizeAnalysis.wide) {
+    selectedSize = "1792x1024";
+  } else {
+    // 明確な指定がない場合は内容から推測
+    if (/(person|people|character|人物|キャラ|顔)/i.test(prompt)) {
+      selectedSize = "1024x1792"; // 人物は縦長が適している
+    } else if (
+      /(landscape|city|building|scenery|風景|街|建物|景色)/i.test(prompt)
+    ) {
+      selectedSize = "1792x1024"; // 風景は横長が適している
+    } else {
+      // それ以外はランダム（多様性確保）
+      const sizes = ["1024x1024", "1024x1792", "1792x1024"];
+      selectedSize = sizes[Math.floor(Math.random() * sizes.length)];
+    }
+  }
+
+  console.log(
+    `プロンプト解析結果: style=${selectedStyle}, size=${selectedSize}`
+  );
+  return { style: selectedStyle, size: selectedSize };
+}
+
+/**
  * プロンプト忠実性最大化処理
  * ブラウザ版DALL-Eと同等の忠実性を実現するための最新技術
  */
@@ -322,20 +420,9 @@ function generateImages(prompts) {
     prompts.forEach((prompt, index) => {
       console.log(`画像生成中 ${index + 1}/${prompts.length}: ${prompt}`);
 
-      // サイズとスタイルをプロンプト内容から自動判定
-      const wantsSquare = /1:1|正方形|square/i.test(prompt);
-      let selectedSize;
-      if (wantsSquare) {
-        selectedSize = "1024x1024"; // 正方形が指定されている場合は固定
-      } else {
-        const sizes = ["1024x1024", "1024x1792", "1792x1024"];
-        selectedSize = sizes[Math.floor(Math.random() * sizes.length)];
-      }
-
-      const isFlatAnime = /(2D|flat|フラット|ベタ塗り|太め|anime style)/i.test(
-        prompt
-      );
-      const selectedStyle = isFlatAnime ? "natural" : "vivid";
+      // 高度なスタイル・サイズ自動判定システム（ブラウザ版に近づける）
+      const { style: selectedStyle, size: selectedSize } =
+        analyzePromptForOptimalSettings(prompt);
 
       // プロンプト品質向上処理
       const enhancedPrompt = enhancePromptForQuality(prompt);
