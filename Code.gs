@@ -906,11 +906,32 @@ function populateStructuredTable(imageResults, promptRows) {
           // 完全版はC列に保存（技術的制約回避システム）
           const fullPromptCell = sheet.getRange(row, 3);
 
-          // 🔧 **技術的解決策**: データ分割による50,000文字制限回避
-          const userPromptPart = `【完全版】\n\n📝 ユーザー入力プロンプト:\n${result.original_prompt}`;
+          // 🔧 **技術的解決策**: セル値の50,000文字制限を確実に回避
+          const headerText = `【完全版】\n\n📝 ユーザー入力プロンプト:\n`;
+          const maxUserPromptLength = 49500 - headerText.length; // 500文字の安全マージン
 
-          // ユーザープロンプトは絶対に省略せず、セルに直接配置
+          let userPromptForCell = result.original_prompt;
+          let isPromptTruncated = false;
+
+          if (userPromptForCell.length > maxUserPromptLength) {
+            userPromptForCell = userPromptForCell.substring(
+              0,
+              maxUserPromptLength
+            );
+            isPromptTruncated = true;
+          }
+
+          const userPromptPart = headerText + userPromptForCell;
+          if (isPromptTruncated) {
+            userPromptPart += `\n\n⚠️ プロンプトが長すぎるため表示を制限しています。完全版はセルコメントで確認できます。`;
+          }
+
+          // セル値に安全な長さで配置
           fullPromptCell.setValue(userPromptPart);
+
+          // 完全版プロンプトは必ずセルコメントに保存
+          const completePromptComment = `📝 完全なユーザープロンプト:\n${result.original_prompt}`;
+          fullPromptCell.setNote(completePromptComment);
 
           // 内部処理版は**セルコメント**に分離配置（制限回避）
           if (result.revised_prompt && result.revised_prompt.trim() !== "") {
@@ -972,11 +993,32 @@ function populateStructuredTable(imageResults, promptRows) {
           // 完全版はC列に保存（技術的制約回避システム）
           const fullPromptCell = sheet.getRange(row, 3);
 
-          // 🔧 **技術的解決策**: データ分離による50,000文字制限回避
-          const userPromptPart = `【完全版】\n\n📝 ユーザー入力プロンプト:\n${result.original_prompt}`;
+          // 🔧 **技術的解決策**: セル値の50,000文字制限を確実に回避
+          const headerText = `【完全版】\n\n📝 ユーザー入力プロンプト:\n`;
+          const maxUserPromptLength = 49500 - headerText.length; // 500文字の安全マージン
 
-          // ユーザープロンプトは絶対に省略せず、セルに直接配置
+          let userPromptForCell = result.original_prompt;
+          let isPromptTruncated = false;
+
+          if (userPromptForCell.length > maxUserPromptLength) {
+            userPromptForCell = userPromptForCell.substring(
+              0,
+              maxUserPromptLength
+            );
+            isPromptTruncated = true;
+          }
+
+          const userPromptPart = headerText + userPromptForCell;
+          if (isPromptTruncated) {
+            userPromptPart += `\n\n⚠️ プロンプトが長すぎるため表示を制限しています。完全版はセルコメントで確認できます。`;
+          }
+
+          // セル値に安全な長さで配置
           fullPromptCell.setValue(userPromptPart);
+
+          // 完全版プロンプトは必ずセルコメントに保存
+          const completePromptComment = `📝 完全なユーザープロンプト:\n${result.original_prompt}`;
+          fullPromptCell.setNote(completePromptComment);
 
           // 内部処理版は**セルコメント**に分離配置（制限回避）
           if (result.revised_prompt && result.revised_prompt.trim() !== "") {

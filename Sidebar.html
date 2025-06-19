@@ -760,12 +760,13 @@
     }
 
     function startProgressWithImageCount(imageCount) {
+      // 🔧 **プログレスバー時間配分の改善**: より自然な進行にバランス調整
       const steps = [
-        { inc: 10, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 600 },
-        { inc: 15, text: 'DALL-E APIに接続中...', duration: 800 },
-        { inc: 60, text: `画像を生成中... (${imageCount}枚)`, duration: imageCount * 1200 }, // 画像枚数に応じて時間調整
-        { inc: 10, text: '結果をシートに配置中...', duration: 700 },
-        { inc: 5, text: '仕上げ処理中...', duration: 400 }
+        { inc: 5, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 800 },
+        { inc: 10, text: 'DALL-E APIに接続中...', duration: 1200 },
+        { inc: 70, text: `画像を生成中... (${imageCount}枚)`, duration: Math.max(3000, imageCount * 2000) }, // 最低3秒、画像枚数に応じて調整
+        { inc: 10, text: '結果をシートに配置中...', duration: 1000 },
+        { inc: 5, text: '仕上げ処理中...', duration: 800 }
       ];
 
       let progress = 0;
@@ -775,14 +776,33 @@
       function executeStep() {
         if (stepIdx < steps.length) {
           const step = steps[stepIdx];
-          progress += step.inc;
-          if (progress > 95) progress = 95;
+          const targetProgress = progress + step.inc;
+          
+          // 🔧 **スムーズな進捗表示**: 段階的に進捗を更新
+          const startProgress = progress;
+          const progressDuration = step.duration;
+          const updateInterval = 100; // 100msごとに更新
+          const totalUpdates = progressDuration / updateInterval;
+          const progressPerUpdate = step.inc / totalUpdates;
+          
+          let currentUpdate = 0;
           
           updateProgress(progress, step.text, `ステップ ${stepIdx + 1}/${steps.length}`);
-          stepIdx++;
           
-          // 次のステップまでの待機時間を動的に設定
-          setTimeout(executeStep, step.duration);
+          const progressInterval = setInterval(() => {
+            currentUpdate++;
+            progress += progressPerUpdate;
+            
+            if (progress > 95) progress = 95;
+            if (currentUpdate >= totalUpdates) {
+              progress = Math.min(targetProgress, 95);
+              clearInterval(progressInterval);
+              stepIdx++;
+              setTimeout(executeStep, 100); // 次のステップへ
+            }
+            
+            updateProgress(Math.round(progress), step.text, `ステップ ${stepIdx + 1}/${steps.length}`);
+          }, updateInterval);
         }
       }
       
