@@ -599,12 +599,12 @@ function insertImages(imageResults, rangeA1) {
           if (originalPrompt.length > 100) {
             const truncatedPrompt = originalPrompt.substring(0, 97) + "...";
             promptCell.setValue(truncatedPrompt);
-            // 元のプロンプトをコメントとして保存 - 究極25,000文字制限適用
+            // 元のプロンプトをコメントとして保存 - 超安全10,000文字制限適用
             let safeOriginal = `完全なプロンプト:\n${originalPrompt}`;
-            if (safeOriginal.length > 25000) {
+            if (safeOriginal.length > 10000) {
               safeOriginal =
-                safeOriginal.substring(0, 24500) +
-                "\n[...究極制限により省略...]";
+                safeOriginal.substring(0, 9500) +
+                "\n[...超安全制限により省略...]";
             }
             promptCell.setNote(safeOriginal);
           }
@@ -871,14 +871,14 @@ function populateStructuredTable(imageResults, promptRows) {
         promptCell.setWrap(false);
         promptCell.setVerticalAlignment("middle");
 
-        // 🔧 50,000文字制限対応：究極の25,000文字制限システム（最大25,000文字の安全マージン確保）
+        // 🔧 50,000文字制限対応：超安全10,000文字制限システム（最大40,000文字の巨大安全マージン確保）
         let comment = `📝 ユーザー入力プロンプト:\n${currentPrompt.substring(
           0,
-          1500
+          800
         )}`;
 
-        if (currentPrompt.length > 1500) {
-          comment += `\n[...${currentPrompt.length - 1500}文字省略...]`;
+        if (currentPrompt.length > 800) {
+          comment += `\n[...${currentPrompt.length - 800}文字省略...]`;
         }
 
         if (result.revised_prompt && result.original_prompt) {
@@ -890,9 +890,9 @@ function populateStructuredTable(imageResults, promptRows) {
 
           comment += `\n\n🤖 GPT-Image-1内部処理版:\n`;
 
-          // 究極の残り容量計算（最大8,000文字まで）
+          // 超安全の残り容量計算（最大3,000文字まで）
           const currentLength = comment.length;
-          const maxRevisedLength = Math.min(8000, 25000 - currentLength - 2000); // 2000文字は統計情報用の巨大バッファ
+          const maxRevisedLength = Math.min(3000, 10000 - currentLength - 3000); // 3000文字は統計情報用の巨大バッファ
 
           if (result.revised_prompt.length > maxRevisedLength) {
             comment += result.revised_prompt.substring(0, maxRevisedLength);
@@ -914,42 +914,42 @@ function populateStructuredTable(imageResults, promptRows) {
             comment += `\n✅ GPT-Image-1の内部処理は最小限`;
           }
 
-          // 完全版はC列に保存（品質保持）- 究極版
+          // 完全版はC列に保存（品質保持）- 超安全版
           const fullPromptCell = sheet.getRange(row, 3);
 
-          // C列用の究極な文字数制限（25,000文字）
+          // C列用の超安全な文字数制限（10,000文字）
           const userPromptPart = `【完全版】\n\n📝 ユーザー入力プロンプト:\n${result.original_prompt.substring(
             0,
-            8000
+            3000
           )}`;
           let internalPromptPart = `\n\n🤖 GPT-Image-1内部処理版:\n${result.revised_prompt.substring(
             0,
-            8000
+            3000
           )}`;
 
-          // ユーザープロンプトが8,000文字を超える場合は省略表示
-          if (result.original_prompt.length > 8000) {
+          // ユーザープロンプトが3,000文字を超える場合は省略表示
+          if (result.original_prompt.length > 3000) {
             internalPromptPart = `${userPromptPart}\n[...${
-              result.original_prompt.length - 8000
+              result.original_prompt.length - 3000
             }文字省略...]\n\n🤖 GPT-Image-1内部処理版:\n${result.revised_prompt.substring(
               0,
-              6000
+              2000
             )}`;
           }
 
-          // 内部処理版も6,000文字を超える場合は省略表示
-          if (result.revised_prompt.length > 6000) {
+          // 内部処理版も2,000文字を超える場合は省略表示
+          if (result.revised_prompt.length > 2000) {
             internalPromptPart += `\n[...${
-              result.revised_prompt.length - 6000
+              result.revised_prompt.length - 2000
             }文字省略...]`;
           }
 
           let fullContent = userPromptPart + internalPromptPart;
 
-          // 最終究極チェック（25,000文字）
-          if (fullContent.length > 25000) {
+          // 最終超安全チェック（10,000文字）
+          if (fullContent.length > 10000) {
             fullContent =
-              fullContent.substring(0, 24500) + "\n[...究極制限により省略...]";
+              fullContent.substring(0, 9500) + "\n[...超安全制限により省略...]";
           }
 
           fullPromptCell.setValue(fullContent);
@@ -958,18 +958,18 @@ function populateStructuredTable(imageResults, promptRows) {
           fullPromptCell.setFontSize(9);
           fullPromptCell.setBackground("#f8f9fa");
           fullPromptCell.setNote(
-            "完全なプロンプト情報（究極25,000文字制限版）"
+            "完全なプロンプト情報（超安全10,000文字制限版）"
           );
         }
 
-        // 究極な長さでコメント設定（25,000文字）
-        if (comment.length > 25000) {
+        // 超安全な長さでコメント設定（10,000文字）
+        if (comment.length > 10000) {
           comment =
-            comment.substring(0, 24500) + "\n[...究極制限により省略...]";
+            comment.substring(0, 9500) + "\n[...超安全制限により省略...]";
         }
         promptCell.setNote(comment);
       } else {
-        // 短いプロンプトの場合もGPT-Image-1内部処理情報を表示（究極25,000文字制限対応）
+        // 短いプロンプトの場合もGPT-Image-1内部処理情報を表示（超安全10,000文字制限対応）
         if (result.revised_prompt && result.original_prompt) {
           // 内部処理変更度を計算
           const originalLength = result.original_prompt.length;
@@ -979,20 +979,20 @@ function populateStructuredTable(imageResults, promptRows) {
 
           let comment = `📝 ユーザー入力プロンプト:\n${result.original_prompt.substring(
             0,
-            2000
+            1000
           )}`;
 
-          if (result.original_prompt.length > 2000) {
+          if (result.original_prompt.length > 1000) {
             comment += `\n[...${
-              result.original_prompt.length - 2000
+              result.original_prompt.length - 1000
             }文字省略...]`;
           }
 
           comment += `\n\n🤖 GPT-Image-1内部処理版:\n`;
 
-          // 究極の残り容量計算（最大7,000文字まで）
+          // 超安全の残り容量計算（最大2,500文字まで）
           const currentLength = comment.length;
-          const maxRevisedLength = Math.min(7000, 25000 - currentLength - 2000); // 2000文字は統計情報用の巨大バッファ
+          const maxRevisedLength = Math.min(2500, 10000 - currentLength - 3000); // 3000文字は統計情報用の巨大バッファ
 
           if (result.revised_prompt.length > maxRevisedLength) {
             comment += result.revised_prompt.substring(0, maxRevisedLength);
@@ -1016,42 +1016,42 @@ function populateStructuredTable(imageResults, promptRows) {
             comment += `\n✅ GPT-Image-1の内部処理は最小限`;
           }
 
-          // 完全版はC列に保存（短いプロンプトでも品質保持）- 究極版
+          // 完全版はC列に保存（短いプロンプトでも品質保持）- 超安全版
           const fullPromptCell = sheet.getRange(row, 3);
 
-          // C列用の究極な文字数制限（25,000文字）
+          // C列用の超安全な文字数制限（10,000文字）
           const userPromptPart = `【完全版】\n\n📝 ユーザー入力プロンプト:\n${result.original_prompt.substring(
             0,
-            7000
+            2500
           )}`;
           let internalPromptPart = `\n\n🤖 GPT-Image-1内部処理版:\n${result.revised_prompt.substring(
             0,
-            7000
+            2500
           )}`;
 
-          // ユーザープロンプトが7,000文字を超える場合は省略表示
-          if (result.original_prompt.length > 7000) {
+          // ユーザープロンプトが2,500文字を超える場合は省略表示
+          if (result.original_prompt.length > 2500) {
             internalPromptPart = `${userPromptPart}\n[...${
-              result.original_prompt.length - 7000
+              result.original_prompt.length - 2500
             }文字省略...]\n\n🤖 GPT-Image-1内部処理版:\n${result.revised_prompt.substring(
               0,
-              5000
+              2000
             )}`;
           }
 
-          // 内部処理版も5,000文字を超える場合は省略表示
-          if (result.revised_prompt.length > 5000) {
+          // 内部処理版も2,000文字を超える場合は省略表示
+          if (result.revised_prompt.length > 2000) {
             internalPromptPart += `\n[...${
-              result.revised_prompt.length - 5000
+              result.revised_prompt.length - 2000
             }文字省略...]`;
           }
 
           let fullContent = userPromptPart + internalPromptPart;
 
-          // 最終究極チェック（25,000文字）
-          if (fullContent.length > 25000) {
+          // 最終超安全チェック（10,000文字）
+          if (fullContent.length > 10000) {
             fullContent =
-              fullContent.substring(0, 24500) + "\n[...究極制限により省略...]";
+              fullContent.substring(0, 9500) + "\n[...超安全制限により省略...]";
           }
 
           fullPromptCell.setValue(fullContent);
@@ -1060,13 +1060,13 @@ function populateStructuredTable(imageResults, promptRows) {
           fullPromptCell.setFontSize(9);
           fullPromptCell.setBackground("#f8f9fa");
           fullPromptCell.setNote(
-            "完全なプロンプト情報（究極25,000文字制限版）"
+            "完全なプロンプト情報（超安全10,000文字制限版）"
           );
 
-          // 究極な長さでコメント設定（25,000文字）
-          if (comment.length > 25000) {
+          // 超安全な長さでコメント設定（10,000文字）
+          if (comment.length > 10000) {
             comment =
-              comment.substring(0, 24500) + "\n[...究極制限により省略...]";
+              comment.substring(0, 9500) + "\n[...超安全制限により省略...]";
           }
           promptCell.setNote(comment);
         }
@@ -1517,19 +1517,19 @@ function handlePromptInput(sheet, row, fullPrompt) {
       // B列に省略版を表示
       promptCell.setValue(truncatedPrompt);
       promptCell.setWrap(false); // セル高の自動拡大を防止
-      // セルコメントも究極25,000文字制限適用
+      // セルコメントも超安全10,000文字制限適用
       let safeNote = `完全なプロンプト:\n${fullPrompt}\n\n💡 完全版はC列で確認できます`;
-      if (safeNote.length > 25000) {
+      if (safeNote.length > 10000) {
         safeNote =
-          safeNote.substring(0, 24500) + "\n[...究極制限により省略...]";
+          safeNote.substring(0, 9500) + "\n[...超安全制限により省略...]";
       }
       promptCell.setNote(safeNote);
 
-      // C列に完全版を表示（スクロール可能）- 究極25,000文字制限適用
+      // C列に完全版を表示（スクロール可能）- 超安全10,000文字制限適用
       let safeFull = fullPrompt;
-      if (safeFull.length > 25000) {
+      if (safeFull.length > 10000) {
         safeFull =
-          safeFull.substring(0, 24500) + "\n[...究極制限により省略...]";
+          safeFull.substring(0, 9500) + "\n[...超安全制限により省略...]";
       }
       fullPromptCell.setValue(safeFull);
       fullPromptCell.setWrap(true);
@@ -1546,21 +1546,21 @@ function handlePromptInput(sheet, row, fullPrompt) {
         "#e0e0e0",
         SpreadsheetApp.BorderStyle.SOLID
       );
-      fullPromptCell.setNote("完全なプロンプト（究極25,000文字制限版）");
+      fullPromptCell.setNote("完全なプロンプト（超安全10,000文字制限版）");
 
       console.log(
         `行${row}: プロンプトを省略表示に変更 (${fullPrompt.length}文字 → ${truncatedPrompt.length}文字)`
       );
     } else {
-      // 短いプロンプトの場合：B列に全文表示、C列はクリア - 究極25,000文字制限適用
+      // 短いプロンプトの場合：B列に全文表示、C列はクリア - 超安全10,000文字制限適用
       let safePrompt = fullPrompt;
-      if (safePrompt.length > 25000) {
+      if (safePrompt.length > 10000) {
         safePrompt =
-          safePrompt.substring(0, 24500) + "\n[...究極制限により省略...]";
+          safePrompt.substring(0, 9500) + "\n[...超安全制限により省略...]";
       }
       promptCell.setValue(safePrompt);
       promptCell.setWrap(false);
-      promptCell.setNote("プロンプト（究極25,000文字制限版）");
+      promptCell.setNote("プロンプト（超安全10,000文字制限版）");
 
       // C列をクリア（短いプロンプトの場合は不要）
       fullPromptCell.clear();
