@@ -1235,15 +1235,6 @@ function createStructuredTableOnly() {
 
     console.log("列幅を設定しました");
 
-    // サンプルプロンプトの準備
-    const samplePrompts = [
-      "a beautiful sunset over the ocean with sailing boats",
-      "a cute cat wearing a wizard hat in a magical forest",
-      "a futuristic city with flying cars and neon lights",
-      "a delicious pizza with colorful vegetables",
-      "a peaceful garden with blooming cherry blossoms",
-    ];
-
     console.log("100行のデータ行を作成開始");
 
     // 100行のテーブルを作成（2-101行目）
@@ -1258,15 +1249,8 @@ function createStructuredTableOnly() {
         numberCell.setFontWeight("bold");
         numberCell.setBackground("#f8f9fa");
 
-        // B列の処理
+        // B列の処理（プレースホルダーなし）
         const promptCell = sheet.getRange(row, 2);
-        if (i <= samplePrompts.length) {
-          // 最初の5行にサンプルプロンプト
-          promptCell.setValue(samplePrompts[i - 1]);
-          promptCell.setFontStyle("italic");
-          promptCell.setFontColor("#666666");
-        }
-        // すべてのB列セルに共通スタイル
         promptCell.setWrap(true);
         promptCell.setVerticalAlignment("middle");
 
@@ -1374,15 +1358,6 @@ function createStructuredTable() {
 
     console.log("列幅を設定しました");
 
-    // サンプルプロンプトの準備
-    const samplePrompts = [
-      "a beautiful sunset over the ocean with sailing boats",
-      "a cute cat wearing a wizard hat in a magical forest",
-      "a futuristic city with flying cars and neon lights",
-      "a delicious pizza with colorful vegetables",
-      "a peaceful garden with blooming cherry blossoms",
-    ];
-
     console.log("100行のデータ行を作成開始");
 
     // 100行のテーブルを作成（2-101行目）
@@ -1397,15 +1372,8 @@ function createStructuredTable() {
         numberCell.setFontWeight("bold");
         numberCell.setBackground("#f8f9fa");
 
-        // B列の処理
+        // B列の処理（プレースホルダーなし）
         const promptCell = sheet.getRange(row, 2);
-        if (i <= samplePrompts.length) {
-          // 最初の5行にサンプルプロンプト
-          promptCell.setValue(samplePrompts[i - 1]);
-          promptCell.setFontStyle("italic");
-          promptCell.setFontColor("#666666");
-        }
-        // すべてのB列セルに共通スタイル
         promptCell.setWrap(true);
         promptCell.setVerticalAlignment("middle");
 
