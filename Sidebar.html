@@ -382,21 +382,21 @@
       <div class="instructions">
         <div id="instruction-text">
           <strong>🚀 簡単3ステップ:</strong><br>
-          <strong>1️⃣</strong> 表をクリア → <strong>2️⃣</strong> プロンプト入力 → <strong>3️⃣</strong> 画像生成
+          <strong>1️⃣</strong> 初期設定 → <strong>2️⃣</strong> プロンプト入力 → <strong>3️⃣</strong> 画像生成
         </div>
       </div>
 
       <div class="button-group">
-        <button class="btn btn-setup" onclick="createTableOnly()">
-          🗑️ 表をクリア
+        <button class="btn btn-setup" onclick="executeBackup()">
+          🔧 初期設定
         </button>
         
         <button class="btn" onclick="generateFromStructuredTable()">
           🎨 画像生成
         </button>
         
-        <button class="btn btn-create" onclick="executeBackup()">
-          💾 バックアップ
+        <button class="btn btn-create" onclick="createTableOnly()">
+          🗑️ 表をクリア
         </button>
         
         <button class="btn btn-secondary" onclick="toggleAllImageSelection()">

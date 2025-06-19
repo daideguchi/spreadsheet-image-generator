@@ -24,9 +24,10 @@ function onOpen() {
     .addItem("📱 サイドバーを開く", "showSidebar")
     .addItem("🔧 初期セットアップ", "initialSetup")
     .addSeparator()
-    .addItem("🔐 権限承認を実行", "forcePermissionRequest")
-    .addSeparator()
+    .addItem("💾 バックアップ作成", "createBackupAndNewTable")
     .addItem("🧹 シートを完全クリア", "clearSheetMenu")
+    .addSeparator()
+    .addItem("🔐 権限承認を実行", "forcePermissionRequest")
     .addSeparator()
     .addItem("⚙️ 設定を確認", "checkSettings")
     .addToUi();
@@ -328,7 +329,6 @@ function generateImages(prompts) {
       results.push({
         prompt: prompt,
         url: data.data[0].url,
-        revised_prompt: data.data[0].revised_prompt || prompt,
         size: selectedSize, // 画像サイズ情報を追加
       });
 
@@ -391,54 +391,20 @@ function insertImages(imageResults, rangeA1) {
           promptCell.setWrap(true);
           promptCell.setVerticalAlignment("middle");
 
-          // さらに隣の列にAI修正プロンプトを配置（オプション）
-          if (
-            imageResults[imageIndex].revised_prompt &&
-            imageResults[imageIndex].revised_prompt !==
-              imageResults[imageIndex].prompt
-          ) {
-            const revisedCol = imageCol + 1;
-            const revisedCell = sheet.getRange(promptRow, revisedCol);
-            revisedCell.setValue(imageResults[imageIndex].revised_prompt);
-            revisedCell.setWrap(true);
-            revisedCell.setVerticalAlignment("middle");
-            revisedCell.setFontStyle("italic");
-            revisedCell.setFontColor("#666666");
-            sheet.setColumnWidth(revisedCol, 250);
+          // ヘッダーを設定（初回のみ）
+          if (imageIndex === 0) {
+            const headerRow = Math.max(1, promptRow - 1);
+            if (sheet.getRange(headerRow, promptCol).getValue() === "") {
+              sheet.getRange(headerRow, promptCol).setValue("📝 プロンプト");
+              sheet.getRange(headerRow, imageCol).setValue("🖼️ 生成画像");
 
-            // ヘッダーも追加（初回のみ）
-            if (imageIndex === 0) {
-              const headerRow = Math.max(1, promptRow - 1);
-              if (sheet.getRange(headerRow, promptCol).getValue() === "") {
-                sheet.getRange(headerRow, promptCol).setValue("📝 プロンプト");
-                sheet.getRange(headerRow, imageCol).setValue("🖼️ 生成画像");
-                sheet.getRange(headerRow, revisedCol).setValue("🤖 AI修正版");
-
-                // ヘッダーのスタイル設定
-                const headerRange = sheet.getRange(headerRow, promptCol, 1, 3);
-                headerRange.setBackground("#1a73e8");
-                headerRange.setFontColor("white");
-                headerRange.setFontWeight("bold");
-                headerRange.setHorizontalAlignment("center");
-                sheet.setRowHeight(headerRow, 35);
-              }
-            }
-          } else {
-            // AI修正プロンプトがない場合は、ヘッダーを2列のみで設定
-            if (imageIndex === 0) {
-              const headerRow = Math.max(1, promptRow - 1);
-              if (sheet.getRange(headerRow, promptCol).getValue() === "") {
-                sheet.getRange(headerRow, promptCol).setValue("📝 プロンプト");
-                sheet.getRange(headerRow, imageCol).setValue("🖼️ 生成画像");
-
-                // ヘッダーのスタイル設定
-                const headerRange = sheet.getRange(headerRow, promptCol, 1, 2);
-                headerRange.setBackground("#1a73e8");
-                headerRange.setFontColor("white");
-                headerRange.setFontWeight("bold");
-                headerRange.setHorizontalAlignment("center");
-                sheet.setRowHeight(headerRow, 35);
-              }
+              // ヘッダーのスタイル設定
+              const headerRange = sheet.getRange(headerRow, promptCol, 1, 2);
+              headerRange.setBackground("#1a73e8");
+              headerRange.setFontColor("white");
+              headerRange.setFontWeight("bold");
+              headerRange.setHorizontalAlignment("center");
+              sheet.setRowHeight(headerRow, 35);
             }
           }
 
@@ -519,7 +485,7 @@ function createImageTable(imageResults) {
     const startRow = lastRow + 3; // 3行空けて開始
 
     // 🎯 結果エリアのタイトルを作成
-    const titleRange = sheet.getRange(startRow, 1, 1, 5);
+    const titleRange = sheet.getRange(startRow, 1, 1, 4);
     titleRange.merge();
     titleRange.setValue(
       "🎨 画像生成結果 - " + new Date().toLocaleString("ja-JP")
@@ -533,7 +499,7 @@ function createImageTable(imageResults) {
     sheet.setRowHeight(startRow, 45);
 
     // 📊 統計情報を表示
-    const statsRange = sheet.getRange(startRow + 1, 1, 1, 5);
+    const statsRange = sheet.getRange(startRow + 1, 1, 1, 4);
     statsRange.merge();
     statsRange.setValue(
       `✨ 生成完了: ${imageResults.length}枚の画像 | 📦 ダウンロード準備完了`
@@ -546,13 +512,7 @@ function createImageTable(imageResults) {
 
     // 見出し行を作成（行番号を調整）
     const headerRow = startRow + 3;
-    const headers = [
-      "No.",
-      "プロンプト",
-      "🖼️ 生成画像",
-      "AI修正プロンプト",
-      "⏰ 生成時刻",
-    ];
+    const headers = ["No.", "プロンプト", "🖼️ 生成画像", "⏰ 生成時刻"];
     const headerRange = sheet.getRange(headerRow, 1, 1, headers.length);
     headerRange.setValues([headers]);
 
@@ -570,7 +530,6 @@ function createImageTable(imageResults) {
       `🎯 ${index + 1}`,
       result.prompt,
       `=IMAGE("${result.url}", 1)`,
-      result.revised_prompt || result.prompt,
       currentTime,
     ]);
 
@@ -604,10 +563,9 @@ function createImageTable(imageResults) {
 
       // 列幅を最適化
       sheet.setColumnWidth(1, 60); // No.
-      sheet.setColumnWidth(2, 250); // プロンプト
+      sheet.setColumnWidth(2, 300); // プロンプト（拡大）
       sheet.setColumnWidth(3, 200); // 生成画像
-      sheet.setColumnWidth(4, 250); // 修正プロンプト
-      sheet.setColumnWidth(5, 140); // 生成日時
+      sheet.setColumnWidth(4, 140); // 生成日時
 
       // 画像行の高さを調整
       for (let i = 0; i < dataRows.length; i++) {
@@ -620,7 +578,7 @@ function createImageTable(imageResults) {
 
     // 📍 区切り線を追加
     const separatorRow = headerRow + dataRows.length + 1;
-    const separatorRange = sheet.getRange(separatorRow, 1, 1, 5);
+    const separatorRange = sheet.getRange(separatorRow, 1, 1, 4);
     separatorRange.merge();
     separatorRange.setValue("═".repeat(50));
     separatorRange.setHorizontalAlignment("center");
@@ -1164,9 +1122,23 @@ function handlePermissionError(actionName) {
 }
 
 /**
- * バックアップ機能（現在のデータを保存してから新しいテーブルを作成）
+ * 初期設定（シンプルなテーブル作成）
  */
 function showSetupDialog() {
+  try {
+    // 新しいテーブルを作成
+    const result = createStructuredTable();
+    return `🔧 初期設定完了！\n${result}`;
+  } catch (error) {
+    console.error("初期設定エラー:", error);
+    throw new Error(`初期設定に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * バックアップ機能（現在のデータを保存してから新しいテーブルを作成）
+ */
+function createBackupAndNewTable() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
     const lastRow = sheet.getLastRow();
@@ -1233,12 +1205,11 @@ function createStructuredTable() {
     const headers = [
       "No.", // A列
       "📝 プロンプト", // B列 - ユーザー入力
-      "🤖 AI変換プロンプト", // C列 - DALL-E変換版
-      "🖼️ 生成画像", // D列 - 実際の画像
-      "📐 画像比率", // E列 - アスペクト比
-      "⏰ 生成日時", // F列 - タイムスタンプ
-      "✅ ステータス", // G列 - 生成状況
-      "☑️ 選択", // H列 - チェックボックス
+      "🖼️ 生成画像", // C列 - 実際の画像
+      "📐 画像比率", // D列 - アスペクト比
+      "⏰ 生成日時", // E列 - タイムスタンプ
+      "✅ ステータス", // F列 - 生成状況
+      "☑️ 選択", // G列 - チェックボックス
     ];
 
     // ヘッダーを設定
@@ -1258,13 +1229,12 @@ function createStructuredTable() {
 
     // 列幅の最適化
     sheet.setColumnWidth(1, 60); // A: No.
-    sheet.setColumnWidth(2, 300); // B: プロンプト
-    sheet.setColumnWidth(3, 250); // C: AI変換
-    sheet.setColumnWidth(4, 220); // D: 画像
-    sheet.setColumnWidth(5, 100); // E: 比率
-    sheet.setColumnWidth(6, 140); // F: 日時
-    sheet.setColumnWidth(7, 100); // G: ステータス
-    sheet.setColumnWidth(8, 80); // H: 選択
+    sheet.setColumnWidth(2, 350); // B: プロンプト（幅を拡大）
+    sheet.setColumnWidth(3, 220); // C: 画像
+    sheet.setColumnWidth(4, 100); // D: 比率
+    sheet.setColumnWidth(5, 140); // E: 日時
+    sheet.setColumnWidth(6, 100); // F: ステータス
+    sheet.setColumnWidth(7, 80); // G: 選択
 
     console.log("列幅を設定しました");
 
@@ -1282,15 +1252,26 @@ function createStructuredTable() {
         numberCell.setFontWeight("bold");
         numberCell.setBackground("#f8f9fa");
 
-        // B列の処理（プレースホルダーなし）
+        // B列の処理（プロンプト列の最適化）
         const promptCell = sheet.getRange(row, 2);
         promptCell.setWrap(true);
-        promptCell.setVerticalAlignment("middle");
+        promptCell.setVerticalAlignment("top"); // 上詰めに変更
+        promptCell.setFontSize(11); // フォントサイズを小さく
+        promptCell.setPadding(8, 8, 8, 8); // パディング設定
 
-        // 行の高さを設定
-        sheet.setRowHeight(row, 60);
+        // テキストオーバーフロー対策
+        promptCell.setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
 
-        // 境界線を設定（全8列）
+        // G列: チェックボックスを挿入
+        const checkboxCell = sheet.getRange(row, 7);
+        checkboxCell.insertCheckboxes();
+        checkboxCell.setHorizontalAlignment("center");
+        checkboxCell.setVerticalAlignment("middle");
+
+        // 行の高さを固定（長文でも高さ制限）
+        sheet.setRowHeight(row, 80);
+
+        // 境界線を設定（全7列）
         const rowRange = sheet.getRange(row, 1, 1, headers.length);
         rowRange.setBorder(true, true, true, true, true, true);
 
@@ -1314,7 +1295,7 @@ function createStructuredTable() {
     // 完了メッセージを下部に追加
     try {
       const messageRow = 103;
-      const messageRange = sheet.getRange(messageRow, 1, 1, 8);
+      const messageRange = sheet.getRange(messageRow, 1, 1, 7);
       messageRange.merge();
       messageRange.setValue(
         `✨ 表をクリアしました！B列にプロンプトを入力してください。`
@@ -1364,7 +1345,7 @@ function generateImagesFromStructuredTable() {
 
       if (prompt && typeof prompt === "string" && prompt.trim() !== "") {
         // 既存データ保護：既に画像が生成されている行はスキップ
-        const existingImageCell = sheet.getRange(actualRow, 4); // D列（画像列）
+        const existingImageCell = sheet.getRange(actualRow, 3); // C列（画像列）
         const existingImage = existingImageCell.getFormula();
 
         if (existingImage && existingImage.includes("=IMAGE(")) {
@@ -1408,22 +1389,12 @@ function populateStructuredTable(imageResults, promptRows) {
     imageResults.forEach((result, index) => {
       const row = promptRows[index];
 
-      // C列: AI変換プロンプト
-      const aiPromptCell = sheet.getRange(row, 3);
-      aiPromptCell.setValue(result.revised_prompt || result.prompt);
-      aiPromptCell.setWrap(true);
-      aiPromptCell.setVerticalAlignment("middle");
-      aiPromptCell.setFontStyle("italic");
-      aiPromptCell.setFontColor("#666666");
-      aiPromptCell.setFontSize(10);
-      aiPromptCell.setBackground("#fff8e1");
-
-      // D列: 生成画像
-      const imageCell = sheet.getRange(row, 4);
+      // C列: 生成画像
+      const imageCell = sheet.getRange(row, 3);
       imageCell.setFormula(`=IMAGE("${result.url}", 1)`);
 
-      // E列: 画像比率（動的検出）
-      const ratioCell = sheet.getRange(row, 5);
+      // D列: 画像比率（動的検出）
+      const ratioCell = sheet.getRange(row, 4);
       const imageSize = result.size || "1024x1024";
       let ratio = "1:1";
 
@@ -1441,16 +1412,16 @@ function populateStructuredTable(imageResults, promptRows) {
       ratioCell.setFontWeight("bold");
       ratioCell.setBackground("#e8f5e8");
 
-      // F列: 生成日時
-      const timeCell = sheet.getRange(row, 6);
+      // E列: 生成日時
+      const timeCell = sheet.getRange(row, 5);
       timeCell.setValue(currentTime);
       timeCell.setHorizontalAlignment("center");
       timeCell.setVerticalAlignment("middle");
       timeCell.setFontSize(9);
       timeCell.setBackground("#f5f5f5");
 
-      // G列: ステータス
-      const statusCell = sheet.getRange(row, 7);
+      // F列: ステータス
+      const statusCell = sheet.getRange(row, 6);
       statusCell.setValue("✅ 完了");
       statusCell.setHorizontalAlignment("center");
       statusCell.setVerticalAlignment("middle");
@@ -1458,13 +1429,13 @@ function populateStructuredTable(imageResults, promptRows) {
       statusCell.setFontColor("#2e7d32");
       statusCell.setBackground("#e8f5e8");
 
-      // H列: チェックボックス
-      const checkboxCell = sheet.getRange(row, 8);
+      // G列: チェックボックス
+      const checkboxCell = sheet.getRange(row, 7);
       checkboxCell.insertCheckboxes();
       checkboxCell.setHorizontalAlignment("center");
       checkboxCell.setVerticalAlignment("middle");
 
-      // 行の高さを画像に合わせて調整
+      // 行の高さを画像に合わせて調整（固定）
       sheet.setRowHeight(row, 180);
 
       processedCount++;
@@ -1502,8 +1473,8 @@ function toggleAllImageSelection() {
       return "❌ データがありません";
     }
 
-    // H列（チェックボックス列）のチェック状態を確認
-    const checkboxRange = sheet.getRange(2, 8, lastRow - 1, 1);
+    // G列（チェックボックス列）のチェック状態を確認
+    const checkboxRange = sheet.getRange(2, 7, lastRow - 1, 1);
     const checkboxValues = checkboxRange.getValues();
 
     // 現在の状態を確認（true の数を数える）
@@ -1517,11 +1488,11 @@ function toggleAllImageSelection() {
 
     // 画像が存在する行のみ対象とする
     for (let i = 2; i <= lastRow; i++) {
-      const imageCell = sheet.getRange(i, 4); // D列（画像列）
+      const imageCell = sheet.getRange(i, 3); // C列（画像列）
       const imageFormula = imageCell.getFormula();
 
       if (imageFormula && imageFormula.includes("=IMAGE(")) {
-        const checkboxCell = sheet.getRange(i, 8);
+        const checkboxCell = sheet.getRange(i, 7);
         checkboxCell.setValue(shouldCheck);
       }
     }
@@ -1551,11 +1522,11 @@ function downloadSelectedImages() {
 
     // チェックされた行を検索
     for (let i = 2; i <= lastRow; i++) {
-      const checkboxCell = sheet.getRange(i, 8);
+      const checkboxCell = sheet.getRange(i, 7);
       const isChecked = checkboxCell.getValue();
 
       if (isChecked === true) {
-        const imageCell = sheet.getRange(i, 4); // D列（画像列）
+        const imageCell = sheet.getRange(i, 3); // C列（画像列）
         const imageFormula = imageCell.getFormula();
 
         if (imageFormula && imageFormula.includes("=IMAGE(")) {
@@ -1646,7 +1617,7 @@ function regenerateSelectedImages() {
 
     // チェックされた行のプロンプトを収集
     for (let i = 2; i <= lastRow; i++) {
-      const checkboxCell = sheet.getRange(i, 8);
+      const checkboxCell = sheet.getRange(i, 7);
       const isChecked = checkboxCell.getValue();
 
       if (isChecked === true) {
@@ -1670,7 +1641,7 @@ function regenerateSelectedImages() {
 
     // 選択された行のステータスを「再生成中」に更新
     selectedRows.forEach((row) => {
-      const statusCell = sheet.getRange(row, 7); // G列（ステータス）
+      const statusCell = sheet.getRange(row, 6); // F列（ステータス）
       statusCell.setValue("🔄 再生成中");
       statusCell.setBackground("#fff3e0");
       statusCell.setFontColor("#ef6c00");
