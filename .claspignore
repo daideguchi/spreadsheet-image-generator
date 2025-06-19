@@ -1,0 +1,21 @@
+# Google Apps Script pull時に除外するファイル
+
+# ドキュメントファイル
+docs/
+README.md
+
+# Git関連
+.git/
+.gitignore
+.claspignore
+
+# その他不要ファイル
+.specstory/
+.cursorindexingignore
+
+# macOS
+.DS_Store
+
+# 一時ファイル
+*.tmp
+*.bak 
