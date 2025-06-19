@@ -497,6 +497,10 @@
           🎨 画像生成
         </button>
         
+        <button class="btn btn-secondary" onclick="checkSheetState()" style="font-size: 13px; padding: 10px 20px; margin-bottom: 8px;">
+          ⚡ 即座に状態更新
+        </button>
+        
         <button class="btn btn-create" onclick="createTableOnly()">
           🗑️ 表をクリア
         </button>
@@ -511,10 +515,6 @@
         
         <button class="btn" onclick="regenerateSelectedImages()">
           🔄 選択画像再生成
-        </button>
-        
-        <button class="btn btn-secondary" onclick="checkSheetState()" style="font-size: 12px; padding: 8px 16px;">
-          🔄 状態更新
         </button>
       </div>
 
@@ -553,19 +553,25 @@
     // サイドバー読み込み時にボタンの有効/無効を判定
     window.addEventListener('load', () => {
       checkSheetState();
-      // 定期的にシート状態をチェック（5秒間隔）
-      setInterval(checkSheetState, 5000);
+      // 定期的にシート状態をチェック（0.5秒間隔で高速監視）
+      setInterval(checkSheetState, 500);
     });
 
-    // ウィンドウがフォーカスされた時にも状態をチェック
-    window.addEventListener('focus', () => {
-      checkSheetState();
+    // 様々なイベントで即座に状態をチェック
+    window.addEventListener('focus', checkSheetState);
+    document.addEventListener('click', () => setTimeout(checkSheetState, 50));
+    document.addEventListener('mouseenter', checkSheetState);
+    document.addEventListener('mousemove', () => setTimeout(checkSheetState, 100));
+    
+    // ページの可視性が変わった時（他のタブから戻った時など）
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        checkSheetState();
+      }
     });
 
-    // サイドバーがクリックされた時にも状態をチェック
-    document.addEventListener('click', () => {
-      checkSheetState();
-    });
+    // キーボード操作時にも即座にチェック
+    document.addEventListener('keyup', () => setTimeout(checkSheetState, 100));
 
     function checkSheetState() {
       google.script.run
