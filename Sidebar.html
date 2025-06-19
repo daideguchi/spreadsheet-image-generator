@@ -752,46 +752,58 @@
       document.getElementById('progressTitle').textContent = title;
     }
 
-    // 画像生成専用の進捗管理
+    // 画像生成専用の進捗管理（改良版）
     function startImageGenerationProgress() {
       showProgressModal();
       setProgressTitle('🎨 画像生成中...');
       
+      // まず画像枚数を取得
+      google.script.run
+        .withSuccessHandler(function(imageCount) {
+          startProgressWithImageCount(imageCount);
+        })
+        .withFailureHandler(function(error) {
+          // エラーの場合はデフォルト進捗を開始
+          startProgressWithImageCount(1);
+        })
+        .getImageGenerationCount();
+    }
+
+    function startProgressWithImageCount(imageCount) {
       const steps = [
-        { inc: 15, text: 'プロンプトを解析中...' },
-        { inc: 20, text: 'DALL-E APIに接続中...' },
-        { inc: 25, text: '画像を生成中...' },
-        { inc: 25, text: '結果をシートに配置中...' },
-        { inc: 15, text: '仕上げ処理中...' }
+        { inc: 10, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 600 },
+        { inc: 15, text: 'DALL-E APIに接続中...', duration: 800 },
+        { inc: 60, text: `画像を生成中... (${imageCount}枚)`, duration: imageCount * 1200 }, // 画像枚数に応じて時間調整
+        { inc: 10, text: '結果をシートに配置中...', duration: 700 },
+        { inc: 5, text: '仕上げ処理中...', duration: 400 }
       ];
 
       let progress = 0;
       let stepIdx = 0;
       updateProgress(progress, '開始しています...', '');
 
-      const progressInterval = setInterval(() => {
+      function executeStep() {
         if (stepIdx < steps.length) {
-          progress += steps[stepIdx].inc;
+          const step = steps[stepIdx];
+          progress += step.inc;
           if (progress > 95) progress = 95;
-          updateProgress(progress, steps[stepIdx].text, `ステップ ${stepIdx + 1}/${steps.length}`);
+          
+          updateProgress(progress, step.text, `ステップ ${stepIdx + 1}/${steps.length}`);
           stepIdx++;
-        } else {
-          clearInterval(progressInterval);
+          
+          // 次のステップまでの待機時間を動的に設定
+          setTimeout(executeStep, step.duration);
         }
-      }, 800);
+      }
       
-      // 進捗インターバルIDを保存（後で停止するため）
-      window.currentProgressInterval = progressInterval;
+      executeStep();
     }
 
     function completeImageGeneration() {
-      if (window.currentProgressInterval) {
-        clearInterval(window.currentProgressInterval);
-      }
-      updateProgress(100, '完了しました！', '完了');
+      updateProgress(100, '✅ 画像生成が完了しました！', '完了');
       setTimeout(() => {
         hideProgressModal();
-      }, 1000);
+      }, 1500);
     }
 
     function executeBackup() {
@@ -882,8 +894,28 @@
 
     function regenerateSelectedImages() {
       showLoading();
-      startImageGenerationProgress();
+      
+      // 選択画像再生成専用の進捗
+      showProgressModal();
       setProgressTitle('🔄 選択画像を再生成中...');
+      
+      // まず選択された画像枚数を取得
+      google.script.run
+        .withSuccessHandler(function(selectedCount) {
+          if (selectedCount > 0) {
+            startProgressWithImageCount(selectedCount);
+          } else {
+            hideProgressModal();
+            showResult('選択された画像がありません', true);
+            return;
+          }
+        })
+        .withFailureHandler(function(error) {
+          hideProgressModal();
+          showResult('エラー: ' + error.message, true);
+          return;
+        })
+        .getSelectedImageCount();
       
       google.script.run
         .withSuccessHandler(function(result) {

@@ -419,70 +419,173 @@ function generateImages(prompts) {
 
   const apiKey = getOpenAIApiKey();
   const results = [];
+  const errors = [];
 
   try {
     prompts.forEach((prompt, index) => {
-      console.log(`画像生成中 ${index + 1}/${prompts.length}: ${prompt}`);
+      try {
+        console.log(`画像生成中 ${index + 1}/${prompts.length}: ${prompt}`);
 
-      // 高度なスタイル・サイズ自動判定システム（ブラウザ版に近づける）
-      const { style: selectedStyle, size: selectedSize } =
-        analyzePromptForOptimalSettings(prompt);
+        // 高度なスタイル・サイズ自動判定システム（ブラウザ版に近づける）
+        const { style: selectedStyle, size: selectedSize } =
+          analyzePromptForOptimalSettings(prompt);
 
-      // プロンプト品質向上処理
-      const enhancedPrompt = enhancePromptForQuality(prompt);
+        // プロンプト品質向上処理
+        const enhancedPrompt = enhancePromptForQuality(prompt);
 
-      const payload = {
-        prompt: enhancedPrompt,
-        n: 1,
-        size: selectedSize,
-        model: "dall-e-3",
-        quality: "hd", // 最高品質に変更
-        style: selectedStyle, // より鮮明で高品質な画像
-        response_format: "url", // URL形式で受信
-      };
+        const payload = {
+          prompt: enhancedPrompt,
+          n: 1,
+          size: selectedSize,
+          model: "dall-e-3",
+          quality: "hd", // 最高品質に変更
+          style: selectedStyle, // より鮮明で高品質な画像
+          response_format: "url", // URL形式で受信
+        };
 
-      const response = UrlFetchApp.fetch(
-        "https://api.openai.com/v1/images/generations",
-        {
-          method: "POST",
-          contentType: "application/json",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          payload: JSON.stringify(payload),
+        // リトライ機能付きAPIリクエスト
+        let response;
+        let lastError;
+        const maxRetries = 3;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            console.log(`画像${index + 1}: 試行${attempt}/${maxRetries}`);
+
+            response = UrlFetchApp.fetch(
+              "https://api.openai.com/v1/images/generations",
+              {
+                method: "POST",
+                contentType: "application/json",
+                headers: {
+                  Authorization: `Bearer ${apiKey}`,
+                  "Content-Type": "application/json",
+                },
+                payload: JSON.stringify(payload),
+                muteHttpExceptions: true, // 詳細なエラー情報を取得
+              }
+            );
+
+            const responseCode = response.getResponseCode();
+            const responseText = response.getContentText();
+
+            if (responseCode === 200) {
+              console.log(`画像${index + 1}: 生成成功`);
+              break; // 成功したらループを抜ける
+            } else if (responseCode === 500) {
+              // 500エラーの場合はリトライ
+              lastError = new Error(
+                `OpenAI サーバーエラー (試行${attempt}/${maxRetries}): ${responseCode}\n応答: ${responseText}`
+              );
+              console.error(`画像${index + 1}: ${lastError.message}`);
+
+              if (attempt < maxRetries) {
+                const waitTime = attempt * 2000; // 2秒、4秒、6秒と待機時間を増加
+                console.log(`${waitTime / 1000}秒待機してリトライします...`);
+                Utilities.sleep(waitTime);
+                continue;
+              }
+            } else if (responseCode === 429) {
+              // レート制限エラー
+              lastError = new Error(
+                `レート制限エラー: リクエストが多すぎます。しばらく待ってから再試行してください。`
+              );
+              console.error(`画像${index + 1}: ${lastError.message}`);
+
+              if (attempt < maxRetries) {
+                const waitTime = 60000; // 1分待機
+                console.log(`レート制限のため60秒待機します...`);
+                Utilities.sleep(waitTime);
+                continue;
+              }
+            } else {
+              // その他のエラー
+              lastError = new Error(
+                `API エラー: ${responseCode}\n応答: ${responseText}`
+              );
+              console.error(`画像${index + 1}: ${lastError.message}`);
+              break; // リトライしない
+            }
+          } catch (fetchError) {
+            lastError = new Error(
+              `ネットワークエラー (試行${attempt}/${maxRetries}): ${fetchError.message}`
+            );
+            console.error(`画像${index + 1}: ${lastError.message}`);
+
+            if (attempt < maxRetries) {
+              const waitTime = attempt * 1000;
+              console.log(`${waitTime / 1000}秒待機してリトライします...`);
+              Utilities.sleep(waitTime);
+              continue;
+            }
+          }
         }
-      );
 
-      if (response.getResponseCode() !== 200) {
-        throw new Error(
-          `API エラー: ${response.getResponseCode()} - ${response.getContentText()}`
-        );
-      }
+        // 最終的に失敗した場合
+        if (!response || response.getResponseCode() !== 200) {
+          throw lastError || new Error("画像生成に失敗しました");
+        }
 
-      const data = JSON.parse(response.getContentText());
-      if (!data.data || !data.data[0] || !data.data[0].url) {
-        throw new Error("画像URLの取得に失敗しました");
-      }
+        const data = JSON.parse(response.getContentText());
+        if (!data.data || !data.data[0] || !data.data[0].url) {
+          throw new Error("画像URLの取得に失敗しました");
+        }
 
-      results.push({
-        prompt: prompt,
-        url: data.data[0].url,
-        size: selectedSize, // 画像サイズ情報を追加
-        revised_prompt: data.data[0].revised_prompt || enhancedPrompt, // 実際に使用されたプロンプト
-        original_prompt: prompt, // 元のプロンプトも保存
-      });
+        results.push({
+          prompt: prompt,
+          url: data.data[0].url,
+          size: selectedSize, // 画像サイズ情報を追加
+          revised_prompt: data.data[0].revised_prompt || enhancedPrompt, // 実際に使用されたプロンプト
+          original_prompt: prompt, // 元のプロンプトも保存
+        });
 
-      // API制限を考慮した待機時間
-      if (index < prompts.length - 1) {
-        Utilities.sleep(1000); // 1秒待機
+        // API制限を考慮した待機時間
+        if (index < prompts.length - 1) {
+          Utilities.sleep(1000); // 1秒待機
+        }
+      } catch (imageError) {
+        // 個別の画像生成エラーを記録（全体を停止させない）
+        console.error(`画像${index + 1}の生成に失敗:`, imageError);
+        errors.push({
+          index: index + 1,
+          prompt: prompt.substring(0, 50) + "...",
+          error: imageError.message,
+        });
+
+        // エラーでも結果に追加（エラー情報付き）
+        results.push({
+          prompt: prompt,
+          url: null,
+          size: selectedSize,
+          error: imageError.message,
+          original_prompt: prompt,
+          failed: true,
+        });
       }
     });
 
-    console.log(`${results.length}枚の画像を生成完了`);
+    // 結果の概要をログ出力
+    const successCount = results.filter((r) => !r.failed).length;
+    const failureCount = errors.length;
+
+    console.log(`画像生成完了: 成功${successCount}枚、失敗${failureCount}枚`);
+
+    if (errors.length > 0) {
+      console.warn("失敗した画像:", errors);
+    }
+
+    // 全て失敗した場合のみエラーを投げる
+    if (successCount === 0) {
+      const errorSummary = errors
+        .map((e) => `画像${e.index}: ${e.error}`)
+        .join("\n");
+      throw new Error(`すべての画像生成に失敗しました:\n${errorSummary}`);
+    }
+
     return results;
   } catch (error) {
-    console.error("画像生成エラー:", error);
+    // 予期しないエラーの場合
+    console.error("画像生成プロセスエラー:", error);
     throw new Error(`画像生成に失敗しました: ${error.message}`);
   }
 }
@@ -709,45 +812,85 @@ function populateStructuredTable(imageResults, promptRows) {
     imageResults.forEach((result, index) => {
       const row = promptRows[index];
 
-      // D列: 生成画像（新しい8列構造）
-      const imageCell = sheet.getRange(row, 4);
-      imageCell.setFormula(`=IMAGE("${result.url}", 1)`);
+      if (result.failed) {
+        // 失敗した画像の処理
+        const imageCell = sheet.getRange(row, 4);
+        imageCell.setValue("❌ 生成失敗");
+        imageCell.setHorizontalAlignment("center");
+        imageCell.setVerticalAlignment("middle");
+        imageCell.setFontWeight("bold");
+        imageCell.setFontColor("#d32f2f");
+        imageCell.setBackground("#ffebee");
+        imageCell.setNote(
+          `エラー詳細:\n${result.error}\n\n再生成するには、この行を選択して「🔄 再生成」ボタンをクリックしてください。`
+        );
 
-      // E列: 画像比率（動的検出）
-      const ratioCell = sheet.getRange(row, 5);
-      const imageSize = result.size || "1024x1024";
-      let ratio = "1:1";
+        // E列: エラー表示
+        const ratioCell = sheet.getRange(row, 5);
+        ratioCell.setValue("エラー");
+        ratioCell.setHorizontalAlignment("center");
+        ratioCell.setVerticalAlignment("middle");
+        ratioCell.setFontWeight("bold");
+        ratioCell.setFontColor("#d32f2f");
+        ratioCell.setBackground("#ffebee");
 
-      if (imageSize === "1024x1792") {
-        ratio = "9:16";
-      } else if (imageSize === "1792x1024") {
-        ratio = "16:9";
+        // F列: 生成日時
+        const timeCell = sheet.getRange(row, 6);
+        timeCell.setValue(currentTime);
+        timeCell.setHorizontalAlignment("center");
+        timeCell.setVerticalAlignment("middle");
+        timeCell.setFontSize(9);
+        timeCell.setBackground("#ffebee");
+
+        // G列: エラーステータス
+        const statusCell = sheet.getRange(row, 7);
+        statusCell.setValue("❌ 生成失敗");
+        statusCell.setHorizontalAlignment("center");
+        statusCell.setVerticalAlignment("middle");
+        statusCell.setFontWeight("bold");
+        statusCell.setFontColor("#d32f2f");
+        statusCell.setBackground("#ffebee");
       } else {
-        ratio = "1:1";
+        // 成功した画像の処理
+        const imageCell = sheet.getRange(row, 4);
+        imageCell.setFormula(`=IMAGE("${result.url}", 1)`);
+
+        // E列: 画像比率（動的検出）
+        const ratioCell = sheet.getRange(row, 5);
+        const imageSize = result.size || "1024x1024";
+        let ratio = "1:1";
+
+        if (imageSize === "1024x1792") {
+          ratio = "9:16";
+        } else if (imageSize === "1792x1024") {
+          ratio = "16:9";
+        } else {
+          ratio = "1:1";
+        }
+
+        ratioCell.setValue(ratio);
+        ratioCell.setHorizontalAlignment("center");
+        ratioCell.setVerticalAlignment("middle");
+        ratioCell.setFontWeight("bold");
+        ratioCell.setBackground("#e8f5e8");
+
+        // F列: 生成日時
+        const timeCell = sheet.getRange(row, 6);
+        timeCell.setValue(currentTime);
+        timeCell.setHorizontalAlignment("center");
+        timeCell.setVerticalAlignment("middle");
+        timeCell.setFontSize(9);
+        timeCell.setBackground("#f5f5f5");
+
+        // G列: ステータス（品質・忠実性情報付き）
+        const statusCell = sheet.getRange(row, 7);
+        statusCell.setValue("✅ HD忠実");
+        statusCell.setHorizontalAlignment("center");
+        statusCell.setVerticalAlignment("middle");
+        statusCell.setFontWeight("bold");
+        statusCell.setFontColor("#2e7d32");
+        statusCell.setBackground("#e8f5e8");
       }
-
-      ratioCell.setValue(ratio);
-      ratioCell.setHorizontalAlignment("center");
-      ratioCell.setVerticalAlignment("middle");
-      ratioCell.setFontWeight("bold");
-      ratioCell.setBackground("#e8f5e8");
-
-      // F列: 生成日時
-      const timeCell = sheet.getRange(row, 6);
-      timeCell.setValue(currentTime);
-      timeCell.setHorizontalAlignment("center");
-      timeCell.setVerticalAlignment("middle");
-      timeCell.setFontSize(9);
-      timeCell.setBackground("#f5f5f5");
-
-      // G列: ステータス（品質・忠実性情報付き）
-      const statusCell = sheet.getRange(row, 7);
-      statusCell.setValue("✅ HD忠実");
-      statusCell.setHorizontalAlignment("center");
-      statusCell.setVerticalAlignment("middle");
-      statusCell.setFontWeight("bold");
-      statusCell.setFontColor("#2e7d32");
-      statusCell.setBackground("#e8f5e8");
 
       // プロンプト改善情報をコメントとして追加
       const promptCell = sheet.getRange(row, 2);
@@ -789,7 +932,17 @@ function populateStructuredTable(imageResults, promptRows) {
       processedCount++;
     });
 
-    return `✅ ${processedCount}枚の画像を構造化テーブルに配置しました！`;
+    // 成功・失敗の詳細を含む結果メッセージ
+    const successCount = imageResults.filter((r) => !r.failed).length;
+    const failureCount = imageResults.filter((r) => r.failed).length;
+
+    if (failureCount === 0) {
+      return `✅ ${successCount}枚の画像を構造化テーブルに配置しました！`;
+    } else if (successCount > 0) {
+      return `⚠️ 部分的に完了: 成功${successCount}枚、失敗${failureCount}枚\n失敗した画像は赤色で表示されています。再生成をお試しください。`;
+    } else {
+      return `❌ すべての画像生成に失敗しました。しばらく時間をおいてから再試行してください。`;
+    }
   } catch (error) {
     console.error("構造化テーブル配置エラー:", error);
     throw new Error(`結果の配置に失敗しました: ${error.message}`);
@@ -2186,5 +2339,83 @@ function deleteAllImagesWithConfirmation() {
       SpreadsheetApp.getUi().ButtonSet.OK
     );
     throw error;
+  }
+}
+
+/**
+ * 画像生成予定枚数を取得（プログレスバー用）
+ */
+function getImageGenerationCount() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return 0;
+    }
+
+    // B列からプロンプトを検索し、未生成の画像数をカウント
+    const promptRange = sheet.getRange(2, 2, Math.min(lastRow - 1, 100), 1);
+    const promptValues = promptRange.getValues();
+
+    let imageCount = 0;
+
+    promptValues.forEach((row, index) => {
+      const prompt = row[0];
+      const actualRow = index + 2;
+
+      if (prompt && typeof prompt === "string" && prompt.trim() !== "") {
+        // 既存データ保護：既に画像が生成されている行はスキップ
+        const existingImageCell = sheet.getRange(actualRow, 4); // D列（画像列）
+        const existingImage = existingImageCell.getFormula();
+
+        if (!existingImage || !existingImage.includes("=IMAGE(")) {
+          imageCount++;
+        }
+      }
+    });
+
+    console.log(`画像生成予定枚数: ${imageCount}枚`);
+    return imageCount;
+  } catch (error) {
+    console.error("画像生成枚数取得エラー:", error);
+    return 1; // エラーの場合はデフォルト値
+  }
+}
+
+/**
+ * 選択された画像枚数を取得（再生成プログレスバー用）
+ */
+function getSelectedImageCount() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return 0;
+    }
+
+    let selectedCount = 0;
+
+    // チェックされた行を検索
+    for (let i = 2; i <= lastRow; i++) {
+      const checkboxCell = sheet.getRange(i, 8); // H列（チェックボックス）
+      const isChecked = checkboxCell.getValue();
+
+      if (isChecked === true) {
+        // 完全なプロンプトを取得（省略表示対応）
+        const fullPrompt = getFullPrompt(sheet, i);
+
+        if (fullPrompt && fullPrompt.trim() !== "") {
+          selectedCount++;
+        }
+      }
+    }
+
+    console.log(`選択された画像枚数: ${selectedCount}枚`);
+    return selectedCount;
+  } catch (error) {
+    console.error("選択画像枚数取得エラー:", error);
+    return 0; // エラーの場合は0を返す
   }
 }
