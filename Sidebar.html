@@ -227,6 +227,37 @@
       gap: 12px;
     }
 
+    /* ボタンセクション */
+    .button-section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1a73e8;
+      margin-bottom: 8px;
+      padding: 4px 8px;
+      background: rgba(26, 115, 232, 0.1);
+      border-radius: 6px;
+      text-align: center;
+      border: 1px solid rgba(26, 115, 232, 0.2);
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+    }
+
+    .btn-small {
+      flex: 1;
+      padding: 12px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
     .loading {
       display: none;
       text-align: center;
@@ -489,33 +520,46 @@
       </div>
 
       <div class="button-group">
-        <button class="btn btn-setup" id="setupBtn" onclick="executeBackup()" title="すでに初期設定済みです">
-          🔧 初期設定
-        </button>
-        
-        <button class="btn" id="generateBtn" onclick="generateFromStructuredTable()" title="プロンプトを入力してください">
-          🎨 画像生成
-        </button>
-        
-        <button class="btn btn-secondary" onclick="checkSheetState()" style="font-size: 13px; padding: 10px 20px; margin-bottom: 8px;">
-          ⚡ 即座に状態更新
-        </button>
-        
-        <button class="btn btn-create" onclick="createTableOnly()">
-          🗑️ 表をクリア
-        </button>
-        
-        <button class="btn btn-secondary" onclick="toggleAllImageSelection()">
-          ☑️ 全選択/解除
-        </button>
-        
-        <button class="btn" onclick="downloadSelectedImages()">
-          📥 選択画像DL
-        </button>
-        
-        <button class="btn" onclick="regenerateSelectedImages()">
-          🔄 選択画像再生成
-        </button>
+        <!-- 基本操作グループ -->
+        <div class="button-section">
+          <div class="section-title">📋 基本操作</div>
+          <button class="btn btn-setup" id="setupBtn" onclick="executeBackup()" title="すでに初期設定済みです">
+            🔧 初期設定
+          </button>
+          
+          <button class="btn" id="generateBtn" onclick="generateFromStructuredTable()" title="プロンプトを入力してください">
+            🎨 画像生成
+          </button>
+        </div>
+
+        <!-- 管理操作グループ（画像生成後に表示） -->
+        <div class="button-section" id="managementSection" style="display: none;">
+          <div class="section-title">🛠️ 画像管理</div>
+          <div class="button-row">
+            <button class="btn btn-secondary btn-small" onclick="toggleAllImageSelection()">
+              ☑️ 全選択
+            </button>
+            <button class="btn btn-small" onclick="downloadSelectedImages()">
+              📥 DL
+            </button>
+            <button class="btn btn-small" onclick="regenerateSelectedImages()">
+              🔄 再生成
+            </button>
+          </div>
+        </div>
+
+        <!-- その他操作グループ -->
+        <div class="button-section">
+          <div class="section-title">⚙️ その他</div>
+          <div class="button-row">
+            <button class="btn btn-create btn-small" onclick="createTableOnly()">
+              🗑️ クリア
+            </button>
+            <button class="btn btn-secondary btn-small" onclick="checkSheetState()">
+              ⚡ 更新
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="loading" id="loading">
@@ -576,11 +620,12 @@
     function checkSheetState() {
       google.script.run
         .withSuccessHandler(function(state) {
-          const { isEmpty, hasPrompt } = state;
+          const { isEmpty, hasPrompt, hasImages } = state;
           console.log('シート状態:', { isEmpty, hasPrompt }); // デバッグ用
 
           const setupBtn = document.getElementById('setupBtn');
           const generateBtn = document.getElementById('generateBtn');
+          const managementSection = document.getElementById('managementSection');
 
           // シートが空でなければ初期設定ボタンを無効化（既に設定済み）
           if (!isEmpty) {
@@ -604,6 +649,13 @@
             generateBtn.classList.remove('disabled');
             generateBtn.title = '';
             console.log('画像生成ボタンを有効化'); // デバッグ用
+          }
+
+          // 画像があれば管理セクションを表示
+          if (hasImages) {
+            managementSection.style.display = 'block';
+          } else {
+            managementSection.style.display = 'none';
           }
         })
         .withFailureHandler(function(error) {

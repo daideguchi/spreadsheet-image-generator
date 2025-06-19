@@ -1939,6 +1939,7 @@ function getSheetState() {
 
     // B列にプロンプトが存在するかチェック（2行目以降最大100行）
     let hasPrompt = false;
+    let hasImages = false;
     if (!isEmpty) {
       const maxRows = Math.min(lastRow - 1, 100);
       console.log("getSheetState: maxRows =", maxRows);
@@ -1954,13 +1955,26 @@ function getSheetState() {
           }
           return v && typeof v === "string" && v.trim() !== "";
         });
+
+        // C列に画像が存在するかチェック
+        const imageRange = sheet.getRange(2, 3, maxRows, 1);
+        const imageFormulas = imageRange.getFormulas();
+        hasImages = imageFormulas.some((row) => {
+          const formula = row[0];
+          return (
+            formula &&
+            typeof formula === "string" &&
+            formula.includes("=IMAGE(")
+          );
+        });
+        console.log("getSheetState: hasImages =", hasImages);
       }
     }
 
     console.log("getSheetState: hasPrompt =", hasPrompt);
-    return { isEmpty, hasPrompt };
+    return { isEmpty, hasPrompt, hasImages };
   } catch (e) {
     console.error("getSheetState error", e);
-    return { isEmpty: false, hasPrompt: true };
+    return { isEmpty: false, hasPrompt: true, hasImages: false };
   }
 }
