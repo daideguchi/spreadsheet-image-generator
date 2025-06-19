@@ -1400,10 +1400,16 @@ function createStructuredTable() {
 
         // B列の処理（プロンプト列の最適化）
         const promptCell = sheet.getRange(row, 2);
-        promptCell.setWrap(false); // 折り返しを無効化
-        promptCell.setVerticalAlignment("middle");
+        promptCell.setWrap(true); // 折り返しを有効化（入力時の見やすさ重視）
+        promptCell.setVerticalAlignment("top");
         promptCell.setFontSize(11);
         promptCell.setPadding(8, 8, 8, 8);
+
+        // プロンプト入力のためのセル設定最適化
+        promptCell.setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
+        promptCell.setNote(
+          "ここに画像生成用のプロンプトを入力してください。\n長いプロンプトでも問題ありません。"
+        );
 
         // G列: チェックボックスを挿入
         const checkboxCell = sheet.getRange(row, 7);
@@ -1411,8 +1417,8 @@ function createStructuredTable() {
         checkboxCell.setHorizontalAlignment("center");
         checkboxCell.setVerticalAlignment("middle");
 
-        // 行の高さを固定（長文でも高さ制限）
-        sheet.setRowHeight(row, 80);
+        // 行の高さを柔軟に（長いプロンプト入力に対応）
+        sheet.setRowHeight(row, 120);
 
         // 境界線を設定（全7列）
         const rowRange = sheet.getRange(row, 1, 1, headers.length);
@@ -1496,7 +1502,28 @@ function generateImagesFromStructuredTable() {
           return; // この行をスキップ
         }
 
-        validPrompts.push(prompt.trim());
+        // セルコメントから完全なプロンプトを取得（省略表示対応）
+        const promptCell = sheet.getRange(actualRow, 2);
+        const cellNote = promptCell.getNote();
+        let fullPrompt = prompt.trim();
+
+        // コメントに完全なプロンプトが保存されている場合はそれを使用
+        if (cellNote && cellNote.includes("完全なプロンプト:")) {
+          const match = cellNote.match(
+            /完全なプロンプト:\n([\s\S]*?)(?:\n\n|$)/
+          );
+          if (match && match[1]) {
+            fullPrompt = match[1].trim();
+            console.log(
+              `行${actualRow}: コメントから完全プロンプト取得: ${fullPrompt.substring(
+                0,
+                50
+              )}...`
+            );
+          }
+        }
+
+        validPrompts.push(fullPrompt);
         promptRows.push(actualRow);
       }
     });
@@ -1576,20 +1603,28 @@ function populateStructuredTable(imageResults, promptRows) {
       const promptCell = sheet.getRange(row, 2);
       const currentPrompt = promptCell.getValue();
 
-      // プロンプトが長い場合は省略表示
-      if (currentPrompt && currentPrompt.length > 100) {
-        const truncatedPrompt = currentPrompt.substring(0, 97) + "...";
+      // 画像生成後の表示最適化
+      if (currentPrompt && currentPrompt.length > 150) {
+        // 150文字以上の場合のみ省略表示
+        const truncatedPrompt = currentPrompt.substring(0, 147) + "...";
         promptCell.setValue(truncatedPrompt);
 
-        // 元のプロンプトをコメントに保存
+        // セルの表示設定を調整
+        promptCell.setWrap(false);
+        promptCell.setVerticalAlignment("middle");
+
+        // 完全なプロンプトをコメントに保存
         let comment = `完全なプロンプト:\n${currentPrompt}`;
         if (result.revised_prompt && result.original_prompt) {
-          comment += `\n\n元のプロンプト:\n${result.original_prompt}\n\n実際に使用されたプロンプト:\n${result.revised_prompt}`;
+          comment += `\n\n実際に使用されたプロンプト:\n${result.revised_prompt}`;
         }
         promptCell.setNote(comment);
-      } else if (result.revised_prompt && result.original_prompt) {
-        const comment = `元のプロンプト:\n${result.original_prompt}\n\n実際に使用されたプロンプト:\n${result.revised_prompt}`;
-        promptCell.setNote(comment);
+      } else {
+        // 短いプロンプトの場合は通常表示
+        if (result.revised_prompt && result.original_prompt) {
+          const comment = `実際に使用されたプロンプト:\n${result.revised_prompt}`;
+          promptCell.setNote(comment);
+        }
       }
 
       // G列: チェックボックス
