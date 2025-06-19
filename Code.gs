@@ -903,42 +903,20 @@ function populateStructuredTable(imageResults, promptRows) {
             comment += ` (最小限変更)`;
           }
 
-          // 完全版はC列に保存（ユーザープロンプト完全保持）
+          // 完全版はC列に保存（技術的制約回避システム）
           const fullPromptCell = sheet.getRange(row, 3);
 
-          // ユーザープロンプトは絶対に省略しない
+          // 🔧 **技術的解決策**: データ分割による50,000文字制限回避
           const userPromptPart = `【完全版】\n\n📝 ユーザー入力プロンプト:\n${result.original_prompt}`;
 
-          // 内部処理版のみ制限
-          const remainingSpace = Math.max(
-            1000,
-            10000 - userPromptPart.length - 500
-          );
-          let internalPromptPart = `\n\n🤖 内部処理版:\n`;
+          // ユーザープロンプトは絶対に省略せず、セルに直接配置
+          fullPromptCell.setValue(userPromptPart);
 
-          if (result.revised_prompt.length > remainingSpace) {
-            internalPromptPart += result.revised_prompt.substring(
-              0,
-              remainingSpace
-            );
-            internalPromptPart += `\n[内部処理版省略...]`;
-          } else {
-            internalPromptPart += result.revised_prompt;
+          // 内部処理版は**セルコメント**に分離配置（制限回避）
+          if (result.revised_prompt && result.revised_prompt.trim() !== "") {
+            const internalComment = `🤖 GPT-Image-1内部処理版:\n${result.revised_prompt}\n\n💡 この情報はAIが自動生成した内部処理版です。`;
+            fullPromptCell.setNote(internalComment);
           }
-
-          let fullContent = userPromptPart + internalPromptPart;
-
-          // 最終チェック（ユーザープロンプトは保持、内部処理版のみ調整）
-          if (fullContent.length > 10000) {
-            const safeCut = 10000 - userPromptPart.length - 100;
-            internalPromptPart = `\n\n🤖 内部処理版:\n${result.revised_prompt.substring(
-              0,
-              safeCut
-            )}\n[内部処理版省略...]`;
-            fullContent = userPromptPart + internalPromptPart;
-          }
-
-          fullPromptCell.setValue(fullContent);
           fullPromptCell.setWrap(true);
           fullPromptCell.setVerticalAlignment("top");
           fullPromptCell.setFontSize(9);
@@ -989,42 +967,20 @@ function populateStructuredTable(imageResults, promptRows) {
             comment += ` (最小限変更)`;
           }
 
-          // 完全版はC列に保存（短いプロンプトでもユーザープロンプト完全保持）
+          // 完全版はC列に保存（技術的制約回避システム）
           const fullPromptCell = sheet.getRange(row, 3);
 
-          // ユーザープロンプトは絶対に省略しない
+          // 🔧 **技術的解決策**: データ分離による50,000文字制限回避
           const userPromptPart = `【完全版】\n\n📝 ユーザー入力プロンプト:\n${result.original_prompt}`;
 
-          // 内部処理版のみ制限
-          const remainingSpace = Math.max(
-            1000,
-            10000 - userPromptPart.length - 500
-          );
-          let internalPromptPart = `\n\n🤖 内部処理版:\n`;
+          // ユーザープロンプトは絶対に省略せず、セルに直接配置
+          fullPromptCell.setValue(userPromptPart);
 
-          if (result.revised_prompt.length > remainingSpace) {
-            internalPromptPart += result.revised_prompt.substring(
-              0,
-              remainingSpace
-            );
-            internalPromptPart += `\n[内部処理版省略...]`;
-          } else {
-            internalPromptPart += result.revised_prompt;
+          // 内部処理版は**セルコメント**に分離配置（制限回避）
+          if (result.revised_prompt && result.revised_prompt.trim() !== "") {
+            const internalComment = `🤖 GPT-Image-1内部処理版:\n${result.revised_prompt}\n\n💡 この情報はAIが自動生成した内部処理版です。`;
+            fullPromptCell.setNote(internalComment);
           }
-
-          let fullContent = userPromptPart + internalPromptPart;
-
-          // 最終チェック（ユーザープロンプトは保持、内部処理版のみ調整）
-          if (fullContent.length > 10000) {
-            const safeCut = 10000 - userPromptPart.length - 100;
-            internalPromptPart = `\n\n🤖 内部処理版:\n${result.revised_prompt.substring(
-              0,
-              safeCut
-            )}\n[内部処理版省略...]`;
-            fullContent = userPromptPart + internalPromptPart;
-          }
-
-          fullPromptCell.setValue(fullContent);
           fullPromptCell.setWrap(true);
           fullPromptCell.setVerticalAlignment("top");
           fullPromptCell.setFontSize(9);
