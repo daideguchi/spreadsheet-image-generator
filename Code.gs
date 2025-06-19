@@ -623,163 +623,7 @@ function getAllImageUrls() {
   }
 }
 
-/**
- * シートに見出し付きの表を作成（可視性大幅改善版）
- */
-function createImageTable(imageResults) {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-
-    // 画像生成結果エリアを明確に分離する
-    const lastRow = sheet.getLastRow();
-    const startRow = lastRow + 3; // 3行空けて開始
-
-    // 🎯 結果エリアのタイトルを作成
-    const titleRange = sheet.getRange(startRow, 1, 1, 4);
-    titleRange.merge();
-    titleRange.setValue(
-      "🎨 画像生成結果 - " + new Date().toLocaleString("ja-JP")
-    );
-    titleRange.setBackground("#ff6f00");
-    titleRange.setFontColor("white");
-    titleRange.setFontSize(14);
-    titleRange.setFontWeight("bold");
-    titleRange.setHorizontalAlignment("center");
-    titleRange.setVerticalAlignment("middle");
-    sheet.setRowHeight(startRow, 45);
-
-    // 📊 統計情報を表示
-    const statsRange = sheet.getRange(startRow + 1, 1, 1, 4);
-    statsRange.merge();
-    statsRange.setValue(
-      `✨ 生成完了: ${imageResults.length}枚の画像 | 📦 ダウンロード準備完了`
-    );
-    statsRange.setBackground("#e8f5e8");
-    statsRange.setFontColor("#2e7d32");
-    statsRange.setHorizontalAlignment("center");
-    statsRange.setFontWeight("bold");
-    sheet.setRowHeight(startRow + 1, 35);
-
-    // 見出し行を作成（行番号を調整）
-    const headerRow = startRow + 3;
-    const headers = [
-      "No.",
-      "プロンプト",
-      "📄 完全プロンプト",
-      "🖼️ 生成画像",
-      "📐 画像比率",
-      "⏰ 生成日時",
-      "✅ ステータス",
-      "☑️ 選択",
-    ];
-    const headerRange = sheet.getRange(headerRow, 1, 1, headers.length);
-    headerRange.setValues([headers]);
-
-    // 見出し行のスタイルを設定
-    headerRange.setBackground("#1a73e8");
-    headerRange.setFontColor("white");
-    headerRange.setFontWeight("bold");
-    headerRange.setHorizontalAlignment("center");
-    headerRange.setVerticalAlignment("middle");
-    headerRange.setFontSize(12);
-    sheet.setRowHeight(headerRow, 45);
-
-    // 列幅の最適化
-    sheet.setColumnWidth(1, 60); // A: No.
-    sheet.setColumnWidth(2, 280); // B: プロンプト（省略表示）
-    sheet.setColumnWidth(3, 350); // C: 完全プロンプト（スクロール表示）
-    sheet.setColumnWidth(4, 220); // D: 画像
-    sheet.setColumnWidth(5, 100); // E: 比率
-    sheet.setColumnWidth(6, 140); // F: 日時
-    sheet.setColumnWidth(7, 100); // G: ステータス
-    sheet.setColumnWidth(8, 80); // H: 選択
-
-    console.log("列幅を設定しました");
-
-    console.log("100行のデータ行を作成開始");
-
-    // 100行のテーブルを作成（2-101行目）
-    for (let i = 1; i <= 100; i++) {
-      const row = i + 1;
-
-      try {
-        // A列: 番号
-        const numberCell = sheet.getRange(row, 1);
-        numberCell.setValue(i);
-        numberCell.setHorizontalAlignment("center");
-        numberCell.setFontWeight("bold");
-        numberCell.setBackground("#f8f9fa");
-
-        // B列の処理（プロンプト列の最適化）
-        const promptCell = sheet.getRange(row, 2);
-        promptCell.setWrap(true); // 折り返しを有効化（入力時の見やすさ重視）
-        promptCell.setVerticalAlignment("top");
-        promptCell.setFontSize(11);
-        promptCell.setPadding(8, 8, 8, 8);
-
-        // プロンプト入力のためのセル設定最適化
-        promptCell.setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
-        promptCell.setNote(
-          "ここに画像生成用のプロンプトを入力してください。\n長いプロンプトでも問題ありません。"
-        );
-
-        // H列: チェックボックスを挿入（新しい8列構造）
-        const checkboxCell = sheet.getRange(row, 8);
-        checkboxCell.insertCheckboxes();
-        checkboxCell.setHorizontalAlignment("center");
-        checkboxCell.setVerticalAlignment("middle");
-
-        // 行の高さを柔軟に（長いプロンプト入力に対応）
-        sheet.setRowHeight(row, 120);
-
-        // 境界線を設定（全8列）
-        const rowRange = sheet.getRange(row, 1, 1, headers.length);
-        rowRange.setBorder(true, true, true, true, true, true);
-
-        // 10行ごとに薄い区切り線を追加
-        if (i % 10 === 0) {
-          rowRange.setBackground("#f0f0f0");
-        }
-
-        // 進捗表示（10行ごと）
-        if (i % 10 === 0) {
-          console.log(`${i}行目まで作成完了`);
-        }
-      } catch (rowError) {
-        console.error(`行${row}の作成でエラー:`, rowError);
-        // 個別行のエラーは続行
-      }
-    }
-
-    console.log("100行の作成完了");
-
-    // 完了メッセージを下部に追加
-    try {
-      const messageRow = 103;
-      const messageRange = sheet.getRange(messageRow, 1, 1, 8);
-      messageRange.merge();
-      messageRange.setValue(
-        `✨ 表をクリアしました！B列にプロンプトを入力してください。`
-      );
-      messageRange.setBackground("#e8f5e8");
-      messageRange.setFontColor("#2e7d32");
-      messageRange.setHorizontalAlignment("center");
-      messageRange.setFontWeight("bold");
-      messageRange.setFontSize(14);
-      sheet.setRowHeight(messageRow, 40);
-
-      console.log("完了メッセージを追加しました");
-    } catch (messageError) {
-      console.error("完了メッセージの追加でエラー:", messageError);
-      // メッセージエラーは無視して続行
-    }
-
-    return "✅ 表をクリアしました！B列にプロンプトを入力してください。";
-  } catch (error) {
-    console.error("テーブル準備エラー:", error);
-    throw new Error(`表のクリアに失敗しました: ${error.message}`);
-  }
-}
+// createImageTable関数は削除 - createStructuredTableに統合されました
 
 /**
  * B列のプロンプトを検出して画像生成
@@ -1637,5 +1481,710 @@ function forcePermissionRequest() {
     );
 
     throw error; // エラーを再スローして権限ダイアログを表示
+  }
+}
+
+/**
+ * シートを完全クリア（メニューから呼び出し）
+ */
+function clearSheetMenu() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const response = ui.alert(
+      "⚠️ シート完全クリア",
+      "シート内のすべてのデータを削除します。\n\n" +
+        "🗑️ 削除される内容：\n" +
+        "• すべてのテキストデータ\n" +
+        "• すべての画像\n" +
+        "• セルの書式設定\n" +
+        "• セルのコメント\n\n" +
+        "⚠️ この操作は取り消せません。\n" +
+        "💾 重要なデータがある場合は、事前にバックアップを取ることをお勧めします。\n\n" +
+        "本当に削除しますか？",
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response === ui.Button.YES) {
+      // 確認のダブルチェック
+      const confirmResponse = ui.alert(
+        "🚨 最終確認",
+        "シートのすべてのデータが完全に削除されます。\n\n" +
+          "本当によろしいですか？",
+        ui.ButtonSet.YES_NO
+      );
+
+      if (confirmResponse === ui.Button.YES) {
+        clearAllData();
+        ui.alert(
+          "✅ クリア完了",
+          "シートが完全にクリアされました。\n\n" +
+            "🚀 新しく作業を開始するには：\n" +
+            "1️⃣ 「🔧 初期セットアップ」を実行\n" +
+            "2️⃣ サイドバーから画像生成を開始",
+          ui.ButtonSet.OK
+        );
+        return "✅ シートを完全にクリアしました";
+      } else {
+        return "クリア操作をキャンセルしました";
+      }
+    } else {
+      return "クリア操作をキャンセルしました";
+    }
+  } catch (error) {
+    console.error("シートクリアエラー:", error);
+    SpreadsheetApp.getUi().alert(
+      "エラー",
+      "シートのクリアに失敗しました: " + error.message,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    throw error;
+  }
+}
+
+/**
+ * シートのすべてのデータを削除（内部関数）
+ */
+function clearAllData() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // 1. シート全体をクリア
+    sheet.clear();
+
+    // 2. 画像も含めてすべてのコンテンツを削除
+    sheet.clearContents();
+    sheet.clearFormats();
+    sheet.clearNotes();
+
+    // 3. 行と列のサイズをリセット
+    const maxRows = sheet.getMaxRows();
+    const maxCols = sheet.getMaxColumns();
+
+    // デフォルトサイズに戻す
+    if (maxRows > 1000) {
+      sheet.deleteRows(1001, maxRows - 1000);
+    }
+    if (maxCols > 26) {
+      sheet.deleteColumns(27, maxCols - 26);
+    }
+
+    // 4. 行の高さと列の幅をデフォルトに戻す
+    sheet.setRowHeights(1, sheet.getMaxRows(), 21);
+    sheet.setColumnWidths(1, sheet.getMaxColumns(), 100);
+
+    // 5. フリーズした行・列を解除
+    sheet.setFrozenRows(0);
+    sheet.setFrozenColumns(0);
+
+    console.log("✅ シートが完全にクリアされました");
+    return true;
+  } catch (error) {
+    console.error("データクリアエラー:", error);
+    throw new Error("データの削除に失敗しました: " + error.message);
+  }
+}
+
+/**
+ * バックアップを作成して新しいテーブルを作成
+ */
+function createBackupAndNewTable() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const currentSheet = spreadsheet.getActiveSheet();
+
+    // データがあるかチェック
+    const hasData = checkForAnyData();
+
+    if (!hasData) {
+      ui.alert(
+        "📝 データなし",
+        "バックアップするデータがありません。\n\n" +
+          "🚀 「🔧 初期セットアップ」から新しいテーブルを作成してください。",
+        ui.ButtonSet.OK
+      );
+      return "バックアップするデータがありません";
+    }
+
+    const response = ui.alert(
+      "💾 バックアップ作成",
+      "現在のデータをバックアップして新しいテーブルを作成します。\n\n" +
+        "📋 実行内容：\n" +
+        "1️⃣ 現在のシートを「Backup_日付」として複製\n" +
+        "2️⃣ 現在のシートをクリア\n" +
+        "3️⃣ 新しい構造化テーブルを作成\n\n" +
+        "続行しますか？",
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response === ui.Button.YES) {
+      // バックアップシート名を生成
+      const now = new Date();
+      const timestamp = Utilities.formatDate(
+        now,
+        Session.getScriptTimeZone(),
+        "yyyy-MM-dd_HH-mm"
+      );
+      const backupName = `Backup_${timestamp}`;
+
+      // 現在のシートを複製してバックアップを作成
+      const backupSheet = currentSheet.copyTo(spreadsheet);
+      backupSheet.setName(backupName);
+
+      // 現在のシートをクリア
+      clearAllData();
+
+      // 新しい構造化テーブルを作成
+      const result = createStructuredTable();
+
+      ui.alert(
+        "✅ バックアップ完了",
+        `バックアップが正常に作成されました！\n\n` +
+          `💾 バックアップシート: 「${backupName}」\n` +
+          `🆕 現在のシート: 新しい構造化テーブル\n\n` +
+          `🚀 B列にプロンプトを入力して画像生成を開始できます。`,
+        ui.ButtonSet.OK
+      );
+
+      return `✅ バックアップ「${backupName}」を作成し、新しいテーブルを設定しました`;
+    } else {
+      return "バックアップ作成をキャンセルしました";
+    }
+  } catch (error) {
+    console.error("バックアップ作成エラー:", error);
+    SpreadsheetApp.getUi().alert(
+      "エラー",
+      "バックアップの作成に失敗しました: " + error.message,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    throw error;
+  }
+}
+
+/**
+ * 設定確認（API キー等の状態をチェック）
+ */
+function checkSettings() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    let statusMessage = "⚙️ 設定状況\n\n";
+
+    // API キーの確認
+    try {
+      const apiKey = getOpenAIApiKey();
+      statusMessage += "🔐 OpenAI API キー: ✅ 設定済み\n";
+      statusMessage += `   キー: ${apiKey.substring(0, 7)}...${apiKey.substring(
+        apiKey.length - 4
+      )}\n\n`;
+    } catch (error) {
+      statusMessage += "🔐 OpenAI API キー: ❌ 未設定\n";
+      statusMessage += "   エラー: " + error.message + "\n\n";
+    }
+
+    // 権限状況の確認
+    const permissionGranted = isPermissionGranted();
+    statusMessage += `🔓 権限承認: ${
+      permissionGranted ? "✅ 承認済み" : "❌ 未承認"
+    }\n\n`;
+
+    // 使用履歴の確認
+    const hasUsedBefore = !isFirstTimeUser();
+    statusMessage += `📊 使用履歴: ${
+      hasUsedBefore ? "✅ 使用経験あり" : "🆕 初回使用"
+    }\n\n`;
+
+    // シート状況の確認
+    const hasData = checkForAnyData();
+    statusMessage += `📋 シートデータ: ${
+      hasData ? "✅ データあり" : "📝 空のシート"
+    }\n\n`;
+
+    // 推奨アクション
+    statusMessage += "🚀 推奨アクション:\n";
+
+    try {
+      getOpenAIApiKey();
+      if (!hasData) {
+        statusMessage += "• 「🔧 初期セットアップ」でテーブル作成\n";
+        statusMessage += "• 「📱 サイドバーを開く」で画像生成開始\n";
+      } else {
+        statusMessage += "• 「📱 サイドバーを開く」で画像生成継続\n";
+        statusMessage += "• 必要に応じて「💾 バックアップ作成」\n";
+      }
+    } catch (error) {
+      statusMessage += "• まず OpenAI API キーを設定してください\n";
+      statusMessage +=
+        "• スクリプトエディタ → プロジェクトの設定 → スクリプト プロパティ\n";
+      statusMessage += "• プロパティ: OPENAI_API_KEY\n";
+      statusMessage += "• 値: あなたのOpenAI APIキー\n";
+    }
+
+    ui.alert("設定確認", statusMessage, ui.ButtonSet.OK);
+
+    return statusMessage;
+  } catch (error) {
+    console.error("設定確認エラー:", error);
+    SpreadsheetApp.getUi().alert(
+      "エラー",
+      "設定の確認に失敗しました: " + error.message,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    throw error;
+  }
+}
+
+/**
+ * データ存在チェック関数
+ */
+function checkForAnyData() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+
+    // 1行1列のみ、または完全に空の場合は「データなし」
+    if (lastRow <= 1 && lastCol <= 1) {
+      return false;
+    }
+
+    // データ範囲をチェック
+    if (lastRow > 1 || lastCol > 1) {
+      const dataRange = sheet.getRange(1, 1, lastRow || 1, lastCol || 1);
+      const values = dataRange.getValues();
+
+      // すべてのセルが空かチェック
+      for (let i = 0; i < values.length; i++) {
+        for (let j = 0; j < values[i].length; j++) {
+          if (values[i][j] && values[i][j] !== "") {
+            return true; // データが見つかった
+          }
+        }
+      }
+    }
+
+    return false; // データが見つからない
+  } catch (error) {
+    console.error("データチェックエラー:", error);
+    return false; // エラーの場合はデータなしとして扱う
+  }
+}
+
+/**
+ * セットアップ実行関数
+ */
+function executeSetup(setupOption) {
+  try {
+    switch (setupOption) {
+      case "new":
+        // 新規セットアップ
+        return createStructuredTable();
+
+      case "clear":
+        // クリアして新規作成
+        clearAllData();
+        return createStructuredTable();
+
+      case "backup":
+        // バックアップを取って新規作成
+        return createBackupAndNewTable();
+
+      default:
+        throw new Error("無効なセットアップオプション: " + setupOption);
+    }
+  } catch (error) {
+    console.error("セットアップ実行エラー:", error);
+    throw new Error(`セットアップに失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 構造化テーブル作成（100行の8列構造）
+ */
+function createStructuredTable() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // シートをクリア
+    clearAllData();
+
+    console.log("構造化テーブル作成開始");
+
+    // ヘッダー行を作成（1行目）
+    const headers = [
+      "No.", // A列: 番号
+      "プロンプト", // B列: プロンプト入力
+      "📄 完全プロンプト", // C列: 完全なプロンプト表示
+      "🖼️ 生成画像", // D列: 画像
+      "📐 画像比率", // E列: 比率
+      "⏰ 生成日時", // F列: 日時
+      "✅ ステータス", // G列: ステータス
+      "☑️ 選択", // H列: チェックボックス
+    ];
+
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setValues([headers]);
+
+    // ヘッダー行のスタイル設定
+    headerRange.setBackground("#1a73e8");
+    headerRange.setFontColor("white");
+    headerRange.setFontWeight("bold");
+    headerRange.setHorizontalAlignment("center");
+    headerRange.setVerticalAlignment("middle");
+    headerRange.setFontSize(12);
+    sheet.setRowHeight(1, 45);
+
+    // 列幅の最適化
+    sheet.setColumnWidth(1, 60); // A: No.
+    sheet.setColumnWidth(2, 280); // B: プロンプト
+    sheet.setColumnWidth(3, 350); // C: 完全プロンプト
+    sheet.setColumnWidth(4, 220); // D: 画像
+    sheet.setColumnWidth(5, 100); // E: 比率
+    sheet.setColumnWidth(6, 140); // F: 日時
+    sheet.setColumnWidth(7, 100); // G: ステータス
+    sheet.setColumnWidth(8, 80); // H: 選択
+
+    console.log("ヘッダー行と列幅を設定完了");
+
+    // 100行のデータ行を作成（2-101行目）
+    for (let i = 1; i <= 100; i++) {
+      const row = i + 1;
+
+      try {
+        // A列: 番号
+        const numberCell = sheet.getRange(row, 1);
+        numberCell.setValue(i);
+        numberCell.setHorizontalAlignment("center");
+        numberCell.setFontWeight("bold");
+        numberCell.setBackground("#f8f9fa");
+
+        // B列: プロンプト入力エリア
+        const promptCell = sheet.getRange(row, 2);
+        promptCell.setWrap(true);
+        promptCell.setVerticalAlignment("top");
+        promptCell.setFontSize(11);
+        promptCell.setPadding(8, 8, 8, 8);
+        promptCell.setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
+        promptCell.setNote(
+          "ここに画像生成用のプロンプトを入力してください。\n長いプロンプトでも問題ありません。"
+        );
+
+        // H列: チェックボックス
+        const checkboxCell = sheet.getRange(row, 8);
+        checkboxCell.insertCheckboxes();
+        checkboxCell.setHorizontalAlignment("center");
+        checkboxCell.setVerticalAlignment("middle");
+
+        // 行の高さを設定
+        sheet.setRowHeight(row, 120);
+
+        // 境界線を設定
+        const rowRange = sheet.getRange(row, 1, 1, headers.length);
+        rowRange.setBorder(true, true, true, true, true, true);
+
+        // 10行ごとに薄い区切り線を追加
+        if (i % 10 === 0) {
+          rowRange.setBackground("#f0f0f0");
+          console.log(`${i}行目まで作成完了`);
+        }
+      } catch (rowError) {
+        console.error(`行${row}の作成でエラー:`, rowError);
+        // 個別行のエラーは続行
+      }
+    }
+
+    console.log("100行のテーブル作成完了");
+
+    // 完了メッセージを下部に追加
+    try {
+      const messageRow = 103;
+      const messageRange = sheet.getRange(messageRow, 1, 1, 8);
+      messageRange.merge();
+      messageRange.setValue(
+        `✨ 構造化テーブルを作成しました！B列にプロンプトを入力してください。`
+      );
+      messageRange.setBackground("#e8f5e8");
+      messageRange.setFontColor("#2e7d32");
+      messageRange.setHorizontalAlignment("center");
+      messageRange.setFontWeight("bold");
+      messageRange.setFontSize(14);
+      sheet.setRowHeight(messageRow, 40);
+
+      console.log("完了メッセージを追加しました");
+    } catch (messageError) {
+      console.error("完了メッセージの追加でエラー:", messageError);
+      // メッセージエラーは無視して続行
+    }
+
+    return "✅ 構造化テーブルを作成しました！B列にプロンプトを入力してください。";
+  } catch (error) {
+    console.error("構造化テーブル作成エラー:", error);
+    throw new Error(`構造化テーブルの作成に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 選択された画像のみ削除（他のデータは保持）
+ */
+function deleteSelectedImages() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return "❌ データがありません";
+    }
+
+    const deletedImages = [];
+    let deleteCount = 0;
+
+    // チェックされた行を検索して画像のみ削除
+    for (let i = 2; i <= lastRow; i++) {
+      const checkboxCell = sheet.getRange(i, 8); // H列（チェックボックス）
+      const isChecked = checkboxCell.getValue();
+
+      if (isChecked === true) {
+        const imageCell = sheet.getRange(i, 4); // D列（画像列）
+        const imageFormula = imageCell.getFormula();
+
+        if (imageFormula && imageFormula.includes("=IMAGE(")) {
+          // 画像のみを削除（他のデータは保持）
+          imageCell.clear();
+
+          // ステータスを「画像削除済み」に更新
+          const statusCell = sheet.getRange(i, 7); // G列（ステータス）
+          statusCell.setValue("🗑️ 画像削除");
+          statusCell.setHorizontalAlignment("center");
+          statusCell.setVerticalAlignment("middle");
+          statusCell.setFontWeight("bold");
+          statusCell.setFontColor("#d32f2f");
+          statusCell.setBackground("#ffebee");
+
+          // プロンプト情報を取得（ログ用）
+          const promptCell = sheet.getRange(i, 2);
+          const promptValue = promptCell.getValue();
+          const promptText = promptValue
+            ? promptValue.toString().substring(0, 30) + "..."
+            : `行${i}`;
+
+          deletedImages.push(promptText);
+          deleteCount++;
+
+          // チェックボックスを解除
+          checkboxCell.setValue(false);
+        } else {
+          console.log(`行${i}: 画像が存在しないためスキップ`);
+        }
+      }
+    }
+
+    if (deleteCount === 0) {
+      return "❌ 選択された画像がありません。チェックボックスを選択してください。";
+    }
+
+    console.log(`${deleteCount}枚の画像を削除:`, deletedImages);
+    return `✅ ${deleteCount}枚の画像を削除しました！\n他のデータ（プロンプト、日時等）は保持されています。`;
+  } catch (error) {
+    console.error("選択画像削除エラー:", error);
+    throw new Error(`選択画像の削除に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * すべての画像を一括削除（他のデータは保持）
+ */
+function deleteAllImages() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return "❌ データがありません";
+    }
+
+    let deleteCount = 0;
+    const deletedImages = [];
+
+    // すべての行をチェックして画像を削除
+    for (let i = 2; i <= lastRow; i++) {
+      const imageCell = sheet.getRange(i, 4); // D列（画像列）
+      const imageFormula = imageCell.getFormula();
+
+      if (imageFormula && imageFormula.includes("=IMAGE(")) {
+        // 画像のみを削除（他のデータは保持）
+        imageCell.clear();
+
+        // ステータスを「画像削除済み」に更新
+        const statusCell = sheet.getRange(i, 7); // G列（ステータス）
+        statusCell.setValue("🗑️ 画像削除");
+        statusCell.setHorizontalAlignment("center");
+        statusCell.setVerticalAlignment("middle");
+        statusCell.setFontWeight("bold");
+        statusCell.setFontColor("#d32f2f");
+        statusCell.setBackground("#ffebee");
+
+        // プロンプト情報を取得（ログ用）
+        const promptCell = sheet.getRange(i, 2);
+        const promptValue = promptCell.getValue();
+        const promptText = promptValue
+          ? promptValue.toString().substring(0, 20) + "..."
+          : `行${i}`;
+
+        deletedImages.push(promptText);
+        deleteCount++;
+
+        // チェックボックスを解除（選択状態もリセット）
+        const checkboxCell = sheet.getRange(i, 8);
+        checkboxCell.setValue(false);
+      }
+    }
+
+    if (deleteCount === 0) {
+      return "❌ 削除対象の画像がありません";
+    }
+
+    console.log(`${deleteCount}枚の画像を一括削除:`, deletedImages.slice(0, 5)); // 最初の5個のみログ出力
+    return `✅ ${deleteCount}枚の画像を一括削除しました！\n他のデータ（プロンプト、日時等）は完全に保持されています。`;
+  } catch (error) {
+    console.error("画像一括削除エラー:", error);
+    throw new Error(`画像の一括削除に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 画像削除後の行整理（オプション機能）
+ */
+function cleanupAfterImageDeletion() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return "❌ データがありません";
+    }
+
+    let cleanupCount = 0;
+
+    // 画像削除済みの行の行高を通常サイズに戻す
+    for (let i = 2; i <= lastRow; i++) {
+      const statusCell = sheet.getRange(i, 7);
+      const statusValue = statusCell.getValue();
+
+      if (statusValue && statusValue.toString().includes("🗑️ 画像削除")) {
+        // 行高を通常サイズ（30px）に変更
+        sheet.setRowHeight(i, 30);
+        cleanupCount++;
+      }
+    }
+
+    if (cleanupCount > 0) {
+      return `✅ ${cleanupCount}行の行高を最適化しました`;
+    } else {
+      return "📝 整理対象の行がありませんでした";
+    }
+  } catch (error) {
+    console.error("削除後整理エラー:", error);
+    throw new Error(`削除後の整理に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 削除された画像の復元準備（プロンプトベース）
+ */
+function prepareImageRestoration() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return "❌ データがありません";
+    }
+
+    const restorationCandidates = [];
+
+    // 画像削除済みでプロンプトが残っている行を検出
+    for (let i = 2; i <= lastRow; i++) {
+      const statusCell = sheet.getRange(i, 7);
+      const statusValue = statusCell.getValue();
+      const promptCell = sheet.getRange(i, 2);
+      const promptValue = promptCell.getValue();
+
+      if (
+        statusValue &&
+        statusValue.toString().includes("🗑️ 画像削除") &&
+        promptValue &&
+        promptValue.toString().trim() !== ""
+      ) {
+        restorationCandidates.push({
+          row: i,
+          prompt: promptValue.toString().substring(0, 50) + "...",
+        });
+
+        // ステータスを「復元可能」に更新
+        statusCell.setValue("🔄 復元可能");
+        statusCell.setFontColor("#1976d2");
+        statusCell.setBackground("#e3f2fd");
+      }
+    }
+
+    if (restorationCandidates.length === 0) {
+      return "📝 復元可能な行がありません";
+    }
+
+    console.log("復元可能な行:", restorationCandidates);
+    return `✅ ${restorationCandidates.length}行が復元可能です。\nプロンプトが保持されているため、再生成で画像を復元できます。`;
+  } catch (error) {
+    console.error("復元準備エラー:", error);
+    throw new Error(`復元準備に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 画像削除の確認ダイアログ付き一括削除
+ */
+function deleteAllImagesWithConfirmation() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const response = ui.alert(
+      "🗑️ 画像一括削除",
+      "すべての画像を削除します。\n\n" +
+        "📋 削除される内容：\n" +
+        "• すべての生成済み画像（D列）\n\n" +
+        "📝 保持される内容：\n" +
+        "• プロンプト（B列・C列）\n" +
+        "• 生成日時（F列）\n" +
+        "• その他すべてのデータ\n\n" +
+        "💡 プロンプトが残っているため、後で再生成可能です。\n\n" +
+        "続行しますか？",
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response === ui.Button.YES) {
+      const result = deleteAllImages();
+
+      // 削除後の整理も実行
+      cleanupAfterImageDeletion();
+      prepareImageRestoration();
+
+      ui.alert(
+        "✅ 削除完了",
+        result +
+          "\n\n" +
+          "🔄 プロンプトが保持されているため、\n" +
+          "「🎨 画像生成」で再生成が可能です。",
+        ui.ButtonSet.OK
+      );
+
+      return result;
+    } else {
+      return "画像削除をキャンセルしました";
+    }
+  } catch (error) {
+    console.error("確認付き画像削除エラー:", error);
+    SpreadsheetApp.getUi().alert(
+      "エラー",
+      "画像削除に失敗しました: " + error.message,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    throw error;
   }
 }

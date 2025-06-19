@@ -197,6 +197,17 @@
       box-shadow: 0 12px 30px rgba(255, 106, 0, 0.4);
     }
 
+    .btn-danger {
+      background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+      color: white;
+      box-shadow: 0 6px 20px rgba(229, 62, 62, 0.25);
+    }
+
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #c53030 0%, #b91c1c 100%);
+      box-shadow: 0 12px 30px rgba(229, 62, 62, 0.4);
+    }
+
     /* ボタン無効化スタイル */
     .btn:disabled,
     .btn.disabled {
@@ -546,6 +557,14 @@
               🔄 再生成
             </button>
           </div>
+          <div class="button-row">
+            <button class="btn btn-danger btn-small" onclick="deleteSelectedImages()">
+              🗑️ 選択削除
+            </button>
+            <button class="btn btn-danger btn-small" onclick="deleteAllImagesWithConfirmation()">
+              🗑️ 全削除
+            </button>
+          </div>
         </div>
 
         <!-- その他操作グループ -->
@@ -876,6 +895,34 @@
           showResult('エラー: ' + error.message, true);
         })
         .regenerateSelectedImagesWithProgress();
+    }
+
+    function deleteSelectedImages() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+          // 削除完了後にボタン状態を再チェック
+          checkSheetState();
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .deleteSelectedImages();
+    }
+
+    function deleteAllImagesWithConfirmation() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+          // 削除完了後にボタン状態を再チェック
+          checkSheetState();
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .deleteAllImagesWithConfirmation();
     }
   </script>
 </body>
