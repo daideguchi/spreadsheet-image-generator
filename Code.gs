@@ -1686,3 +1686,105 @@ function regenerateSelectedImages() {
     throw new Error(`選択画像の再生成に失敗しました: ${error.message}`);
   }
 }
+
+/**
+ * シート保護機能付き画像生成（プログレスバー対応）
+ */
+function generateImagesFromStructuredTableWithProgress() {
+  let protection = null;
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // シートを保護（編集禁止）
+    console.log("シートを保護します");
+    protection = sheet.protect().setDescription("画像生成中 - 編集禁止");
+    protection.setWarningOnly(false);
+
+    // 画像生成処理を実行
+    const result = generateImagesFromStructuredTable();
+
+    return result;
+  } catch (error) {
+    console.error("保護付き画像生成エラー:", error);
+    throw new Error(`画像生成に失敗しました: ${error.message}`);
+  } finally {
+    // 処理完了後、必ずシート保護を解除
+    if (protection) {
+      try {
+        protection.remove();
+        console.log("シート保護を解除しました");
+      } catch (removeError) {
+        console.error("シート保護解除エラー:", removeError);
+      }
+    }
+  }
+}
+
+/**
+ * シート保護機能付き選択画像再生成（プログレスバー対応）
+ */
+function regenerateSelectedImagesWithProgress() {
+  let protection = null;
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // シートを保護（編集禁止）
+    console.log("シートを保護します");
+    protection = sheet.protect().setDescription("画像再生成中 - 編集禁止");
+    protection.setWarningOnly(false);
+
+    // 選択画像再生成処理を実行
+    const result = regenerateSelectedImages();
+
+    return result;
+  } catch (error) {
+    console.error("保護付き画像再生成エラー:", error);
+    throw new Error(`画像再生成に失敗しました: ${error.message}`);
+  } finally {
+    // 処理完了後、必ずシート保護を解除
+    if (protection) {
+      try {
+        protection.remove();
+        console.log("シート保護を解除しました");
+      } catch (removeError) {
+        console.error("シート保護解除エラー:", removeError);
+      }
+    }
+  }
+}
+
+/**
+ * 進捗通知機能付き画像生成（将来の拡張用）
+ */
+function generateImagesWithProgressCallback(prompts, callbackFunction) {
+  try {
+    const totalSteps = prompts.length;
+    let completedSteps = 0;
+
+    const results = [];
+
+    prompts.forEach((prompt, index) => {
+      try {
+        // 進捗を通知（将来的にリアルタイム更新に使用）
+        const progress = Math.round((completedSteps / totalSteps) * 100);
+        console.log(
+          `画像生成進捗: ${progress}% (${completedSteps + 1}/${totalSteps})`
+        );
+
+        // 個別画像生成
+        const imageResult = generateImages([prompt]);
+        results.push(...imageResult);
+
+        completedSteps++;
+      } catch (imageError) {
+        console.error(`画像${index + 1}の生成エラー:`, imageError);
+        // エラーが発生してもその他の画像生成は続行
+      }
+    });
+
+    return results;
+  } catch (error) {
+    console.error("進捗付き画像生成エラー:", error);
+    throw new Error(`画像生成に失敗しました: ${error.message}`);
+  }
+}
