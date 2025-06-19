@@ -812,7 +812,7 @@ function generateImagesFromStructuredTable() {
 
         // 完全なプロンプトを取得（新しい省略表示システム対応）
         let fullPrompt = getFullPrompt(sheet, actualRow);
-        
+
         if (!fullPrompt) {
           console.log(`行${actualRow}: プロンプトが取得できませんでした`);
           return; // この行をスキップ
@@ -821,11 +821,9 @@ function generateImagesFromStructuredTable() {
         console.log(
           `行${actualRow}: 完全プロンプト取得: ${fullPrompt.substring(
             0,
-                50
-              )}...`
-            );
-          }
-        }
+            50
+          )}...`
+        );
 
         validPrompts.push(fullPrompt);
         promptRows.push(actualRow);
