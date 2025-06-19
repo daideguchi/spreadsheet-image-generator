@@ -385,30 +385,22 @@ function analyzePromptForOptimalSettings(prompt) {
 }
 
 /**
- * プロンプトの最適化処理（シンプル版）
- * Web版DALL-E 3と同じシンプルなアプローチ
+ * プロンプトの最適化処理（完全無改変版）
+ * ユーザーのプロンプトを一切改変せずそのまま使用
  */
 function optimizePromptForWebParity(prompt) {
-  // 基本的にプロンプトをそのまま使用（Web版と同じ）
-  // 不要な処理を削除して、ユーザーの意図を最大限保持
-  let cleanedPrompt = prompt.trim();
-
-  // 明らかに不要な指示文のみ除去（最小限）
-  cleanedPrompt = cleanedPrompt.replace(
-    /^(以下のプロンプトに従い、?画像を生成してください。?\s*)/gi,
-    ""
-  );
-
-  return cleanedPrompt.trim();
+  // ユーザーのプロンプトを完全にそのまま使用
+  // 一切の改変を行わない
+  return prompt;
 }
 
 /**
- * プロンプト品質向上処理（最小限）
- * Web版DALL-Eと同じシンプルなアプローチ
+ * プロンプト品質向上処理（完全無改変版）
+ * ユーザーのプロンプトを一切改変せずそのまま使用
  */
 function enhancePromptForQuality(originalPrompt) {
-  // Web版と同じように、ユーザーのプロンプトをそのまま使用
-  // 余計な加工をしないことで、ユーザーの意図を正確に反映
+  // ユーザーのプロンプトを完全にそのまま使用
+  // 一切の改変・加工を行わない
   return originalPrompt;
 }
 
@@ -433,19 +425,18 @@ function generateImages(prompts) {
       try {
         console.log(`画像生成中 ${index + 1}/${prompts.length}: ${prompt}`);
 
-        // プロンプトの最適化処理（Web版と同等の処理）
-        const optimizedPrompt = optimizePromptForWebParity(prompt);
-        const enhancedPrompt = enhancePromptForQuality(optimizedPrompt);
+        // ユーザーのプロンプトをそのまま使用（一切の改変なし）
+        const finalPrompt = prompt;
 
         // デバッグ用ログ：実際に送信されるプロンプトを確認
-        console.log(`送信プロンプト: ${enhancedPrompt}`);
+        console.log(`送信プロンプト: ${finalPrompt}`);
         console.log(
           `選択されたスタイル: ${selectedStyle}, サイズ: ${selectedSize}`
         );
 
         // Web版と同じパラメータ設定
         const payload = {
-          prompt: enhancedPrompt,
+          prompt: finalPrompt, // ユーザーのプロンプトをそのまま使用
           n: 1,
           size: selectedSize,
           model: "dall-e-3",
@@ -558,7 +549,7 @@ function generateImages(prompts) {
           prompt: prompt,
           url: data.data[0].url,
           size: selectedSize, // 画像サイズ情報を追加
-          revised_prompt: data.data[0].revised_prompt || enhancedPrompt, // 実際に使用されたプロンプト
+          revised_prompt: data.data[0].revised_prompt || finalPrompt, // 実際に使用されたプロンプト
           original_prompt: prompt, // 元のプロンプトも保存
         });
 
