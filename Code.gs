@@ -340,25 +340,28 @@ function generateImages(prompts) {
       try {
         console.log(`画像生成中 ${index + 1}/${prompts.length}: ${prompt}`);
 
-        // ユーザーのプロンプトをそのまま使用（Web版互換性のため完全無改変）
-        // Web版ChatGPTと同じ方式：プロンプト改変防止指示を追加
-        const finalPrompt = `I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS: ${prompt}`;
+        // 2025年6月現在の調査結果に基づく最新の対応
+        // Web版ChatGPTでは現在DALL-E 3ではなく新しい画像生成モデル（gpt-image-1）を使用
+        // しかし、API経由でのDALL-E 3は依然として利用可能
+        // プロンプト忠実性を最大化するため、ユーザーのプロンプトをそのまま使用
+        const finalPrompt = prompt;
 
         // デバッグ用ログ：実際に送信されるプロンプトを確認
-        console.log(`元のプロンプト: ${prompt}`);
-        console.log(`送信プロンプト（改変防止付き）: ${finalPrompt}`);
+        console.log(`送信プロンプト（完全無改変）: ${finalPrompt}`);
         console.log(
           `選択されたスタイル: ${selectedStyle}, サイズ: ${selectedSize}`
         );
 
-        // Web版DALL-E 3と完全に同じパラメータ設定
+        // 2025年6月最新情報：DALL-E 3 API最適設定
+        // Web版ChatGPTは現在新しいモデル（gpt-image-1）を使用しているが
+        // API版DALL-E 3は独立して動作し、品質とプロンプト忠実性を重視
         const payload = {
           prompt: finalPrompt, // ユーザーのプロンプトを完全にそのまま使用
           n: 1,
           size: selectedSize,
           model: "dall-e-3",
-          quality: "hd", // Web版ChatGPTは常にHD品質を使用
-          style: "natural", // Web版デフォルトはnatural（vividは特別指定時のみ）
+          quality: "hd", // 高品質画像生成のためHD設定を使用
+          style: "natural", // デフォルトスタイル（最も汎用的）
           response_format: "url",
         };
 
