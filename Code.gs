@@ -280,106 +280,35 @@ function getRangeValues(a1Notation) {
 }
 
 /**
- * 高度なプロンプト解析による最適設定判定
- * ブラウザ版DALL-Eの判定ロジックを模倣した自動設定システム
+ * サイズ判定のみの最小限解析（Web版DALL-E準拠）
+ * プロンプトに基づいてサイズのみを判定し、スタイルは常にnaturalを使用
  */
 function analyzePromptForOptimalSettings(prompt) {
-  // スタイル判定のための詳細解析
-  const styleAnalysis = {
-    // アニメ・イラスト系キーワード
-    anime:
-      /(anime|manga|cartoon|illustration|イラスト|アニメ|漫画|キャラクター|2Dアニメスタイル|アニメーション)/i.test(
-        prompt
-      ),
-    flat: /(flat|フラット|ベタ塗り|2D|太線|太め|outline|輪郭|太い黒|くっきり|ベタ)/i.test(
-      prompt
-    ),
-    simple:
-      /(simple|シンプル|minimalist|clean|すっきり|スッキリ|クリーン)/i.test(
-        prompt
-      ),
-
-    // リアル系キーワード
-    photorealistic:
-      /(photo|photograph|realistic|real|写真|リアル|実写|フォトリアル)/i.test(
-        prompt
-      ),
-    cinematic:
-      /(cinematic|movie|film|映画|シネマ|dramatic|ドラマティック)/i.test(
-        prompt
-      ),
-    detailed:
-      /(detailed|intricate|complex|精密|詳細|elaborate|ディテール)/i.test(
-        prompt
-      ),
-
-    // アート系キーワード
-    painting: /(painting|oil|watercolor|acrylic|絵画|油彩|水彩|アクリル)/i.test(
-      prompt
-    ),
-    digital: /(digital art|CG|3D|render|レンダー|デジタル)/i.test(prompt),
-
-    // 特殊スタイル
-    pixel: /(pixel|ピクセル|8bit|16bit|retro|レトロ)/i.test(prompt),
-    sketch: /(sketch|drawing|pencil|鉛筆|スケッチ|ドローイング)/i.test(prompt),
-
-    // 追加のスタイル判定
-    colorful:
-      /(colorful|カラフル|色彩|高彩度|原色|ポップ|bright|vivid colors|鮮やか)/i.test(
-        prompt
-      ),
-    educational:
-      /(educational|教育|知育|教材|脳トレ|子ども|高齢者|わかりやすい)/i.test(
-        prompt
-      ),
-  };
-
-  // サイズ判定のための解析
+  // サイズ判定のみ（最小限の解析）
   const sizeAnalysis = {
-    square:
-      /(1:1|正方形|square|icon|アイコン|profile|プロフィール|スクエア)/i.test(
-        prompt
-      ),
-    portrait:
-      /(portrait|vertical|縦|人物|顔|face|9:16|縦長|ポートレート)/i.test(
-        prompt
-      ),
+    portrait: /(portrait|vertical|縦|人物|顔|9:16|縦長|ポートレート)/i.test(
+      prompt
+    ),
     landscape:
-      /(landscape|horizontal|横|風景|panorama|16:9|横長|ランドスケープ)/i.test(
+      /(landscape|horizontal|横|風景|panorama|16:9|横長|ランドスケープ|wide|panoramic|パノラマ|ワイド)/i.test(
         prompt
       ),
-    wide: /(wide|panoramic|パノラマ|ワイド|横長)/i.test(prompt),
   };
 
-  // スタイル決定ロジック（Web版と同じシンプルな判定）
-  let selectedStyle = "natural"; // デフォルトをnaturalに変更（Web版と同じ）
-
-  // 明確にリアル・写真系を指定している場合のみvivid
-  if (
-    styleAnalysis.photorealistic ||
-    styleAnalysis.cinematic ||
-    styleAnalysis.detailed
-  ) {
-    selectedStyle = "vivid";
-  }
-
-  // サイズ決定ロジック（より正確な判定）
+  // サイズ決定（シンプルな判定）
   let selectedSize = "1024x1024"; // デフォルト（正方形）
 
-  // 明示的なサイズ指定を優先
-  if (sizeAnalysis.square || prompt.includes("正方形")) {
-    selectedSize = "1024x1024";
-  } else if (sizeAnalysis.portrait) {
-    selectedSize = "1024x1792";
-  } else if (sizeAnalysis.landscape || sizeAnalysis.wide) {
-    selectedSize = "1792x1024";
-  } else {
-    // 明確な指定がない場合は正方形をデフォルトに（Web版と同じ）
-    selectedSize = "1024x1024";
+  if (sizeAnalysis.portrait) {
+    selectedSize = "1024x1792"; // 縦長
+  } else if (sizeAnalysis.landscape) {
+    selectedSize = "1792x1024"; // 横長
   }
 
+  // スタイルは常にnaturalを使用（Web版デフォルト）
+  const selectedStyle = "natural";
+
   console.log(
-    `プロンプト解析結果: style=${selectedStyle}, size=${selectedSize}`
+    `サイズ判定結果: size=${selectedSize}, style=${selectedStyle} (固定)`
   );
   return { style: selectedStyle, size: selectedSize };
 }
@@ -434,15 +363,15 @@ function generateImages(prompts) {
           `選択されたスタイル: ${selectedStyle}, サイズ: ${selectedSize}`
         );
 
-        // Web版と同じパラメータ設定
+        // Web版DALL-E 3と完全に同じパラメータ設定
         const payload = {
-          prompt: finalPrompt, // ユーザーのプロンプトをそのまま使用
+          prompt: finalPrompt, // ユーザーのプロンプトを完全にそのまま使用
           n: 1,
           size: selectedSize,
           model: "dall-e-3",
-          quality: "hd", // HD品質（Web版デフォルト）
-          style: selectedStyle, // natural/vividの適切な選択
-          response_format: "url", // URL形式で受信
+          quality: "standard", // Web版デフォルトはstandard（HDは特別指定時のみ）
+          style: "natural", // Web版デフォルトはnatural（vividは特別指定時のみ）
+          response_format: "url",
         };
 
         // リトライ機能付きAPIリクエスト
