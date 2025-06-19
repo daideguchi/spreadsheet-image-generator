@@ -288,20 +288,30 @@ function analyzePromptForOptimalSettings(prompt) {
   const styleAnalysis = {
     // アニメ・イラスト系キーワード
     anime:
-      /(anime|manga|cartoon|illustration|イラスト|アニメ|漫画|キャラクター)/i.test(
+      /(anime|manga|cartoon|illustration|イラスト|アニメ|漫画|キャラクター|2Dアニメスタイル|アニメーション)/i.test(
         prompt
       ),
-    flat: /(flat|フラット|ベタ塗り|2D|太線|太め|outline|輪郭)/i.test(prompt),
-    simple: /(simple|シンプル|minimalist|clean|すっきり|スッキリ)/i.test(
+    flat: /(flat|フラット|ベタ塗り|2D|太線|太め|outline|輪郭|太い黒|くっきり|ベタ)/i.test(
       prompt
     ),
+    simple:
+      /(simple|シンプル|minimalist|clean|すっきり|スッキリ|クリーン)/i.test(
+        prompt
+      ),
 
     // リアル系キーワード
-    photorealistic: /(photo|photograph|realistic|real|写真|リアル|実写)/i.test(
-      prompt
-    ),
-    cinematic: /(cinematic|movie|film|映画|シネマ|dramatic)/i.test(prompt),
-    detailed: /(detailed|intricate|complex|精密|詳細|elaborate)/i.test(prompt),
+    photorealistic:
+      /(photo|photograph|realistic|real|写真|リアル|実写|フォトリアル)/i.test(
+        prompt
+      ),
+    cinematic:
+      /(cinematic|movie|film|映画|シネマ|dramatic|ドラマティック)/i.test(
+        prompt
+      ),
+    detailed:
+      /(detailed|intricate|complex|精密|詳細|elaborate|ディテール)/i.test(
+        prompt
+      ),
 
     // アート系キーワード
     painting: /(painting|oil|watercolor|acrylic|絵画|油彩|水彩|アクリル)/i.test(
@@ -312,23 +322,46 @@ function analyzePromptForOptimalSettings(prompt) {
     // 特殊スタイル
     pixel: /(pixel|ピクセル|8bit|16bit|retro|レトロ)/i.test(prompt),
     sketch: /(sketch|drawing|pencil|鉛筆|スケッチ|ドローイング)/i.test(prompt),
+
+    // 追加のスタイル判定
+    colorful:
+      /(colorful|カラフル|色彩|高彩度|原色|ポップ|bright|vivid colors|鮮やか)/i.test(
+        prompt
+      ),
+    educational:
+      /(educational|教育|知育|教材|脳トレ|子ども|高齢者|わかりやすい)/i.test(
+        prompt
+      ),
   };
 
   // サイズ判定のための解析
   const sizeAnalysis = {
-    square: /(1:1|正方形|square|icon|アイコン|profile|プロフィール)/i.test(
-      prompt
-    ),
-    portrait: /(portrait|vertical|縦|人物|顔|face|9:16)/i.test(prompt),
-    landscape: /(landscape|horizontal|横|風景|panorama|16:9)/i.test(prompt),
+    square:
+      /(1:1|正方形|square|icon|アイコン|profile|プロフィール|スクエア)/i.test(
+        prompt
+      ),
+    portrait:
+      /(portrait|vertical|縦|人物|顔|face|9:16|縦長|ポートレート)/i.test(
+        prompt
+      ),
+    landscape:
+      /(landscape|horizontal|横|風景|panorama|16:9|横長|ランドスケープ)/i.test(
+        prompt
+      ),
     wide: /(wide|panoramic|パノラマ|ワイド|横長)/i.test(prompt),
   };
 
-  // スタイル決定ロジック（ブラウザ版の判定を模倣）
+  // スタイル決定ロジック（Web版により近い判定）
   let selectedStyle = "vivid"; // デフォルト
 
-  // アニメ・フラット系の場合はnatural
-  if (styleAnalysis.anime || styleAnalysis.flat || styleAnalysis.simple) {
+  // アニメ・フラット・教育系の場合は明確にnatural
+  if (
+    styleAnalysis.anime ||
+    styleAnalysis.flat ||
+    styleAnalysis.simple ||
+    styleAnalysis.educational ||
+    styleAnalysis.colorful
+  ) {
     selectedStyle = "natural";
   }
 
@@ -337,38 +370,36 @@ function analyzePromptForOptimalSettings(prompt) {
     selectedStyle = "natural";
   }
 
-  // 明確にリアル系を指定している場合はvivid
-  if (styleAnalysis.photorealistic || styleAnalysis.cinematic) {
+  // 明確にリアル系を指定している場合のみvivid
+  if (
+    (styleAnalysis.photorealistic ||
+      styleAnalysis.cinematic ||
+      styleAnalysis.detailed) &&
+    !styleAnalysis.anime &&
+    !styleAnalysis.flat &&
+    !styleAnalysis.simple
+  ) {
     selectedStyle = "vivid";
   }
 
-  // デジタルアート・3D系もvivid
-  if (styleAnalysis.digital && !styleAnalysis.anime) {
+  // デジタルアート・3D系でアニメ要素がない場合のみvivid
+  if (styleAnalysis.digital && !styleAnalysis.anime && !styleAnalysis.flat) {
     selectedStyle = "vivid";
   }
 
-  // サイズ決定ロジック
+  // サイズ決定ロジック（より正確な判定）
   let selectedSize = "1024x1024"; // デフォルト（正方形）
 
-  if (sizeAnalysis.square) {
+  // 明示的なサイズ指定を優先
+  if (sizeAnalysis.square || prompt.includes("正方形")) {
     selectedSize = "1024x1024";
   } else if (sizeAnalysis.portrait) {
     selectedSize = "1024x1792";
   } else if (sizeAnalysis.landscape || sizeAnalysis.wide) {
     selectedSize = "1792x1024";
   } else {
-    // 明確な指定がない場合は内容から推測
-    if (/(person|people|character|人物|キャラ|顔)/i.test(prompt)) {
-      selectedSize = "1024x1792"; // 人物は縦長が適している
-    } else if (
-      /(landscape|city|building|scenery|風景|街|建物|景色)/i.test(prompt)
-    ) {
-      selectedSize = "1792x1024"; // 風景は横長が適している
-    } else {
-      // それ以外はランダム（多様性確保）
-      const sizes = ["1024x1024", "1024x1792", "1792x1024"];
-      selectedSize = sizes[Math.floor(Math.random() * sizes.length)];
-    }
+    // 明確な指定がない場合は正方形をデフォルトに（Web版と同じ）
+    selectedSize = "1024x1024";
   }
 
   console.log(
@@ -378,12 +409,73 @@ function analyzePromptForOptimalSettings(prompt) {
 }
 
 /**
+ * プロンプトの最適化処理
+ * Web版DALL-E 3の内部処理を模倣
+ */
+function optimizePromptForWebParity(prompt) {
+  // 不要な指示文を除去（「以下のプロンプトに従い、画像を生成してください。」など）
+  let cleanedPrompt = prompt;
+  cleanedPrompt = cleanedPrompt.replace(
+    /以下のプロンプトに従い、画像を生成してください。?\s*/gi,
+    ""
+  );
+  cleanedPrompt = cleanedPrompt.replace(/画像を生成してください。?\s*/gi, "");
+
+  // 日本語と英語の混在を検出
+  const hasJapanese =
+    /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf\u3400-\u4dbf]/.test(
+      cleanedPrompt
+    );
+  const hasEnglish = /[a-zA-Z]/.test(cleanedPrompt);
+
+  // 両方の言語が混在している場合、Web版と同じように処理
+  if (hasJapanese && hasEnglish) {
+    // 日本語プロンプトと英語プロンプトを分離
+    const sections = cleanedPrompt.split(/✅|【|】|\n\n+/);
+
+    // 各セクションから実際のプロンプト部分を抽出
+    const promptParts = [];
+    sections.forEach((section) => {
+      const trimmed = section.trim();
+      if (
+        trimmed &&
+        !trimmed.match(
+          /^(日本語プロンプト|English Prompt|makefile|pgsql|コピーする|編集する)/
+        )
+      ) {
+        // マークダウンのコードブロック記法を除去
+        const cleaned = trimmed
+          .replace(/^```[\w]*\s*/, "")
+          .replace(/```\s*$/, "");
+        if (cleaned) {
+          promptParts.push(cleaned);
+        }
+      }
+    });
+
+    // プロンプトパーツを結合（重複を避ける）
+    const uniqueParts = [...new Set(promptParts)];
+    return uniqueParts.join(" ").trim();
+  }
+
+  return cleanedPrompt.trim();
+}
+
+/**
  * プロンプト忠実性最大化処理
  * ブラウザ版DALL-Eと同等の忠実性を実現するための最新技術
  */
 function enhancePromptForQuality(originalPrompt) {
-  // Web版と同じように、プロンプトをそのまま渡す
-  // 余計な改変防止指示は品質を低下させるため削除
+  // Web版と同じように、基本的にプロンプトをそのまま使用
+  // ただし、Web版のDALL-E 3も内部的に行っている最小限の処理を適用
+
+  // 1. プロンプトが極端に短い場合のみ、最小限の拡張
+  if (originalPrompt.length < 20) {
+    // 短すぎるプロンプトは品質が低下するため、最小限の詳細を追加
+    return `${originalPrompt}, detailed and high quality`;
+  }
+
+  // 2. 既に十分詳細なプロンプトはそのまま使用
   return originalPrompt;
 }
 
@@ -408,8 +500,9 @@ function generateImages(prompts) {
         const { style: selectedStyle, size: selectedSize } =
           analyzePromptForOptimalSettings(prompt);
 
-        // プロンプト品質向上処理
-        const enhancedPrompt = enhancePromptForQuality(prompt);
+        // プロンプトの最適化処理（Web版と同等の処理）
+        const optimizedPrompt = optimizePromptForWebParity(prompt);
+        const enhancedPrompt = enhancePromptForQuality(optimizedPrompt);
 
         // デバッグ用ログ：実際に送信されるプロンプトを確認
         console.log(`送信プロンプト: ${enhancedPrompt}`);
@@ -417,13 +510,14 @@ function generateImages(prompts) {
           `選択されたスタイル: ${selectedStyle}, サイズ: ${selectedSize}`
         );
 
+        // Web版と同じパラメータ設定
         const payload = {
           prompt: enhancedPrompt,
           n: 1,
           size: selectedSize,
           model: "dall-e-3",
-          quality: "hd", // 最高品質に変更
-          style: selectedStyle, // より鮮明で高品質な画像
+          quality: "hd", // HD品質（Web版デフォルト）
+          style: selectedStyle, // natural/vividの適切な選択
           response_format: "url", // URL形式で受信
         };
 
@@ -444,6 +538,11 @@ function generateImages(prompts) {
                 headers: {
                   Authorization: `Bearer ${apiKey}`,
                   "Content-Type": "application/json",
+                  // Web版と同じようなヘッダーを追加
+                  "User-Agent":
+                    "Mozilla/5.0 (compatible; Google Apps Script; +https://developers.google.com/apps-script)",
+                  Accept: "application/json",
+                  "Accept-Language": "ja,en;q=0.9",
                 },
                 payload: JSON.stringify(payload),
                 muteHttpExceptions: true, // 詳細なエラー情報を取得
