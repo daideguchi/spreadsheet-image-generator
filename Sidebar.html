@@ -391,7 +391,7 @@
         
         <button id="generateTableBtn" class="btn">
           <span id="generateTableSpinner" class="spinner hidden"></span>
-          🎨 画像を生成する
+          🎨 隣に画像を生成
         </button>
         
         <button id="downloadBtn" class="btn btn-secondary">
@@ -501,7 +501,7 @@
           button: 'createInputBtn'
         },
         step3: {
-          text: '<strong>🎨 画像生成:</strong><br>どこでもいいのでセルをクリックして「画像を生成する」をクリック！<br><small style="color: #666;">プロンプト入力エリアを自動検出して美しい表形式で生成されます</small>',
+          text: '<strong>🎨 画像生成:</strong><br>プロンプトの範囲を選択して「隣に画像を生成」をクリック！<br><small style="color: #666;">選択したプロンプトの隣の列に画像が直接配置されます</small>',
           button: 'generateTableBtn'
         },
         step4: {
@@ -554,7 +554,7 @@
         generateTableBtn.innerHTML = '<span class="spinner"></span>生成中...';
         generateBtn.innerHTML = '<span class="spinner"></span>生成中...';
       } else {
-        generateTableBtn.innerHTML = '🎨 画像を生成する';
+        generateTableBtn.innerHTML = '🎨 隣に画像を生成';
         generateBtn.innerHTML = '画像を生成（従来）';
       }
       

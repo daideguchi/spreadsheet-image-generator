@@ -454,7 +454,7 @@ function generateImages(prompts) {
 }
 
 /**
- * シートに画像を挿入
+ * シートに画像を挿入（プロンプトの隣に配置）
  */
 function insertImages(imageResults, rangeA1) {
   try {
@@ -465,6 +465,7 @@ function insertImages(imageResults, rangeA1) {
     const numCols = values[0].length;
 
     let imageIndex = 0;
+    let processedCount = 0;
 
     for (let r = 0; r < numRows; r++) {
       for (let c = 0; c < numCols; c++) {
@@ -477,25 +478,102 @@ function insertImages(imageResults, rangeA1) {
           cellValue.trim() !== "" &&
           imageIndex < imageResults.length
         ) {
-          const targetCell = sheet.getRange(
-            range.getRow() + r,
-            range.getColumn() + c
-          );
+          const promptRow = range.getRow() + r;
+          const promptCol = range.getColumn() + c;
+
+          // プロンプトの隣の列（右隣）に画像を配置
+          const imageCol = promptCol + 1;
+          const imageCell = sheet.getRange(promptRow, imageCol);
           const imageUrl = imageResults[imageIndex].url;
 
           // IMAGE関数を使用して画像を表示
-          targetCell.setFormula(`=IMAGE("${imageUrl}", 1)`);
+          imageCell.setFormula(`=IMAGE("${imageUrl}", 1)`);
 
-          // セルのサイズを調整
-          sheet.setRowHeight(range.getRow() + r, 200);
-          sheet.setColumnWidth(range.getColumn() + c, 200);
+          // 画像セルのサイズを調整
+          sheet.setRowHeight(promptRow, 200);
+          sheet.setColumnWidth(imageCol, 200);
+
+          // プロンプトセルも見やすく調整
+          const promptCell = sheet.getRange(promptRow, promptCol);
+          promptCell.setWrap(true);
+          promptCell.setVerticalAlignment("middle");
+
+          // さらに隣の列にAI修正プロンプトを配置（オプション）
+          if (
+            imageResults[imageIndex].revised_prompt &&
+            imageResults[imageIndex].revised_prompt !==
+              imageResults[imageIndex].prompt
+          ) {
+            const revisedCol = imageCol + 1;
+            const revisedCell = sheet.getRange(promptRow, revisedCol);
+            revisedCell.setValue(imageResults[imageIndex].revised_prompt);
+            revisedCell.setWrap(true);
+            revisedCell.setVerticalAlignment("middle");
+            revisedCell.setFontStyle("italic");
+            revisedCell.setFontColor("#666666");
+            sheet.setColumnWidth(revisedCol, 250);
+
+            // ヘッダーも追加（初回のみ）
+            if (imageIndex === 0) {
+              const headerRow = Math.max(1, promptRow - 1);
+              if (sheet.getRange(headerRow, promptCol).getValue() === "") {
+                sheet.getRange(headerRow, promptCol).setValue("📝 プロンプト");
+                sheet.getRange(headerRow, imageCol).setValue("🖼️ 生成画像");
+                sheet.getRange(headerRow, revisedCol).setValue("🤖 AI修正版");
+
+                // ヘッダーのスタイル設定
+                const headerRange = sheet.getRange(headerRow, promptCol, 1, 3);
+                headerRange.setBackground("#1a73e8");
+                headerRange.setFontColor("white");
+                headerRange.setFontWeight("bold");
+                headerRange.setHorizontalAlignment("center");
+                sheet.setRowHeight(headerRow, 35);
+              }
+            }
+          } else {
+            // AI修正プロンプトがない場合は、ヘッダーを2列のみで設定
+            if (imageIndex === 0) {
+              const headerRow = Math.max(1, promptRow - 1);
+              if (sheet.getRange(headerRow, promptCol).getValue() === "") {
+                sheet.getRange(headerRow, promptCol).setValue("📝 プロンプト");
+                sheet.getRange(headerRow, imageCol).setValue("🖼️ 生成画像");
+
+                // ヘッダーのスタイル設定
+                const headerRange = sheet.getRange(headerRow, promptCol, 1, 2);
+                headerRange.setBackground("#1a73e8");
+                headerRange.setFontColor("white");
+                headerRange.setFontWeight("bold");
+                headerRange.setHorizontalAlignment("center");
+                sheet.setRowHeight(headerRow, 35);
+              }
+            }
+          }
 
           imageIndex++;
+          processedCount++;
         }
       }
     }
 
-    return `${imageIndex}枚の画像をシートに挿入しました`;
+    // 生成情報を下部に追加（コンパクト版）
+    if (processedCount > 0) {
+      const lastRow = sheet.getLastRow();
+      const infoRow = lastRow + 2;
+      const infoRange = sheet.getRange(infoRow, 1, 1, 3);
+      infoRange.merge();
+      infoRange.setValue(
+        `✅ ${processedCount}枚の画像を生成完了 - ${new Date().toLocaleString(
+          "ja-JP"
+        )}`
+      );
+      infoRange.setBackground("#e8f5e8");
+      infoRange.setFontColor("#2e7d32");
+      infoRange.setHorizontalAlignment("center");
+      infoRange.setFontWeight("bold");
+      sheet.setRowHeight(infoRow, 30);
+    }
+
+    return `${processedCount}枚の画像をプロンプトの隣に配置しました`;
   } catch (error) {
     console.error("画像挿入エラー:", error);
     throw new Error(`画像の挿入に失敗しました: ${error.message}`);
@@ -724,22 +802,33 @@ function createPromptInputArea() {
 }
 
 /**
- * 画像生成と表作成を同時に実行
+ * 画像生成と隣接配置を同時に実行
  */
 function generateImagesAndCreateTable(prompts) {
   try {
     // 画像を生成
     const imageResults = generateImages(prompts);
 
-    // 表を作成
-    const tableResult = createImageTable(imageResults);
+    // 選択範囲を取得
+    const selection = SpreadsheetApp.getSelection();
+    const activeRange = selection.getActiveRange();
+
+    if (!activeRange) {
+      throw new Error("プロンプト範囲が選択されていません");
+    }
+
+    // プロンプトの隣に画像を配置
+    const insertResult = insertImages(
+      imageResults,
+      activeRange.getA1Notation()
+    );
 
     return {
       imageResults: imageResults,
-      tableMessage: tableResult,
+      tableMessage: insertResult,
     };
   } catch (error) {
-    console.error("画像生成・表作成エラー:", error);
+    console.error("画像生成・配置エラー:", error);
     throw new Error(`処理に失敗しました: ${error.message}`);
   }
 }

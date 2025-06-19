@@ -1,0 +1,99 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Cursor Rules for YouTube Channel Analysis Project
+
+## 🔄 Automatic Git Management Rules
+
+### Rules.mdc File Management
+- **自動プッシュルール**: `@rules.mdc`ファイルが修正されたら即座にGitにコミット・プッシュする
+- **コミットメッセージ**: "Update project rules: [変更内容の簡潔な説明]"
+- **変更検知**: ファイル保存時に自動実行
+- **前提条件**: 作業ディレクトリがクリーンであること
+
+### Git Workflow Rules
+1. **即座反映対象ファイル**:
+   - `.cursor/rules/rules.mdc`
+   - `README.md`
+   - `package.json` (存在する場合)
+   - 設定ファイル全般
+
+2. **コード変更時のルール**:
+   - 機能追加・修正完了時は即座にコミット
+   - バグ修正は優先的にコミット・プッシュ
+   - テスト後に必ずpush実行
+
+## 📋 Development Guidelines
+
+### Code Quality Rules
+- **関数命名**: 日本語コメント + 英語関数名
+- **エラーハンドリング**: 必ずtry-catch文を使用
+- **ログ出力**: Logger.log()でデバッグ情報を記録
+- **UI表示**: SpreadsheetApp.getUi().alert()で分かりやすいメッセージ
+
+### File Organization
+- **0_**: メインダッシュボード機能
+- **1-9_**: 機能別モジュール
+- **test_**: テスト・デバッグ用ファイル
+
+### Documentation Rules
+- **関数コメント**: JSDoc形式で記述
+- **変更履歴**: ファイルヘッダーに更新日時を記録
+- **機能説明**: 複雑な処理には詳細コメント必須
+
+## 🚀 Automation Commands
+
+### Git Auto-Push Command
+```bash
+# rules.mdc変更時の自動実行コマンド
+git add .cursor/rules/rules.mdc
+git commit -m "Update project rules: $(date '+%Y-%m-%d %H:%M')"
+git push origin main
+```
+
+### Development Workflow
+```bash
+# 開発完了時の標準フロー
+git add .
+git commit -m "Feature: [機能名] - [変更内容]"
+git push origin main
+```
+
+## 📝 Change Log Template
+```
+### [Date] - [Version]
+#### Added
+- 新機能の追加
+
+#### Changed  
+- 既存機能の変更
+
+#### Fixed
+- バグ修正
+
+#### Removed
+- 削除された機能
+```
+
+## 🔧 Environment Rules
+- **Node.js**: 使用しない（Google Apps Script環境）
+- **IDE**: Cursor Editor推奨
+- **言語**: JavaScript (Google Apps Script)
+- **UI**: Google Sheets API使用
+
+## 📊 Project Structure Rules
+```
+youtube_sheet/
+├── 0_dashboard.gs          # メインダッシュボード
+├── 2_benchmark.gs          # ベンチマーク機能
+├── 4_channelCheck.gs       # チャンネル詳細分析
+├── test_dashboard.gs       # テスト機能
+├── .cursor/rules/rules.mdc # プロジェクトルール (このファイル)
+└── README.md              # プロジェクト説明
+```
+
+---
+*Last Updated: 2025-01-22*
+*Auto-commit: enabled for this file*
