@@ -599,8 +599,14 @@ function insertImages(imageResults, rangeA1) {
           if (originalPrompt.length > 100) {
             const truncatedPrompt = originalPrompt.substring(0, 97) + "...";
             promptCell.setValue(truncatedPrompt);
-            // 元のプロンプトをコメントとして保存
-            promptCell.setNote(`完全なプロンプト:\n${originalPrompt}`);
+            // 元のプロンプトをコメントとして保存 - 究極25,000文字制限適用
+            let safeOriginal = `完全なプロンプト:\n${originalPrompt}`;
+            if (safeOriginal.length > 25000) {
+              safeOriginal =
+                safeOriginal.substring(0, 24500) +
+                "\n[...究極制限により省略...]";
+            }
+            promptCell.setNote(safeOriginal);
           }
 
           // ヘッダーを設定（初回のみ）
@@ -1511,12 +1517,21 @@ function handlePromptInput(sheet, row, fullPrompt) {
       // B列に省略版を表示
       promptCell.setValue(truncatedPrompt);
       promptCell.setWrap(false); // セル高の自動拡大を防止
-      promptCell.setNote(
-        `完全なプロンプト:\n${fullPrompt}\n\n💡 完全版はC列で確認できます`
-      );
+      // セルコメントも究極25,000文字制限適用
+      let safeNote = `完全なプロンプト:\n${fullPrompt}\n\n💡 完全版はC列で確認できます`;
+      if (safeNote.length > 25000) {
+        safeNote =
+          safeNote.substring(0, 24500) + "\n[...究極制限により省略...]";
+      }
+      promptCell.setNote(safeNote);
 
-      // C列に完全版を表示（スクロール可能）
-      fullPromptCell.setValue(fullPrompt);
+      // C列に完全版を表示（スクロール可能）- 究極25,000文字制限適用
+      let safeFull = fullPrompt;
+      if (safeFull.length > 25000) {
+        safeFull =
+          safeFull.substring(0, 24500) + "\n[...究極制限により省略...]";
+      }
+      fullPromptCell.setValue(safeFull);
       fullPromptCell.setWrap(true);
       fullPromptCell.setVerticalAlignment("top");
       fullPromptCell.setFontSize(10);
@@ -1531,16 +1546,21 @@ function handlePromptInput(sheet, row, fullPrompt) {
         "#e0e0e0",
         SpreadsheetApp.BorderStyle.SOLID
       );
-      fullPromptCell.setNote("完全なプロンプト（DALL-Eに送信される原文）");
+      fullPromptCell.setNote("完全なプロンプト（究極25,000文字制限版）");
 
       console.log(
         `行${row}: プロンプトを省略表示に変更 (${fullPrompt.length}文字 → ${truncatedPrompt.length}文字)`
       );
     } else {
-      // 短いプロンプトの場合：B列に全文表示、C列はクリア
-      promptCell.setValue(fullPrompt);
+      // 短いプロンプトの場合：B列に全文表示、C列はクリア - 究極25,000文字制限適用
+      let safePrompt = fullPrompt;
+      if (safePrompt.length > 25000) {
+        safePrompt =
+          safePrompt.substring(0, 24500) + "\n[...究極制限により省略...]";
+      }
+      promptCell.setValue(safePrompt);
       promptCell.setWrap(false);
-      promptCell.setNote("プロンプト（DALL-Eに送信される原文）");
+      promptCell.setNote("プロンプト（究極25,000文字制限版）");
 
       // C列をクリア（短いプロンプトの場合は不要）
       fullPromptCell.clear();
