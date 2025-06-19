@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <title>🎨 DALL-E 画像生成ツール</title>
+  <style>
+    body {
+      font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    h2 {
+      color: #1a73e8;
+      margin: 0 0 20px 0;
+      font-size: 22px;
+      text-align: center;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .step-indicator {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding: 0 8px;
+    }
+
+    .step {
+      flex: 1;
+      text-align: center;
+      position: relative;
+    }
+
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 15px;
+      right: -50%;
+      width: 100%;
+      height: 2px;
+      background-color: #e0e0e0;
+      z-index: 1;
+    }
+
+    .step.active:not(:last-child)::after {
+      background-color: #1a73e8;
+    }
+
+    .step-number {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%);
+      color: #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 6px;
+      font-weight: bold;
+      font-size: 12px;
+      position: relative;
+      z-index: 2;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .step.active .step-number {
+      background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+    }
+
+    .step-text {
+      font-size: 11px;
+      color: #666;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    .step.active .step-text {
+      color: #1a73e8;
+      font-weight: bold;
+    }
+
+    .instructions {
+      background: linear-gradient(135deg, rgba(255, 243, 224, 0.9) 0%, rgba(255, 248, 225, 0.9) 100%);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      color: #ef6c00;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      line-height: 1.5;
+      backdrop-filter: blur(5px);
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 16px 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+      width: 100%;
+      margin-bottom: 12px;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.25);
+      letter-spacing: 0.3px;
+      position: relative;
+      overflow: hidden;
+      text-transform: uppercase;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
+      background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    }
+
+    .btn:active {
+      transform: translateY(-1px) scale(0.98);
+      transition: all 0.1s;
+    }
+
+    .btn-setup {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      font-size: 16px;
+      font-weight: 800;
+      box-shadow: 0 8px 25px rgba(240, 147, 251, 0.3);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .btn-setup:hover {
+      background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+      box-shadow: 0 15px 35px rgba(240, 147, 251, 0.5);
+      transform: translateY(-4px) scale(1.03);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      box-shadow: 0 6px 20px rgba(17, 153, 142, 0.25);
+    }
+
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, #38ef7d 0%, #11998e 100%);
+      box-shadow: 0 12px 30px rgba(17, 153, 142, 0.4);
+    }
+
+    .btn-create {
+      background: linear-gradient(135deg, #ff6a00 0%, #ee0979 100%);
+      box-shadow: 0 6px 20px rgba(255, 106, 0, 0.25);
+    }
+
+    .btn-create:hover {
+      background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+      box-shadow: 0 12px 30px rgba(255, 106, 0, 0.4);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+      color: white;
+      box-shadow: 0 6px 20px rgba(229, 62, 62, 0.25);
+    }
+
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #c53030 0%, #b91c1c 100%);
+      box-shadow: 0 12px 30px rgba(229, 62, 62, 0.4);
+    }
+
+    /* ボタン無効化スタイル */
+    .btn:disabled,
+    .btn.disabled {
+      background: linear-gradient(135deg, #cccccc 0%, #999999 100%) !important;
+      color: #666666 !important;
+      cursor: not-allowed !important;
+      transform: none !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+      opacity: 0.6;
+    }
+
+    .btn:disabled::before,
+    .btn.disabled::before {
+      display: none;
+    }
+
+    .btn:disabled:hover,
+    .btn.disabled:hover {
+      transform: none !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+      background: linear-gradient(135deg, #cccccc 0%, #999999 100%) !important;
+    }
+
+    .button-group {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ボタンセクション */
+    .button-section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1a73e8;
+      margin-bottom: 8px;
+      padding: 4px 8px;
+      background: rgba(26, 115, 232, 0.1);
+      border-radius: 6px;
+      text-align: center;
+      border: 1px solid rgba(26, 115, 232, 0.2);
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+    }
+
+    .btn-small {
+      flex: 1;
+      padding: 12px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .result {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      display: none;
+      font-size: 13px;
+    }
+
+    .result.success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .result.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    /* プログレスバーモーダル */
+    .progress-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 999999;
+      backdrop-filter: blur(8px);
+      pointer-events: all;
+    }
+
+    .progress-container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 50px;
+      border-radius: 24px;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
+      text-align: center;
+      min-width: 500px;
+      max-width: 600px;
+      width: 90vw;
+      max-height: 80vh;
+      overflow: auto;
+      z-index: 1000000;
+    }
+
+    .progress-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: #1a73e8;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #1a73e8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 24px;
+      background: #e0e0e0;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 30px 0;
+      box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #1a73e8, #4285f4, #34a853);
+      border-radius: 10px;
+      transition: width 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .progress-text {
+      font-size: 20px;
+      color: #333;
+      margin: 15px 0;
+      font-weight: 600;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-step {
+      font-size: 16px;
+      color: #666;
+      margin: 10px 0;
+      font-weight: 500;
+    }
+
+    .progress-warning {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      border: 2px solid #ffc107;
+      color: #856404;
+      padding: 20px;
+      border-radius: 16px;
+      margin-top: 30px;
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+    }
+
+    .progress-warning-icon {
+      font-size: 24px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    /* レスポンシブ対応 */
+    @media (max-width: 768px) {
+      .progress-container {
+        min-width: 300px;
+        width: 95vw;
+        padding: 30px 20px;
+        max-height: 90vh;
+      }
+
+      .progress-title {
+        font-size: 24px;
+        margin-bottom: 20px;
+        gap: 10px;
+      }
+
+      .progress-spinner {
+        width: 40px;
+        height: 40px;
+        border-width: 4px;
+      }
+
+      .progress-text {
+        font-size: 18px;
+        margin: 12px 0;
+      }
+
+      .progress-step {
+        font-size: 14px;
+        margin: 8px 0;
+      }
+
+      .progress-warning {
+        padding: 15px;
+        font-size: 14px;
+        margin-top: 20px;
+        gap: 10px;
+      }
+
+      .progress-warning-icon {
+        font-size: 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .progress-container {
+        min-width: 280px;
+        width: 98vw;
+        padding: 25px 15px;
+      }
+
+      .progress-title {
+        font-size: 20px;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .progress-text {
+        font-size: 16px;
+      }
+
+      .progress-step {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h2>🎨 DALL-E 画像生成</h2>
+      
+      <div class="step-indicator">
+        <div class="step active" id="step1">
+          <div class="step-number">1</div>
+          <div class="step-text">セットアップ</div>
+        </div>
+        <div class="step" id="step2">
+          <div class="step-number">2</div>
+          <div class="step-text">プロンプト<br>入力</div>
+        </div>
+        <div class="step" id="step3">
+          <div class="step-number">3</div>
+          <div class="step-text">画像生成</div>
+        </div>
+      </div>
+
+      <div class="instructions">
+        <div id="instruction-text">
+          <strong>🚀 簡単3ステップ:</strong><br>
+          <strong>1️⃣</strong> 表を初期化 → <strong>2️⃣</strong> プロンプト入力 → <strong>3️⃣</strong> 画像生成
+        </div>
+      </div>
+
+      <div class="button-group">
+        <!-- 基本操作グループ -->
+        <div class="button-section">
+          <div class="section-title">📋 基本操作</div>
+          <button class="btn btn-setup" id="setupBtn" onclick="executeBackup()" title="すでに初期化済みです">
+            🔧 表を初期化
+          </button>
+          
+          <button class="btn" id="generateBtn" onclick="generateFromStructuredTable()" title="プロンプトを入力してください">
+            🎨 画像生成
+          </button>
+        </div>
+
+        <!-- 管理操作グループ（画像生成後に表示） -->
+        <div class="button-section" id="managementSection" style="display: none;">
+          <div class="section-title">🛠️ 画像管理</div>
+          <div class="button-row">
+            <button class="btn btn-secondary btn-small" onclick="toggleAllImageSelection()">
+              ☑️ 全選択
+            </button>
+            <button class="btn btn-small" onclick="downloadSelectedImages()">
+              📥 DL
+            </button>
+            <button class="btn btn-small" onclick="regenerateSelectedImages()">
+              🔄 再生成
+            </button>
+          </div>
+          <div class="button-row">
+            <button class="btn btn-danger btn-small" onclick="deleteSelectedImages()">
+              🗑️ 選択削除
+            </button>
+            <button class="btn btn-danger btn-small" onclick="deleteAllImagesWithConfirmation()">
+              🗑️ 全削除
+            </button>
+          </div>
+        </div>
+
+        <!-- その他操作グループ -->
+        <div class="button-section">
+          <div class="section-title">⚙️ その他</div>
+          <div class="button-row">
+            <button class="btn btn-secondary btn-small" onclick="checkSheetState()">
+              ⚡ 更新
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>処理中...</p>
+      </div>
+
+      <div class="result" id="result"></div>
+    </div>
+  </div>
+
+  <!-- プログレスバーモーダル -->
+  <div class="progress-modal" id="progressModal">
+    <div class="progress-container">
+      <div class="progress-title">
+        <div class="progress-spinner"></div>
+        <span id="progressTitle">🎨 画像生成中...</span>
+      </div>
+      
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+      </div>
+      
+      <div class="progress-text" id="progressText">準備中...</div>
+      <div class="progress-step" id="progressStep">ステップ 1/5</div>
+      
+      <div class="progress-warning">
+        <span class="progress-warning-icon">⚠️</span>
+        <span>画像生成中はシートの編集ができません。しばらくお待ちください。</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // サイドバー読み込み時にボタンの有効/無効を判定
+    window.addEventListener('load', () => {
+      checkSheetState();
+      // 定期的にシート状態をチェック（3秒間隔で適度な監視）
+      setInterval(checkSheetState, 3000);
+    });
+
+    // 必要最小限のイベントで状態をチェック
+    window.addEventListener('focus', checkSheetState);
+    
+    // ページの可視性が変わった時（他のタブから戻った時など）
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        checkSheetState();
+      }
+    });
+
+    function checkSheetState() {
+      google.script.run
+        .withSuccessHandler(function(state) {
+          const { isEmpty, hasPrompt, hasImages } = state;
+          // console.log('シート状態:', { isEmpty, hasPrompt }); // デバッグ用（本番では無効化）
+
+          const setupBtn = document.getElementById('setupBtn');
+          const generateBtn = document.getElementById('generateBtn');
+          const managementSection = document.getElementById('managementSection');
+
+          // 表を初期化ボタンは常にアクティブ
+          setupBtn.disabled = false;
+          setupBtn.classList.remove('disabled');
+          setupBtn.title = '構造化テーブルを作成します';
+
+          // プロンプトがなければ画像生成ボタンを無効化
+          if (!hasPrompt) {
+            generateBtn.disabled = true;
+            generateBtn.classList.add('disabled');
+            generateBtn.title = 'プロンプトを入力してください';
+            // console.log('画像生成ボタンを無効化'); // デバッグ用（本番では無効化）
+          } else {
+            generateBtn.disabled = false;
+            generateBtn.classList.remove('disabled');
+            generateBtn.title = '';
+            // console.log('画像生成ボタンを有効化'); // デバッグ用（本番では無効化）
+          }
+
+          // 画像があれば管理セクションを表示
+          if (hasImages) {
+            managementSection.style.display = 'block';
+          } else {
+            managementSection.style.display = 'none';
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('シート状態取得エラー:', error);
+          // エラー時は両方有効化（致命的ではない）
+          const setupBtn = document.getElementById('setupBtn');
+          const generateBtn = document.getElementById('generateBtn');
+          setupBtn.disabled = false;
+          setupBtn.classList.remove('disabled');
+          setupBtn.title = '構造化テーブルを作成します';
+          generateBtn.disabled = false;
+          generateBtn.classList.remove('disabled');
+        })
+        .getSheetState();
+    }
+
+    function showLoading() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('result').style.display = 'none';
+    }
+
+    function hideLoading() {
+      document.getElementById('loading').style.display = 'none';
+    }
+
+    function showResult(message, isError = false) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.textContent = message;
+      resultDiv.className = `result ${isError ? 'error' : 'success'}`;
+      resultDiv.style.display = 'block';
+      hideLoading();
+    }
+
+    function updateStepIndicator(currentStep) {
+      const steps = ['step1', 'step2', 'step3'];
+      steps.forEach(step => {
+        document.getElementById(step).classList.remove('active');
+      });
+      document.getElementById(currentStep).classList.add('active');
+    }
+
+    // プログレスバー制御関数
+    function showProgressModal() {
+      const modal = document.getElementById('progressModal');
+      modal.style.display = 'block';
+      
+      // 確実に最前面に表示
+      modal.style.position = 'fixed';
+      modal.style.top = '0';
+      modal.style.left = '0';
+      modal.style.width = '100vw';
+      modal.style.height = '100vh';
+      modal.style.zIndex = '999999';
+      
+      // ページスクロールを無効化
+      document.body.style.overflow = 'hidden';
+      
+      updateProgress(0, '準備中...', 'ステップ 1/5');
+    }
+
+    function hideProgressModal() {
+      const modal = document.getElementById('progressModal');
+      modal.style.display = 'none';
+      
+      // ページスクロールを復元
+      document.body.style.overflow = 'auto';
+    }
+
+    function updateProgress(percentage, text, step) {
+      document.getElementById('progressBar').style.width = percentage + '%';
+      document.getElementById('progressText').textContent = text;
+      document.getElementById('progressStep').textContent = step;
+    }
+
+    function setProgressTitle(title) {
+      document.getElementById('progressTitle').textContent = title;
+    }
+
+    // 画像生成専用の進捗管理（改良版）
+    function startImageGenerationProgress() {
+      showProgressModal();
+      setProgressTitle('🎨 画像生成中...');
+      
+      // まず画像枚数を取得
+      google.script.run
+        .withSuccessHandler(function(imageCount) {
+          startProgressWithImageCount(imageCount);
+        })
+        .withFailureHandler(function(error) {
+          // エラーの場合はデフォルト進捗を開始
+          startProgressWithImageCount(1);
+        })
+        .getImageGenerationCount();
+    }
+
+    function startProgressWithImageCount(imageCount) {
+      // 🔧 **プログレスバー詳細ステップ分割**: より詳細で正確な進捗表示
+      const steps = [
+        { inc: 8, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 600 },
+        { inc: 7, text: 'DALL-E APIに接続中...', duration: 800 },
+        { inc: 5, text: 'API認証を確認中...', duration: 400 },
+        { inc: 10, text: `画像生成リクエスト送信中... (${imageCount}枚)`, duration: 600 },
+        { inc: 50, text: `画像を生成中... (${imageCount}枚)`, duration: Math.max(2000, imageCount * 1500) }, // 最低2秒、画像枚数に応じて調整
+        { inc: 8, text: '生成結果を受信中...', duration: 500 },
+        { inc: 7, text: '画像データを処理中...', duration: 600 },
+        { inc: 5, text: 'シートに配置中...', duration: 400 }
+      ];
+
+      let progress = 0;
+      let stepIdx = 0;
+      updateProgress(progress, '開始しています...', '');
+
+      function executeStep() {
+        if (stepIdx < steps.length) {
+          const step = steps[stepIdx];
+          const targetProgress = progress + step.inc;
+          
+          // 🔧 **スムーズな進捗表示**: 段階的に進捗を更新
+          const startProgress = progress;
+          const progressDuration = step.duration;
+          const updateInterval = 100; // 100msごとに更新
+          const totalUpdates = progressDuration / updateInterval;
+          const progressPerUpdate = step.inc / totalUpdates;
+          
+          let currentUpdate = 0;
+          const currentStepNumber = stepIdx + 1; // 現在のステップ番号を固定
+          
+          updateProgress(progress, step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          
+          const progressInterval = setInterval(() => {
+            currentUpdate++;
+            progress += progressPerUpdate;
+            
+            if (progress > 95) progress = 95;
+            if (currentUpdate >= totalUpdates) {
+              progress = Math.min(targetProgress, 95);
+              clearInterval(progressInterval);
+              stepIdx++;
+              
+              // 最後のステップの場合は95%で待機（サーバー処理完了を待つ）
+              if (stepIdx >= steps.length) {
+                updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
+              } else {
+                setTimeout(executeStep, 100); // 次のステップへ
+              }
+            }
+            
+            // 固定されたステップ番号を使用
+            updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          }, updateInterval);
+        }
+      }
+      
+      executeStep();
+    }
+
+    function completeImageGeneration() {
+      updateProgress(100, '✅ 画像生成が完了しました！', '完了');
+      setTimeout(() => {
+        hideProgressModal();
+      }, 1500);
+    }
+
+    function executeBackup() {
+      showLoading();
+      updateStepIndicator('step1');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+          updateStepIndicator('step2');
+          // 初期設定完了後にボタン状態を再チェック
+          checkSheetState();
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .createStructuredTable();
+    }
+
+    function generateFromStructuredTable() {
+      // ボタンが無効化されている場合は処理しない
+      const generateBtn = document.getElementById('generateBtn');
+      if (generateBtn.disabled) {
+        return;
+      }
+
+      showLoading();
+      updateStepIndicator('step3');
+      startImageGenerationProgress();
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          // サーバー処理完了後に初めて完了表示
+          updateProgress(100, '✅ 画像生成が完了しました！', '完了');
+          setTimeout(() => {
+            hideProgressModal();
+            showResult(result);
+            // 画像生成完了後にボタン状態を再チェック
+            checkSheetState();
+          }, 1500);
+        })
+        .withFailureHandler(function(error) {
+          hideProgressModal();
+          showResult('エラー: ' + error.message, true);
+        })
+        .generateImagesFromStructuredTable();
+    }
+
+    function createTableOnly() {
+      showLoading();
+      updateStepIndicator('step2');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+          // 表クリア完了後にボタン状態を再チェック
+          checkSheetState();
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .createStructuredTable();
+    }
+
+    function toggleAllImageSelection() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .toggleAllImageSelection();
+    }
+
+    function downloadSelectedImages() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .downloadSelectedImages();
+    }
+
+    function regenerateSelectedImages() {
+      showLoading();
+      
+      // 選択画像再生成専用の進捗
+      showProgressModal();
+      setProgressTitle('🔄 選択画像を再生成中...');
+      
+      // まず選択された画像枚数を取得
+      google.script.run
+        .withSuccessHandler(function(selectedCount) {
+          if (selectedCount > 0) {
+            startProgressWithImageCount(selectedCount);
+          } else {
+            hideProgressModal();
+            showResult('選択された画像がありません', true);
+            return;
+          }
+        })
+        .withFailureHandler(function(error) {
+          hideProgressModal();
+          showResult('エラー: ' + error.message, true);
+          return;
+        })
+        .getSelectedImageCount();
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          completeImageGeneration();
+          showResult(result);
+        })
+        .withFailureHandler(function(error) {
+          hideProgressModal();
+          showResult('エラー: ' + error.message, true);
+        })
+        .regenerateSelectedImagesWithProgress();
+    }
+
+    function deleteSelectedImages() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+          // 削除完了後にボタン状態を再チェック
+          checkSheetState();
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .deleteSelectedImages();
+    }
+
+    function deleteAllImagesWithConfirmation() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+          // 削除完了後にボタン状態を再チェック
+          checkSheetState();
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .deleteAllImagesWithConfirmation();
+    }
+  </script>
+</body>
+</html> 
