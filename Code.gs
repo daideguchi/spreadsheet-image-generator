@@ -493,12 +493,12 @@ function generateImages(prompts) {
 
   try {
     prompts.forEach((prompt, index) => {
+      // スタイル・サイズ判定をtryブロックの外で実行（catchブロックからもアクセス可能）
+      const { style: selectedStyle, size: selectedSize } =
+        analyzePromptForOptimalSettings(prompt);
+
       try {
         console.log(`画像生成中 ${index + 1}/${prompts.length}: ${prompt}`);
-
-        // 高度なスタイル・サイズ自動判定システム（ブラウザ版に近づける）
-        const { style: selectedStyle, size: selectedSize } =
-          analyzePromptForOptimalSettings(prompt);
 
         // プロンプトの最適化処理（Web版と同等の処理）
         const optimizedPrompt = optimizePromptForWebParity(prompt);
