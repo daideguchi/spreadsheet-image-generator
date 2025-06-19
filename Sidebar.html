@@ -1,158 +1,140 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <base target="_top">
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🎨 DALL-E 画像生成ツール</title>
   <style>
     body {
+      font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       margin: 0;
-      padding: 16px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 12px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      font-size: 14px;
     }
 
     .container {
-      max-width: 460px;
-      margin: 0 auto;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-radius: 16px;
-      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      overflow: hidden;
-    }
-
-    .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 24px;
-      text-align: center;
-      border-radius: 16px 16px 0 0;
-    }
-
-    .title {
-      font-size: 28px;
-      font-weight: bold;
+      max-width: 100%;
       margin: 0;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-
-    .content {
-      padding: 24px;
+      padding: 0;
     }
 
     .card {
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
       border-radius: 16px;
-      padding: 32px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
     }
 
-    .steps {
+    h2 {
+      color: #1a73e8;
+      margin: 0 0 20px 0;
+      font-size: 22px;
+      text-align: center;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .step-indicator {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       padding: 0 8px;
     }
 
     .step {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       flex: 1;
+      text-align: center;
       position: relative;
     }
 
     .step:not(:last-child)::after {
       content: '';
       position: absolute;
-      top: 20px;
+      top: 15px;
       right: -50%;
       width: 100%;
       height: 2px;
-      background: linear-gradient(90deg, #667eea, #764ba2);
+      background-color: #e0e0e0;
       z-index: 1;
     }
 
-    .step-circle {
-      width: 40px;
-      height: 40px;
+    .step.active:not(:last-child)::after {
+      background-color: #1a73e8;
+    }
+
+    .step-number {
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%);
+      color: #666;
       display: flex;
       align-items: center;
       justify-content: center;
+      margin: 0 auto 6px;
       font-weight: bold;
-      font-size: 13px;
+      font-size: 12px;
       position: relative;
       z-index: 2;
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .step.active .step-number {
+      background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
     }
 
     .step-text {
-      margin-top: 12px;
-      font-size: 12px;
-      text-align: center;
-      font-weight: 600;
-      color: #4a5568;
-      line-height: 1.3;
+      font-size: 11px;
+      color: #666;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    .step.active .step-text {
+      color: #1a73e8;
+      font-weight: bold;
     }
 
     .instructions {
-      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+      background: linear-gradient(135deg, rgba(255, 243, 224, 0.9) 0%, rgba(255, 248, 225, 0.9) 100%);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      color: #ef6c00;
+      padding: 16px;
       border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 24px;
-      border-left: 4px solid #667eea;
-    }
-
-    .instructions h3 {
-      margin: 0 0 16px 0;
-      color: #2d3748;
-      font-size: 18px;
-      font-weight: bold;
-    }
-
-    .instructions p {
-      margin: 0 0 12px 0;
-      color: #4a5568;
-      line-height: 1.6;
-      font-size: 17px;
-    }
-
-    .instructions p:last-child {
-      margin-bottom: 0;
-    }
-
-    .button-group {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      line-height: 1.5;
+      backdrop-filter: blur(5px);
     }
 
     .btn {
-      padding: 22px 36px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
       border: none;
+      padding: 16px 24px;
       border-radius: 12px;
-      font-size: 19px;
-      font-weight: bold;
-      text-transform: uppercase;
       cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-size: 15px;
+      font-weight: 700;
+      width: 100%;
+      margin-bottom: 12px;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.25);
+      letter-spacing: 0.3px;
       position: relative;
       overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.3);
+      text-transform: uppercase;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     .btn::before {
@@ -162,8 +144,8 @@
       left: -100%;
       width: 100%;
       height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-      transition: left 0.5s;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s ease;
     }
 
     .btn:hover::before {
@@ -172,31 +154,54 @@
 
     .btn:hover {
       transform: translateY(-3px) scale(1.02);
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
+      background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
     }
 
     .btn:active {
       transform: translateY(-1px) scale(0.98);
-    }
-
-    .btn-main {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      transition: all 0.1s;
     }
 
     .btn-setup {
       background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      color: white;
+      font-size: 16px;
+      font-weight: 800;
+      box-shadow: 0 8px 25px rgba(240, 147, 251, 0.3);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .btn-setup:hover {
+      background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+      box-shadow: 0 15px 35px rgba(240, 147, 251, 0.5);
+      transform: translateY(-4px) scale(1.03);
     }
 
     .btn-secondary {
-      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-      color: white;
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      box-shadow: 0 6px 20px rgba(17, 153, 142, 0.25);
+    }
+
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, #38ef7d 0%, #11998e 100%);
+      box-shadow: 0 12px 30px rgba(17, 153, 142, 0.4);
     }
 
     .btn-create {
-      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-      color: white;
+      background: linear-gradient(135deg, #ff6a00 0%, #ee0979 100%);
+      box-shadow: 0 6px 20px rgba(255, 106, 0, 0.25);
+    }
+
+    .btn-create:hover {
+      background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+      box-shadow: 0 12px 30px rgba(255, 106, 0, 0.4);
+    }
+
+    .button-group {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
     .loading {
@@ -210,8 +215,8 @@
       border: 3px solid #f3f3f3;
       border-top: 3px solid #667eea;
       border-radius: 50%;
-      width: 30px;
-      height: 30px;
+      width: 24px;
+      height: 24px;
       animation: spin 1s linear infinite;
       margin: 0 auto 10px;
     }
@@ -222,10 +227,11 @@
     }
 
     .result {
-      margin-top: 20px;
-      padding: 15px;
+      margin-top: 16px;
+      padding: 12px;
       border-radius: 8px;
       display: none;
+      font-size: 13px;
     }
 
     .result.success {
@@ -243,47 +249,45 @@
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1 class="title">🎨 DALL-E 画像生成ツール</h1>
-    </div>
-    
-    <div class="content">
-      <div class="card">
-        <div class="steps">
-          <div class="step">
-            <div class="step-circle">1</div>
-            <div class="step-text">初期<br>セットアップ</div>
-          </div>
-          <div class="step">
-            <div class="step-circle">2</div>
-            <div class="step-text">プロンプト<br>入力</div>
-          </div>
-          <div class="step">
-            <div class="step-circle">3</div>
-            <div class="step-text">画像<br>生成</div>
-          </div>
+    <div class="card">
+      <h2>🎨 DALL-E 画像生成</h2>
+      
+      <div class="step-indicator">
+        <div class="step active" id="step1">
+          <div class="step-number">1</div>
+          <div class="step-text">セットアップ</div>
         </div>
+        <div class="step" id="step2">
+          <div class="step-number">2</div>
+          <div class="step-text">プロンプト<br>入力</div>
+        </div>
+        <div class="step" id="step3">
+          <div class="step-number">3</div>
+          <div class="step-text">画像生成</div>
+        </div>
+      </div>
 
-        <div class="instructions">
-          <h3>📋 使い方</h3>
-          <p><strong>1️⃣ 初期セットアップ:</strong> 100行の構造化テーブルを作成</p>
-          <p><strong>2️⃣ プロンプト入力:</strong> B列にプロンプトを入力</p>
-          <p><strong>3️⃣ 画像生成:</strong> ボタンをクリックして画像を生成</p>
+      <div class="instructions">
+        <div id="instruction-text">
+          <strong>🚀 使い方:</strong><br>
+          <strong>1️⃣</strong> 初期セットアップで100行テーブル作成<br>
+          <strong>2️⃣</strong> B列にプロンプトを入力<br>
+          <strong>3️⃣</strong> 画像生成ボタンをクリック
         </div>
+      </div>
 
-        <div class="button-group">
-          <button class="btn btn-setup" onclick="executeInitialSetup()">
-            🔧 初期セットアップ
-          </button>
-          
-          <button class="btn btn-main" onclick="generateFromStructuredTable()">
-            🎨 画像生成（構造化テーブル）
-          </button>
-          
-          <button class="btn btn-create" onclick="createStructuredTableOnly()">
-            📊 構造化テーブル作成
-          </button>
-        </div>
+      <div class="button-group">
+        <button class="btn btn-setup" onclick="executeInitialSetup()">
+          🔧 初期セットアップ
+        </button>
+        
+        <button class="btn" onclick="generateFromStructuredTable()">
+          🎨 画像生成
+        </button>
+        
+        <button class="btn btn-create" onclick="createStructuredTableOnly()">
+          📊 テーブル作成のみ
+        </button>
       </div>
 
       <div class="loading" id="loading">
@@ -313,11 +317,21 @@
       hideLoading();
     }
 
+    function updateStepIndicator(currentStep) {
+      const steps = ['step1', 'step2', 'step3'];
+      steps.forEach(step => {
+        document.getElementById(step).classList.remove('active');
+      });
+      document.getElementById(currentStep).classList.add('active');
+    }
+
     function executeInitialSetup() {
       showLoading();
+      updateStepIndicator('step1');
       google.script.run
         .withSuccessHandler(function(result) {
           showResult(result);
+          updateStepIndicator('step2');
         })
         .withFailureHandler(function(error) {
           showResult('エラー: ' + error.message, true);
@@ -327,6 +341,7 @@
 
     function generateFromStructuredTable() {
       showLoading();
+      updateStepIndicator('step3');
       google.script.run
         .withSuccessHandler(function(result) {
           showResult(result);
@@ -339,6 +354,7 @@
 
     function createStructuredTableOnly() {
       showLoading();
+      updateStepIndicator('step2');
       google.script.run
         .withSuccessHandler(function(result) {
           showResult(result);
