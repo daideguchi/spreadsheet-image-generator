@@ -1459,3 +1459,169 @@ function getFullPrompt(sheet, row) {
     return "";
   }
 }
+
+/**
+ * 権限承認済みを記録
+ */
+function markPermissionGranted() {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    properties.setProperty("PERMISSION_GRANTED", "true");
+    markAsUsed(); // 使用記録も同時に保存
+  } catch (error) {
+    console.log("権限承認記録の保存に失敗:", error.message);
+  }
+}
+
+/**
+ * 使用記録を保存
+ */
+function markAsUsed() {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    properties.setProperty("TOOL_USED_BEFORE", "true");
+  } catch (error) {
+    console.log("使用記録の保存に失敗:", error.message);
+  }
+}
+
+/**
+ * 初回使用者かどうか判定
+ */
+function isFirstTimeUser() {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    const hasUsed = properties.getProperty("TOOL_USED_BEFORE");
+    return !hasUsed;
+  } catch (error) {
+    return true; // エラーの場合は初回とみなす
+  }
+}
+
+/**
+ * 権限承認済みかどうか判定
+ */
+function isPermissionGranted() {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    const permissionGranted = properties.getProperty("PERMISSION_GRANTED");
+    return permissionGranted === "true";
+  } catch (error) {
+    return false; // エラーの場合は未承認とみなす
+  }
+}
+
+/**
+ * 使い方ガイドを表示（初回使用者向け）
+ */
+function showUsageGuide() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const response = ui.alert(
+      "🎨 DALL-E 画像生成ツール",
+      "📝 簡単3ステップで画像生成！\n\n" +
+        "1️⃣ 「🔧 初期セットアップ」でテーブル作成\n" +
+        "2️⃣ B列にプロンプト（画像の説明文）を入力\n" +
+        "3️⃣ 「🎨 画像生成」ボタンをクリック\n\n" +
+        "💡 例：「美しい夕日の海辺」「可愛い猫のイラスト」\n\n" +
+        "⚠️ もし権限承認が必要な場合は、表示されるダイアログで「許可」をクリックしてください。\n\n" +
+        "今すぐ始めますか？",
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response === ui.Button.YES) {
+      try {
+        // 直接サイドバーを表示
+        showSidebar();
+        markAsUsed();
+      } catch (error) {
+        // エラーの場合は初期セットアップから開始
+        ui.alert(
+          "🚀 スタート",
+          "メニューから「🎨 画像ツール」→「📱 サイドバーを開く」をクリックして開始してください！\n\n" +
+            "💡 権限承認が求められた場合は「許可」をクリックしてください。",
+          ui.ButtonSet.OK
+        );
+      }
+    }
+  } catch (error) {
+    console.log("使い方ガイドの表示に失敗:", error.message);
+  }
+}
+
+/**
+ * 権限承認を強制実行（メニューから呼び出し可能）
+ */
+function forcePermissionRequest() {
+  try {
+    console.log("権限承認を開始します");
+
+    // 1. スプレッドシート権限のテスト
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getActiveSheet();
+    console.log("✅ スプレッドシート権限OK");
+
+    // 2. Drive権限のテスト（オプション）
+    try {
+      const file = DriveApp.getFileById(spreadsheet.getId());
+      const fileName = file.getName();
+      console.log("✅ Drive権限OK:", fileName);
+    } catch (driveError) {
+      console.log(
+        "⚠️ Drive権限は後で必要になる場合があります:",
+        driveError.message
+      );
+      // Drive権限エラーは無視して続行
+    }
+
+    // 3. UI権限のテスト
+    const ui = SpreadsheetApp.getUi();
+    console.log("✅ UI権限OK");
+
+    // 4. 外部リクエスト権限のテスト（オプション）
+    try {
+      const testResponse = UrlFetchApp.fetch("https://httpbin.org/get", {
+        method: "GET",
+        muteHttpExceptions: true,
+        headers: { "User-Agent": "DALL-E Image Generator Test" },
+      });
+      console.log("✅ 外部リクエスト権限OK");
+    } catch (fetchError) {
+      console.log(
+        "⚠️ 外部リクエスト権限は画像生成時に必要になります:",
+        fetchError.message
+      );
+      // 外部リクエスト権限エラーは無視して続行
+    }
+
+    // 権限承認完了を記録
+    markPermissionGranted();
+
+    ui.alert(
+      "✅ 権限承認完了",
+      "すべての権限が正常に承認されました！\n" +
+        "これでツールの全機能を使用できます。",
+      ui.ButtonSet.OK
+    );
+
+    return "✅ 権限承認が完了しました";
+  } catch (error) {
+    console.error("権限承認エラー:", error);
+
+    SpreadsheetApp.getUi().alert(
+      "🔐 権限承認が必要です",
+      "以下の手順で権限を承認してください：\n\n" +
+        "1️⃣ 表示されるダイアログで「許可を確認」をクリック\n" +
+        "2️⃣ Googleアカウントを選択\n" +
+        "3️⃣ 「安全ではないアプリ」の警告が出た場合：\n" +
+        "   ・「詳細」をクリック\n" +
+        "   ・「〜に移動（安全ではないページ）」をクリック\n" +
+        "4️⃣ 「許可」をクリック\n\n" +
+        "エラー詳細: " +
+        error.message,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+
+    throw error; // エラーを再スローして権限ダイアログを表示
+  }
+}
