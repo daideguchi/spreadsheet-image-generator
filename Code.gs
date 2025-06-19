@@ -1179,7 +1179,7 @@ function showSetupDialog() {
 }
 
 /**
- * 100行テーブル準備（権限チェックなしのシンプル版）
+ * 表をクリア（新しいテーブルを作成）
  */
 function createStructuredTableOnly() {
   try {
@@ -1295,7 +1295,7 @@ function createStructuredTableOnly() {
       const messageRange = sheet.getRange(messageRow, 1, 1, 8);
       messageRange.merge();
       messageRange.setValue(
-        `✨ 100行テーブル準備完了！B列にプロンプトを入力してください。`
+        `✨ 表をクリアしました！B列にプロンプトを入力してください。`
       );
       messageRange.setBackground("#e8f5e8");
       messageRange.setFontColor("#2e7d32");
@@ -1310,10 +1310,10 @@ function createStructuredTableOnly() {
       // メッセージエラーは無視して続行
     }
 
-    return "✅ 100行テーブル準備完了！B列にプロンプトを入力してください。";
+    return "✅ 表をクリアしました！B列にプロンプトを入力してください。";
   } catch (error) {
     console.error("テーブル準備エラー:", error);
-    throw new Error(`テーブル準備に失敗しました: ${error.message}`);
+    throw new Error(`表のクリアに失敗しました: ${error.message}`);
   }
 }
 
