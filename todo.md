@@ -154,6 +154,7 @@
   - createStructuredTableOnly 関数を createStructuredTable 関数に統一
   - 重複する createStructuredTable 関数（権限チェック付き）を削除
   - サイドバーボタン順序を最適化：「🗑️ 表をクリア」「🎨 画像生成」「💾 バックアップ」
+  - 説明文を「1️⃣ 表をクリア → 2️⃣ プロンプト入力 → 3️⃣ 画像生成」に修正
   - より直感的で安全なデータ管理フローを実現
 
 ### 今後のタスク
