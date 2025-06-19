@@ -1018,6 +1018,7 @@ function showUsageGuide() {
         "2️⃣ B列にプロンプト（画像の説明文）を入力\n" +
         "3️⃣ 「🎨 画像生成」ボタンをクリック\n\n" +
         "💡 例：「美しい夕日の海辺」「可愛い猫のイラスト」\n\n" +
+        "⚠️ もし権限承認が必要な場合は、表示されるダイアログで「許可」をクリックしてください。\n\n" +
         "今すぐ始めますか？",
       ui.ButtonSet.YES_NO
     );
@@ -1031,7 +1032,8 @@ function showUsageGuide() {
         // エラーの場合は初期セットアップから開始
         ui.alert(
           "🚀 スタート",
-          "メニューから「🎨 画像ツール」→「📱 サイドバーを開く」をクリックして開始してください！",
+          "メニューから「🎨 画像ツール」→「📱 サイドバーを開く」をクリックして開始してください！\n\n" +
+            "💡 権限承認が求められた場合は「許可」をクリックしてください。",
           ui.ButtonSet.OK
         );
       }
@@ -1086,7 +1088,7 @@ function forcePermissionRequest() {
       // 外部リクエスト権限エラーは無視して続行
     }
 
-    // 5. サイドバー表示権限のテスト
+    // 5. サイドバー表示権限のテスト（オプション）
     try {
       const html = HtmlService.createHtmlOutput("<p>権限テスト完了</p>")
         .setTitle("権限テスト")
@@ -1099,8 +1101,11 @@ function forcePermissionRequest() {
 
       console.log("✅ サイドバー権限OK");
     } catch (sidebarError) {
-      console.error("❌ サイドバー権限エラー:", sidebarError);
-      throw new Error("サイドバー権限が必要です: " + sidebarError.message);
+      console.log(
+        "⚠️ サイドバー権限は後で必要になります:",
+        sidebarError.message
+      );
+      // サイドバー権限エラーは無視して続行
     }
 
     // 権限承認完了を記録
@@ -1174,7 +1179,146 @@ function showSetupDialog() {
 }
 
 /**
- * 構造化テーブルのヘッダーを作成（100行対応）
+ * 100行テーブル準備（権限チェックなしのシンプル版）
+ */
+function createStructuredTableOnly() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // まずシートを完全にクリア
+    sheet.clear();
+    sheet.clearFormats();
+
+    console.log("シートをクリアしました");
+
+    // ヘッダー行を作成（1行目）
+    const headers = [
+      "No.", // A列
+      "📝 プロンプト", // B列 - ユーザー入力
+      "📋 画像概要", // C列 - 自動生成
+      "🤖 AI変換プロンプト", // D列 - DALL-E変換版
+      "🖼️ 生成画像", // E列 - 実際の画像
+      "📐 画像比率", // F列 - アスペクト比
+      "⏰ 生成日時", // G列 - タイムスタンプ
+      "✅ ステータス", // H列 - 生成状況
+    ];
+
+    // ヘッダーを設定
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setValues([headers]);
+
+    console.log("ヘッダーを設定しました");
+
+    // ヘッダーのスタイリング
+    headerRange.setBackground("#1a73e8");
+    headerRange.setFontColor("white");
+    headerRange.setFontWeight("bold");
+    headerRange.setHorizontalAlignment("center");
+    headerRange.setVerticalAlignment("middle");
+    headerRange.setFontSize(12);
+    sheet.setRowHeight(1, 45);
+
+    // 列幅の最適化
+    sheet.setColumnWidth(1, 60); // A: No.
+    sheet.setColumnWidth(2, 300); // B: プロンプト
+    sheet.setColumnWidth(3, 200); // C: 概要
+    sheet.setColumnWidth(4, 250); // D: AI変換
+    sheet.setColumnWidth(5, 220); // E: 画像
+    sheet.setColumnWidth(6, 100); // F: 比率
+    sheet.setColumnWidth(7, 140); // G: 日時
+    sheet.setColumnWidth(8, 100); // H: ステータス
+
+    console.log("列幅を設定しました");
+
+    // サンプルプロンプトの準備
+    const samplePrompts = [
+      "a beautiful sunset over the ocean with sailing boats",
+      "a cute cat wearing a wizard hat in a magical forest",
+      "a futuristic city with flying cars and neon lights",
+      "a delicious pizza with colorful vegetables",
+      "a peaceful garden with blooming cherry blossoms",
+    ];
+
+    console.log("100行のデータ行を作成開始");
+
+    // 100行のテーブルを作成（2-101行目）
+    for (let i = 1; i <= 100; i++) {
+      const row = i + 1;
+
+      try {
+        // A列: 番号
+        const numberCell = sheet.getRange(row, 1);
+        numberCell.setValue(i);
+        numberCell.setHorizontalAlignment("center");
+        numberCell.setFontWeight("bold");
+        numberCell.setBackground("#f8f9fa");
+
+        // B列の処理
+        const promptCell = sheet.getRange(row, 2);
+        if (i <= samplePrompts.length) {
+          // 最初の5行にサンプルプロンプト
+          promptCell.setValue(samplePrompts[i - 1]);
+          promptCell.setFontStyle("italic");
+          promptCell.setFontColor("#666666");
+        }
+        // すべてのB列セルに共通スタイル
+        promptCell.setWrap(true);
+        promptCell.setVerticalAlignment("middle");
+
+        // 行の高さを設定
+        sheet.setRowHeight(row, 60);
+
+        // 境界線を設定（全8列）
+        const rowRange = sheet.getRange(row, 1, 1, headers.length);
+        rowRange.setBorder(true, true, true, true, true, true);
+
+        // 10行ごとに薄い区切り線を追加
+        if (i % 10 === 0) {
+          rowRange.setBackground("#f0f0f0");
+        }
+
+        // 進捗表示（10行ごと）
+        if (i % 10 === 0) {
+          console.log(`${i}行目まで作成完了`);
+        }
+      } catch (rowError) {
+        console.error(`行${row}の作成でエラー:`, rowError);
+        // 個別行のエラーは続行
+      }
+    }
+
+    console.log("100行の作成完了");
+
+    // 完了メッセージを下部に追加
+    try {
+      const messageRow = 103;
+      const messageRange = sheet.getRange(messageRow, 1, 1, 8);
+      messageRange.merge();
+      messageRange.setValue(
+        `✨ 100行テーブル準備完了！B列にプロンプトを入力してください。`
+      );
+      messageRange.setBackground("#e8f5e8");
+      messageRange.setFontColor("#2e7d32");
+      messageRange.setHorizontalAlignment("center");
+      messageRange.setFontWeight("bold");
+      messageRange.setFontSize(14);
+      sheet.setRowHeight(messageRow, 40);
+
+      console.log("完了メッセージを追加しました");
+    } catch (messageError) {
+      console.error("完了メッセージの追加でエラー:", messageError);
+      // メッセージエラーは無視して続行
+    }
+
+    return "✅ 100行テーブル準備完了！B列にプロンプトを入力してください。";
+  } catch (error) {
+    console.error("テーブル準備エラー:", error);
+    throw new Error(`テーブル準備に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 構造化テーブルのヘッダーを作成（100行対応・権限チェック付き）
  */
 function createStructuredTable() {
   try {
