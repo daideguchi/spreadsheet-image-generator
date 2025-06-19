@@ -926,8 +926,10 @@ function populateStructuredTable(imageResults, promptRows) {
           );
         }
 
-        // ユーザープロンプトは絶対に省略しない（内部処理版のみ制限対象）
-        promptCell.setNote(comment);
+        // 🔧 **技術的解決策**: B列セルコメントもデータ分離で制限回避
+        // ユーザープロンプトのみをセルコメントに配置（内部処理版は既にC列コメントに分離済み）
+        const userOnlyComment = `📝 ユーザー入力プロンプト:\n${currentPrompt}\n\n💡 内部処理版はC列のコメントで確認できます`;
+        promptCell.setNote(userOnlyComment);
       } else {
         // 短いプロンプトの場合もGPT-Image-1内部処理情報を表示（ユーザープロンプト完全保持）
         if (result.revised_prompt && result.original_prompt) {
@@ -989,8 +991,10 @@ function populateStructuredTable(imageResults, promptRows) {
             "完全なプロンプト情報（ユーザープロンプト無制限版）"
           );
 
-          // ユーザープロンプトは絶対に省略しない（内部処理版のみ制限対象）
-          promptCell.setNote(comment);
+          // 🔧 **技術的解決策**: B列セルコメントもデータ分離で制限回避
+          // ユーザープロンプトのみをセルコメントに配置（内部処理版は既にC列コメントに分離済み）
+          const userOnlyComment = `📝 ユーザー入力プロンプト:\n${result.original_prompt}\n\n💡 内部処理版はC列のコメントで確認できます`;
+          promptCell.setNote(userOnlyComment);
         }
       }
 
@@ -1439,9 +1443,8 @@ function handlePromptInput(sheet, row, fullPrompt) {
       // B列に省略版を表示
       promptCell.setValue(truncatedPrompt);
       promptCell.setWrap(false); // セル高の自動拡大を防止
-      // ユーザープロンプトは絶対に省略しない
-      let safeNote = `完全なプロンプト:\n${fullPrompt}\n\n💡 完全版はC列で確認できます`;
-      // ユーザープロンプトは制限しない（内部処理版のみ制限対象）
+      // 🔧 **技術的解決策**: ユーザープロンプトはC列に配置済みのため、B列コメントは簡潔に
+      let safeNote = `💡 完全版はC列で確認できます（${fullPrompt.length}文字）`;
       promptCell.setNote(safeNote);
 
       // C列に完全版を表示（スクロール可能）- ユーザープロンプト完全保持
