@@ -222,141 +222,17 @@ function checkSettings() {
 }
 
 /**
- * アクティブレンジのA1表記を取得（自動検出機能付き）
+ * アクティブレンジのA1表記を取得
  */
 function getActiveRangeA1() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
-    let range = sheet.getActiveRange();
-
-    // 単一セルが選択されている場合、プロンプト入力エリアを自動検出
-    if (range.getNumRows() === 1 && range.getNumColumns() === 1) {
-      const autoRange = findPromptInputArea();
-      if (autoRange) {
-        range = autoRange;
-        console.log(
-          "プロンプト入力エリアを自動検出しました:",
-          range.getA1Notation()
-        );
-      }
-    }
+    const range = sheet.getActiveRange();
 
     return range.getA1Notation();
   } catch (error) {
     console.error("アクティブレンジの取得エラー:", error);
     throw new Error("アクティブレンジの取得に失敗しました");
-  }
-}
-
-/**
- * プロンプト入力エリアを自動検出
- */
-function findPromptInputArea() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-    const dataRange = sheet.getDataRange();
-
-    if (dataRange.getNumRows() < 1) return null;
-
-    // "プロンプト入力エリア" のヘッダーを探す
-    for (let row = 1; row <= dataRange.getNumRows(); row++) {
-      const cellValue = sheet.getRange(row, 1).getValue().toString();
-      if (cellValue.includes("プロンプト入力エリア")) {
-        // ヘッダーの下の行から入力データを検索
-        const startRow = row + 1;
-        let endRow = startRow;
-
-        // 連続するデータ行を検出
-        for (let r = startRow; r <= sheet.getLastRow(); r++) {
-          const value = sheet.getRange(r, 1).getValue();
-          if (value && value.toString().trim() !== "") {
-            endRow = r;
-          } else if (r > startRow && endRow === r - 1) {
-            // 空行が見つかったら終了
-            break;
-          }
-        }
-
-        if (endRow >= startRow) {
-          return sheet.getRange(startRow, 1, endRow - startRow + 1, 1);
-        }
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.error("プロンプト入力エリア検出エラー:", error);
-    return null;
-  }
-}
-
-/**
- * 既存のプロンプト入力エリアに行を追加
- */
-function addPromptRows(numRows = 5) {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-    const dataRange = sheet.getDataRange();
-
-    if (dataRange.getNumRows() < 1) {
-      throw new Error("プロンプト入力エリアが見つかりません");
-    }
-
-    // "プロンプト入力エリア" のヘッダーを探す
-    let headerRow = -1;
-    for (let row = 1; row <= dataRange.getNumRows(); row++) {
-      const cellValue = sheet.getRange(row, 1).getValue().toString();
-      if (cellValue.includes("プロンプト入力エリア")) {
-        headerRow = row;
-        break;
-      }
-    }
-
-    if (headerRow === -1) {
-      throw new Error("プロンプト入力エリアのヘッダーが見つかりません");
-    }
-
-    // 既存の入力エリアの最後の行を見つける
-    let lastInputRow = headerRow;
-    for (let r = headerRow + 1; r <= sheet.getLastRow(); r++) {
-      const cellValue = sheet.getRange(r, 1).getValue();
-      if (cellValue !== null && cellValue !== "") {
-        lastInputRow = r;
-      } else {
-        // 空行が見つかったら、そこまでが入力エリア
-        break;
-      }
-    }
-
-    // 新しい行を追加する位置
-    const insertRow = lastInputRow + 1;
-
-    // 新しい入力行を追加
-    for (let i = 0; i < numRows; i++) {
-      const newRow = insertRow + i;
-      const cellRange = sheet.getRange(newRow, 1);
-
-      // 空のセルを作成
-      cellRange.setValue("");
-
-      // スタイル設定（既存のスタイルに合わせる）
-      cellRange.setBorder(true, true, true, true, true, true);
-      sheet.setRowHeight(newRow, 30);
-    }
-
-    // 列幅を調整
-    sheet.setColumnWidth(1, 400);
-
-    // 新しく追加された範囲を選択
-    const newRange = sheet.getRange(insertRow, 1, numRows, 1);
-    sheet.setActiveRange(newRange);
-
-    return `プロンプト入力エリアに${numRows}行を追加しました（行 ${insertRow}～${
-      insertRow + numRows - 1
-    }）`;
-  } catch (error) {
-    console.error("プロンプト行追加エラー:", error);
-    throw new Error(`プロンプト行の追加に失敗しました: ${error.message}`);
   }
 }
 
@@ -745,63 +621,6 @@ function createImageTable(imageResults) {
 }
 
 /**
- * プロンプト入力テーブルを作成（重複防止機能付き）
- */
-function createPromptInputTable() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-
-    // 既存のプロンプト入力エリアをチェック
-    const existingArea = findPromptInputArea();
-
-    if (existingArea) {
-      // 既存エリアがある場合は追加行を提案
-      const ui = SpreadsheetApp.getUi();
-      const response = ui.alert(
-        "📝 プロンプト入力エリアが既に存在します",
-        "既にプロンプト入力エリアがあります。\n\n" +
-          "✅ はい：既存エリアに行を追加\n" +
-          "❌ いいえ：新しいエリアを下に作成\n" +
-          "🚫 キャンセル：操作を中止",
-        ui.ButtonSet.YES_NO_CANCEL
-      );
-
-      if (response === ui.Button.YES) {
-        return addPromptRows();
-      } else if (response === ui.Button.NO) {
-        // 新しいエリアを作成
-        const lastRow = findLastDataRow();
-        const startRow = lastRow + 3;
-        createPromptInputAreaAt(startRow);
-        return `新しいプロンプト入力エリアを作成しました（行 ${startRow}～${
-          startRow + 8
-        }）`;
-      } else {
-        return "操作をキャンセルしました";
-      }
-    } else {
-      // 既存エリアがない場合は新規作成
-      const lastRow = findLastDataRow();
-      const startRow = lastRow + 3;
-      createPromptInputAreaAt(startRow);
-      return `プロンプト入力エリアを作成しました（行 ${startRow}～${
-        startRow + 8
-      }）`;
-    }
-  } catch (error) {
-    console.error("入力テーブル作成エラー:", error);
-    throw new Error(`入力テーブルの作成に失敗しました: ${error.message}`);
-  }
-}
-
-/**
- * 改善されたプロンプト入力エリアを作成
- */
-function createPromptInputArea() {
-  return createPromptInputAreaAt(4);
-}
-
-/**
  * 画像生成と隣接配置を同時に実行
  */
 function generateImagesAndCreateTable(prompts) {
@@ -1046,64 +865,6 @@ function createWorkspace(startRow) {
 }
 
 /**
- * 指定位置にプロンプト入力エリアを作成
- */
-function createPromptInputAreaAt(startRow) {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-
-    // プロンプト入力見出し
-    const headerRange = sheet.getRange(startRow, 1, 1, 1);
-    headerRange.setValue("✨ プロンプト入力エリア");
-    headerRange.setBackground("#34a853");
-    headerRange.setFontColor("white");
-    headerRange.setFontWeight("bold");
-    headerRange.setHorizontalAlignment("center");
-    headerRange.setVerticalAlignment("middle");
-    sheet.setRowHeight(startRow, 35);
-
-    // プロンプト入力例を追加
-    const examplePrompts = [
-      "a beautiful sunset over the ocean with sailing boats",
-      "a cute cat wearing a wizard hat in a magical forest",
-      "a futuristic city with flying cars and neon lights",
-      "a delicious pizza with colorful vegetables",
-      "a peaceful garden with blooming cherry blossoms",
-    ];
-
-    // 入力欄を作成（例付き）
-    for (let i = 0; i < 8; i++) {
-      const row = startRow + 1 + i;
-      const cellRange = sheet.getRange(row, 1);
-
-      if (i < examplePrompts.length) {
-        cellRange.setValue(examplePrompts[i]);
-        cellRange.setFontColor("#666666");
-        cellRange.setFontStyle("italic");
-      }
-
-      // スタイル設定（エラーを修正）
-      cellRange.setBorder(true, true, true, true, true, true);
-      sheet.setRowHeight(row, 30);
-    }
-
-    // 列幅を調整
-    sheet.setColumnWidth(1, 400);
-
-    // 入力範囲を選択状態にする
-    const inputRange = sheet.getRange(startRow + 1, 1, 8, 1);
-    sheet.setActiveRange(inputRange);
-
-    return `プロンプト入力エリアを作成しました（行 ${startRow}～${
-      startRow + 8
-    }）`;
-  } catch (error) {
-    console.error("入力エリア作成エリア:", error);
-    throw new Error(`入力エリアの作成に失敗しました: ${error.message}`);
-  }
-}
-
-/**
  * シートにデータがあるかチェック（統一版）
  */
 function checkForAnyData() {
@@ -1283,53 +1044,90 @@ function showWelcomeMessage() {
 }
 
 /**
- * 手動で権限承認を実行（メニューから実行可能）
+ * 権限承認を強制実行（メニューから呼び出し可能）
  */
 function forcePermissionRequest() {
   try {
-    // この関数を直接実行することで確実に権限承認ダイアログを表示
-    const ui = SpreadsheetApp.getUi();
+    console.log("権限承認を開始します");
 
-    // 全ての必要な権限を順番に要求
-    console.log("1. スプレッドシート権限をテスト中...");
+    // 1. スプレッドシート権限のテスト
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = spreadsheet.getActiveSheet();
+    console.log("✅ スプレッドシート権限OK");
 
-    console.log("2. Drive権限をテスト中...");
-    const file = DriveApp.getFileById(spreadsheet.getId());
+    // 2. Drive権限のテスト（これが重要）
+    try {
+      const file = DriveApp.getFileById(spreadsheet.getId());
+      const fileName = file.getName();
+      console.log("✅ Drive権限OK:", fileName);
+    } catch (driveError) {
+      console.error("❌ Drive権限エラー:", driveError);
+      throw new Error("Drive権限が必要です: " + driveError.message);
+    }
 
-    console.log("3. 外部リクエスト権限をテスト中...");
-    UrlFetchApp.fetch("https://httpbin.org/get", {
-      muteHttpExceptions: true,
-      headers: { "User-Agent": "DALL-E Image Generator Test" },
-    });
+    // 3. UI権限のテスト
+    const ui = SpreadsheetApp.getUi();
+    console.log("✅ UI権限OK");
 
-    console.log("4. UI権限をテスト中...");
-    // サイドバー権限をテスト
-    const html = HtmlService.createHtmlOutput(
-      '<div style="padding:20px;text-align:center;"><h3>✅ 権限承認完了！</h3><p>このメッセージが表示されれば、<br>すべての権限が正常に承認されました。</p><p><strong>メニューから「📱 サイドバーを開く」<br>をクリックしてツールを開始してください。</strong></p></div>'
-    )
-      .setTitle("🎉 権限承認成功")
-      .setWidth(950);
-    ui.showSidebar(html);
+    // 4. 外部リクエスト権限のテスト
+    try {
+      const testResponse = UrlFetchApp.fetch("https://httpbin.org/get", {
+        method: "GET",
+        muteHttpExceptions: true,
+        headers: { "User-Agent": "DALL-E Image Generator Test" },
+      });
+      console.log("✅ 外部リクエスト権限OK");
+    } catch (fetchError) {
+      console.error("❌ 外部リクエスト権限エラー:", fetchError);
+      throw new Error("外部リクエスト権限が必要です: " + fetchError.message);
+    }
 
-    console.log("✅ すべての権限承認が完了しました");
+    // 5. サイドバー表示権限のテスト
+    try {
+      const html = HtmlService.createHtmlOutput("<p>権限テスト完了</p>")
+        .setTitle("権限テスト")
+        .setWidth(300);
+      ui.showSidebar(html);
 
-    // 権限承認記録を保存
+      // テスト用サイドバーを短時間表示後に本来のサイドバーに切り替え
+      Utilities.sleep(500);
+      showSidebar();
+
+      console.log("✅ サイドバー権限OK");
+    } catch (sidebarError) {
+      console.error("❌ サイドバー権限エラー:", sidebarError);
+      throw new Error("サイドバー権限が必要です: " + sidebarError.message);
+    }
+
+    // 権限承認完了を記録
     markPermissionGranted();
+
+    ui.alert(
+      "✅ 権限承認完了",
+      "すべての権限が正常に承認されました！\n" +
+        "これでツールの全機能を使用できます。",
+      ui.ButtonSet.OK
+    );
 
     return "✅ 権限承認が完了しました";
   } catch (error) {
     console.error("権限承認エラー:", error);
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      "⚠️ 権限承認が必要です",
-      "この関数の実行により権限承認ダイアログが表示されます。\n\n" +
-        "表示されたダイアログで「許可」をクリックしてください。\n" +
-        "承認後、この関数を再度実行してください。",
-      ui.ButtonSet.OK
+
+    SpreadsheetApp.getUi().alert(
+      "🔐 権限承認が必要です",
+      "以下の手順で権限を承認してください：\n\n" +
+        "1️⃣ 表示されるダイアログで「許可を確認」をクリック\n" +
+        "2️⃣ Googleアカウントを選択\n" +
+        "3️⃣ 「安全ではないアプリ」の警告が出た場合：\n" +
+        "   ・「詳細」をクリック\n" +
+        "   ・「〜に移動（安全ではないページ）」をクリック\n" +
+        "4️⃣ 「許可」をクリック\n\n" +
+        "エラー詳細: " +
+        error.message,
+      SpreadsheetApp.getUi().ButtonSet.OK
     );
-    throw error;
+
+    throw error; // エラーを再スローして権限ダイアログを表示
   }
 }
 
@@ -1352,11 +1150,17 @@ function handlePermissionError(actionName) {
 }
 
 /**
- * 構造化テーブルのヘッダーを作成
+ * 構造化テーブルのヘッダーを作成（100行対応）
  */
 function createStructuredTable() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
+
+    // まずシートを完全にクリア
+    sheet.clear();
+    sheet.clearFormats();
+
+    console.log("シートをクリアしました");
 
     // ヘッダー行を作成（1行目）
     const headers = [
@@ -1370,8 +1174,11 @@ function createStructuredTable() {
       "✅ ステータス", // H列 - 生成状況
     ];
 
+    // ヘッダーを設定
     const headerRange = sheet.getRange(1, 1, 1, headers.length);
     headerRange.setValues([headers]);
+
+    console.log("ヘッダーを設定しました");
 
     // ヘッダーのスタイリング
     headerRange.setBackground("#1a73e8");
@@ -1392,7 +1199,9 @@ function createStructuredTable() {
     sheet.setColumnWidth(7, 140); // G: 日時
     sheet.setColumnWidth(8, 100); // H: ステータス
 
-    // サンプル行を追加（2-6行目）
+    console.log("列幅を設定しました");
+
+    // サンプルプロンプトの準備
     const samplePrompts = [
       "a beautiful sunset over the ocean with sailing boats",
       "a cute cat wearing a wizard hat in a magical forest",
@@ -1401,50 +1210,78 @@ function createStructuredTable() {
       "a peaceful garden with blooming cherry blossoms",
     ];
 
-    for (let i = 0; i < samplePrompts.length; i++) {
-      const row = i + 2;
+    console.log("100行のデータ行を作成開始");
 
-      // A列: 番号
-      sheet.getRange(row, 1).setValue(i + 1);
-      sheet.getRange(row, 1).setHorizontalAlignment("center");
-      sheet.getRange(row, 1).setFontWeight("bold");
-      sheet.getRange(row, 1).setBackground("#f8f9fa");
-
-      // B列: サンプルプロンプト
-      const promptCell = sheet.getRange(row, 2);
-      promptCell.setValue(samplePrompts[i]);
-      promptCell.setWrap(true);
-      promptCell.setVerticalAlignment("middle");
-      promptCell.setFontStyle("italic");
-      promptCell.setFontColor("#666666");
-
-      // 行の高さを設定
-      sheet.setRowHeight(row, 60);
-
-      // 境界線を設定
-      const rowRange = sheet.getRange(row, 1, 1, headers.length);
-      rowRange.setBorder(true, true, true, true, true, true);
-    }
-
-    // 空の行を追加（7-10行目）
-    for (let i = 6; i <= 10; i++) {
+    // 100行のテーブルを作成（2-101行目）
+    for (let i = 1; i <= 100; i++) {
       const row = i + 1;
 
-      // A列: 番号
-      sheet.getRange(row, 1).setValue(i);
-      sheet.getRange(row, 1).setHorizontalAlignment("center");
-      sheet.getRange(row, 1).setFontWeight("bold");
-      sheet.getRange(row, 1).setBackground("#f8f9fa");
+      try {
+        // A列: 番号
+        const numberCell = sheet.getRange(row, 1);
+        numberCell.setValue(i);
+        numberCell.setHorizontalAlignment("center");
+        numberCell.setFontWeight("bold");
+        numberCell.setBackground("#f8f9fa");
 
-      // 行の高さを設定
-      sheet.setRowHeight(row, 60);
+        // B列の処理
+        const promptCell = sheet.getRange(row, 2);
+        if (i <= samplePrompts.length) {
+          // 最初の5行にサンプルプロンプト
+          promptCell.setValue(samplePrompts[i - 1]);
+          promptCell.setFontStyle("italic");
+          promptCell.setFontColor("#666666");
+        }
+        // すべてのB列セルに共通スタイル
+        promptCell.setWrap(true);
+        promptCell.setVerticalAlignment("middle");
 
-      // 境界線を設定
-      const rowRange = sheet.getRange(row, 1, 1, headers.length);
-      rowRange.setBorder(true, true, true, true, true, true);
+        // 行の高さを設定
+        sheet.setRowHeight(row, 60);
+
+        // 境界線を設定（全8列）
+        const rowRange = sheet.getRange(row, 1, 1, headers.length);
+        rowRange.setBorder(true, true, true, true, true, true);
+
+        // 10行ごとに薄い区切り線を追加
+        if (i % 10 === 0) {
+          rowRange.setBackground("#f0f0f0");
+        }
+
+        // 進捗表示（10行ごと）
+        if (i % 10 === 0) {
+          console.log(`${i}行目まで作成完了`);
+        }
+      } catch (rowError) {
+        console.error(`行${row}の作成でエラー:`, rowError);
+        // 個別行のエラーは続行
+      }
     }
 
-    return "✨ 構造化テーブルを作成しました！B列にプロンプトを入力してください。";
+    console.log("100行の作成完了");
+
+    // 完了メッセージを下部に追加
+    try {
+      const messageRow = 103;
+      const messageRange = sheet.getRange(messageRow, 1, 1, 8);
+      messageRange.merge();
+      messageRange.setValue(
+        `✨ 100行の構造化テーブルが作成されました！B列にプロンプトを入力してください。`
+      );
+      messageRange.setBackground("#e8f5e8");
+      messageRange.setFontColor("#2e7d32");
+      messageRange.setHorizontalAlignment("center");
+      messageRange.setFontWeight("bold");
+      messageRange.setFontSize(14);
+      sheet.setRowHeight(messageRow, 40);
+
+      console.log("完了メッセージを追加しました");
+    } catch (messageError) {
+      console.error("完了メッセージの追加でエラー:", messageError);
+      // メッセージエラーは無視して続行
+    }
+
+    return "✅ 100行の構造化テーブルを作成しました！B列にプロンプトを入力してください。";
   } catch (error) {
     console.error("構造化テーブル作成エラー:", error);
     throw new Error(`構造化テーブルの作成に失敗しました: ${error.message}`);
@@ -1463,8 +1300,8 @@ function generateImagesFromStructuredTable() {
       throw new Error("プロンプトが入力されていません");
     }
 
-    // B列からプロンプトを取得（2行目以降）
-    const promptRange = sheet.getRange(2, 2, lastRow - 1, 1);
+    // B列からプロンプトを取得（2行目以降、最大101行目まで）
+    const promptRange = sheet.getRange(2, 2, Math.min(lastRow - 1, 100), 1);
     const promptValues = promptRange.getValues();
 
     const validPrompts = [];
@@ -1562,21 +1399,6 @@ function populateStructuredTable(imageResults, promptRows) {
 
       processedCount++;
     });
-
-    // 完了メッセージを下部に追加
-    const lastRow = sheet.getLastRow();
-    const messageRow = lastRow + 2;
-    const messageRange = sheet.getRange(messageRow, 1, 1, 8);
-    messageRange.merge();
-    messageRange.setValue(
-      `🎉 ${processedCount}枚の画像生成が完了しました！ - ${currentTime}`
-    );
-    messageRange.setBackground("#e8f5e8");
-    messageRange.setFontColor("#2e7d32");
-    messageRange.setHorizontalAlignment("center");
-    messageRange.setFontWeight("bold");
-    messageRange.setFontSize(14);
-    sheet.setRowHeight(messageRow, 40);
 
     return `✅ ${processedCount}枚の画像を構造化テーブルに配置しました！`;
   } catch (error) {
