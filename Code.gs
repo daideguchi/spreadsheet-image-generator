@@ -600,7 +600,14 @@ function insertImages(imageResults, rangeA1) {
             const truncatedPrompt = originalPrompt.substring(0, 97) + "...";
             promptCell.setValue(truncatedPrompt);
             // 元のプロンプトをコメントとして保存 - ユーザープロンプト完全保持
+            // 🔧 安全な文字数制限を適用（25,000文字制限）
+            const maxSafeLength = 25000;
             let safeOriginal = `完全なプロンプト:\n${originalPrompt}`;
+            if (safeOriginal.length > maxSafeLength) {
+              safeOriginal =
+                safeOriginal.substring(0, maxSafeLength - 100) +
+                "\n[文字数制限により省略...]";
+            }
             // ユーザープロンプトは絶対に省略しない
             promptCell.setNote(safeOriginal);
           }
@@ -782,9 +789,15 @@ function populateStructuredTable(imageResults, promptRows) {
         imageCell.setFontWeight("bold");
         imageCell.setFontColor("#d32f2f");
         imageCell.setBackground("#ffebee");
-        imageCell.setNote(
-          `エラー詳細:\n${result.error}\n\n再生成するには、この行を選択して「🔄 再生成」ボタンをクリックしてください。`
-        );
+        // 🔧 エラーメッセージにも安全な文字数制限を適用
+        const maxErrorLength = 5000;
+        let errorMessage = `エラー詳細:\n${result.error}\n\n再生成するには、この行を選択して「🔄 再生成」ボタンをクリックしてください。`;
+        if (errorMessage.length > maxErrorLength) {
+          errorMessage =
+            errorMessage.substring(0, maxErrorLength - 100) +
+            "\n[エラーメッセージが長すぎるため省略...]";
+        }
+        imageCell.setNote(errorMessage);
 
         // E列: エラー表示
         const ratioCell = sheet.getRange(row, 5);
@@ -876,17 +889,24 @@ function populateStructuredTable(imageResults, promptRows) {
       } else {
         // 短いプロンプトの場合もGPT-Image-1内部処理情報を表示（ユーザープロンプト完全保持）
         if (result.revised_prompt && result.original_prompt) {
+          // 🔧 original_promptの長さを事前にチェック
+          const safeOriginalPrompt =
+            result.original_prompt && result.original_prompt.length > 30000
+              ? result.original_prompt.substring(0, 30000) +
+                "\n[プロンプトが長すぎるため省略...]"
+              : result.original_prompt;
+
           // 内部処理変更度を計算
-          const originalLength = result.original_prompt.length;
+          const originalLength = safeOriginalPrompt.length;
           const revisedLength = result.revised_prompt.length;
           const changeRatio =
             (Math.abs(revisedLength - originalLength) / originalLength) * 100;
 
-          let comment = `📝 ユーザー入力プロンプト:\n${result.original_prompt}`;
+          let comment = `📝 ユーザー入力プロンプト:\n${safeOriginalPrompt}`;
 
           // ユーザープロンプトは絶対に省略しない
 
-          comment += `\n\n🤖 内部処理版:\n`;
+          comment += `\n\n🤖 GPT-Image-1内部処理版:\n`;
 
           // 内部処理版のみ制限
           const currentLength = comment.length;
@@ -919,7 +939,8 @@ function populateStructuredTable(imageResults, promptRows) {
           const headerText = `【完全版】\n\n📝 ユーザー入力プロンプト:\n`;
           const maxUserPromptLength = 49500 - headerText.length; // 500文字の安全マージン
 
-          let userPromptForCell = result.original_prompt;
+          // 🔧 result.original_promptの安全性チェック
+          let userPromptForCell = result.original_prompt || "";
           let isPromptTruncated = false;
 
           if (userPromptForCell.length > maxUserPromptLength) {
@@ -933,6 +954,12 @@ function populateStructuredTable(imageResults, promptRows) {
           let userPromptPart = headerText + userPromptForCell;
           if (isPromptTruncated) {
             userPromptPart += `\n\n⚠️ プロンプトが長すぎるため表示を制限しています。完全版はセルコメントで確認できます。`;
+          }
+
+          // 🔧 最終安全チェック：絶対に49,500文字を超えない
+          if (userPromptPart.length > 49500) {
+            userPromptPart =
+              userPromptPart.substring(0, 49400) + "\n[文字数制限...]";
           }
 
           // セル値に安全な長さで配置
@@ -1400,7 +1427,11 @@ function handlePromptInput(sheet, row, fullPrompt) {
       promptCell.setValue(truncatedPrompt);
       promptCell.setWrap(false); // セル高の自動拡大を防止
       // 🔧 **技術的解決策**: ユーザープロンプトはC列に配置済みのため、B列コメントは簡潔に
+      const maxNoteLength = 1000;
       let safeNote = `💡 完全版はC列で確認できます（${fullPrompt.length}文字）`;
+      if (safeNote.length > maxNoteLength) {
+        safeNote = safeNote.substring(0, maxNoteLength - 50) + "...";
+      }
       promptCell.setNote(safeNote);
 
       // C列に完全版を表示（スクロール可能）- ユーザープロンプト完全保持
@@ -1419,7 +1450,9 @@ function handlePromptInput(sheet, row, fullPrompt) {
         "#e0e0e0",
         SpreadsheetApp.BorderStyle.SOLID
       );
-      fullPromptCell.setNote("完全なプロンプト（無制限版）");
+      // 🔧 C列のコメントも安全な長さに制限
+      const safeFullNote = "完全なプロンプト（無制限版）";
+      fullPromptCell.setNote(safeFullNote);
 
       console.log(
         `行${row}: プロンプトを省略表示に変更 (${fullPrompt.length}文字 → ${truncatedPrompt.length}文字)`
@@ -1428,11 +1461,15 @@ function handlePromptInput(sheet, row, fullPrompt) {
       // 短いプロンプトの場合：B列に全文表示、C列はクリア - ユーザープロンプト完全保持
       promptCell.setValue(fullPrompt);
       promptCell.setWrap(false);
-      promptCell.setNote("プロンプト（無制限版）");
+      // 🔧 短いプロンプトでも安全な長さに制限
+      const safeShortNote = "プロンプト（無制限版）";
+      promptCell.setNote(safeShortNote);
 
       // C列をクリア（短いプロンプトの場合は不要）
       fullPromptCell.clear();
-      fullPromptCell.setNote("短いプロンプトのため、B列に全文表示中");
+      // 🔧 C列のクリア時のコメントも安全に
+      const safeClearNote = "短いプロンプトのため、B列に全文表示中";
+      fullPromptCell.setNote(safeClearNote);
 
       console.log(`行${row}: プロンプトを全文表示 (${fullPrompt.length}文字)`);
     }
@@ -2051,9 +2088,10 @@ function createStructuredTable() {
         promptCell.setFontSize(11);
         promptCell.setPadding(8, 8, 8, 8);
         promptCell.setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
-        promptCell.setNote(
-          "ここに画像生成用のプロンプトを入力してください。\n長いプロンプトでも問題ありません。"
-        );
+        // 🔧 構造化テーブルのコメントも安全な長さに
+        const safePromptNote =
+          "ここに画像生成用のプロンプトを入力してください。\n長いプロンプトでも問題ありません。";
+        promptCell.setNote(safePromptNote);
 
         // H列: チェックボックス
         const checkboxCell = sheet.getRange(row, 8);
