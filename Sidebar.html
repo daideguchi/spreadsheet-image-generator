@@ -524,7 +524,7 @@
       <div class="instructions">
         <div id="instruction-text">
           <strong>🚀 簡単3ステップ:</strong><br>
-          <strong>1️⃣</strong> 初期設定 → <strong>2️⃣</strong> プロンプト入力 → <strong>3️⃣</strong> 画像生成<br>
+          <strong>1️⃣</strong> 表を初期化 → <strong>2️⃣</strong> プロンプト入力 → <strong>3️⃣</strong> 画像生成<br>
           <!-- 情報メッセージを簡潔化 -->
           <span style="color: #1a73e8; font-weight: bold;">📝 ステップに沿って操作してください</span>
         </div>
@@ -534,8 +534,8 @@
         <!-- 基本操作グループ -->
         <div class="button-section">
           <div class="section-title">📋 基本操作</div>
-          <button class="btn btn-setup" id="setupBtn" onclick="executeBackup()" title="すでに初期設定済みです">
-            🔧 初期設定
+          <button class="btn btn-setup" id="setupBtn" onclick="executeBackup()" title="すでに初期化済みです">
+            🔧 表を初期化
           </button>
           
           <button class="btn" id="generateBtn" onclick="generateFromStructuredTable()" title="プロンプトを入力してください">
@@ -571,9 +571,6 @@
         <div class="button-section">
           <div class="section-title">⚙️ その他</div>
           <div class="button-row">
-            <button class="btn btn-create btn-small" onclick="createTableOnly()">
-              🗑️ 表をクリア
-            </button>
             <button class="btn btn-secondary btn-small" onclick="checkSheetState()">
               ⚡ 更新
             </button>
@@ -646,11 +643,11 @@
           const generateBtn = document.getElementById('generateBtn');
           const managementSection = document.getElementById('managementSection');
 
-          // シートが空でなければ初期設定ボタンを無効化（既に設定済み）
+          // シートが空でなければ初期化ボタンを無効化（既に設定済み）
           if (!isEmpty) {
             setupBtn.disabled = true;
             setupBtn.classList.add('disabled');
-            setupBtn.title = 'すでに初期設定済みです';
+            setupBtn.title = 'すでに初期化済みです';
           } else {
             setupBtn.disabled = false;
             setupBtn.classList.remove('disabled');

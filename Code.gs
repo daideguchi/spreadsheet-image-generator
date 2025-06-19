@@ -22,7 +22,7 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu("🎨 画像ツール")
     .addItem("📱 サイドバーを開く", "showSidebar")
-    .addItem("🔧 初期セットアップ", "initialSetup")
+    .addItem("🔧 表を初期化", "initialSetup")
     .addSeparator()
     .addItem("💾 バックアップ作成", "createBackupAndNewTable")
     .addItem("🧹 シートを完全クリア", "clearSheetMenu")
@@ -87,7 +87,7 @@ function initialSetup() {
     } else {
       // 空のシートの場合
       const response = ui.alert(
-        "🚀 初期セットアップ",
+        "🚀 表を初期化",
         "画像生成用のワークスペースを作成します。\n\n" +
           "📝 プロンプト入力エリア\n" +
           "🎨 見やすいタイトルとガイド\n" +
@@ -99,14 +99,14 @@ function initialSetup() {
       if (response === ui.Button.YES) {
         setupOption = "new";
       } else {
-        return "初期セットアップをキャンセルしました";
+        return "表の初期化をキャンセルしました";
       }
     }
 
     // セットアップ実行
     return executeSetup(setupOption);
   } catch (error) {
-    console.error("初期セットアップエラー:", error);
+    console.error("表初期化エラー:", error);
 
     // 権限エラーの場合は統一ハンドラーを使用
     if (
@@ -114,11 +114,11 @@ function initialSetup() {
       error.message.includes("container.ui") ||
       error.message.includes("spreadsheets")
     ) {
-      handlePermissionError("初期セットアップ");
+      handlePermissionError("表の初期化");
       return;
     }
 
-    throw new Error(`初期セットアップに失敗しました: ${error.message}`);
+    throw new Error(`表の初期化に失敗しました: ${error.message}`);
   }
 }
 
@@ -351,39 +351,15 @@ function analyzePromptForOptimalSettings(prompt) {
     wide: /(wide|panoramic|パノラマ|ワイド|横長)/i.test(prompt),
   };
 
-  // スタイル決定ロジック（Web版により近い判定）
-  let selectedStyle = "vivid"; // デフォルト
+  // スタイル決定ロジック（Web版と同じシンプルな判定）
+  let selectedStyle = "natural"; // デフォルトをnaturalに変更（Web版と同じ）
 
-  // アニメ・フラット・教育系の場合は明確にnatural
+  // 明確にリアル・写真系を指定している場合のみvivid
   if (
-    styleAnalysis.anime ||
-    styleAnalysis.flat ||
-    styleAnalysis.simple ||
-    styleAnalysis.educational ||
-    styleAnalysis.colorful
+    styleAnalysis.photorealistic ||
+    styleAnalysis.cinematic ||
+    styleAnalysis.detailed
   ) {
-    selectedStyle = "natural";
-  }
-
-  // ピクセルアート・スケッチ系もnatural
-  if (styleAnalysis.pixel || styleAnalysis.sketch) {
-    selectedStyle = "natural";
-  }
-
-  // 明確にリアル系を指定している場合のみvivid
-  if (
-    (styleAnalysis.photorealistic ||
-      styleAnalysis.cinematic ||
-      styleAnalysis.detailed) &&
-    !styleAnalysis.anime &&
-    !styleAnalysis.flat &&
-    !styleAnalysis.simple
-  ) {
-    selectedStyle = "vivid";
-  }
-
-  // デジタルアート・3D系でアニメ要素がない場合のみvivid
-  if (styleAnalysis.digital && !styleAnalysis.anime && !styleAnalysis.flat) {
     selectedStyle = "vivid";
   }
 
@@ -409,73 +385,30 @@ function analyzePromptForOptimalSettings(prompt) {
 }
 
 /**
- * プロンプトの最適化処理
- * Web版DALL-E 3の内部処理を模倣
+ * プロンプトの最適化処理（シンプル版）
+ * Web版DALL-E 3と同じシンプルなアプローチ
  */
 function optimizePromptForWebParity(prompt) {
-  // 不要な指示文を除去（「以下のプロンプトに従い、画像を生成してください。」など）
-  let cleanedPrompt = prompt;
+  // 基本的にプロンプトをそのまま使用（Web版と同じ）
+  // 不要な処理を削除して、ユーザーの意図を最大限保持
+  let cleanedPrompt = prompt.trim();
+
+  // 明らかに不要な指示文のみ除去（最小限）
   cleanedPrompt = cleanedPrompt.replace(
-    /以下のプロンプトに従い、画像を生成してください。?\s*/gi,
+    /^(以下のプロンプトに従い、?画像を生成してください。?\s*)/gi,
     ""
   );
-  cleanedPrompt = cleanedPrompt.replace(/画像を生成してください。?\s*/gi, "");
-
-  // 日本語と英語の混在を検出
-  const hasJapanese =
-    /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf\u3400-\u4dbf]/.test(
-      cleanedPrompt
-    );
-  const hasEnglish = /[a-zA-Z]/.test(cleanedPrompt);
-
-  // 両方の言語が混在している場合、Web版と同じように処理
-  if (hasJapanese && hasEnglish) {
-    // 日本語プロンプトと英語プロンプトを分離
-    const sections = cleanedPrompt.split(/✅|【|】|\n\n+/);
-
-    // 各セクションから実際のプロンプト部分を抽出
-    const promptParts = [];
-    sections.forEach((section) => {
-      const trimmed = section.trim();
-      if (
-        trimmed &&
-        !trimmed.match(
-          /^(日本語プロンプト|English Prompt|makefile|pgsql|コピーする|編集する)/
-        )
-      ) {
-        // マークダウンのコードブロック記法を除去
-        const cleaned = trimmed
-          .replace(/^```[\w]*\s*/, "")
-          .replace(/```\s*$/, "");
-        if (cleaned) {
-          promptParts.push(cleaned);
-        }
-      }
-    });
-
-    // プロンプトパーツを結合（重複を避ける）
-    const uniqueParts = [...new Set(promptParts)];
-    return uniqueParts.join(" ").trim();
-  }
 
   return cleanedPrompt.trim();
 }
 
 /**
- * プロンプト忠実性最大化処理
- * ブラウザ版DALL-Eと同等の忠実性を実現するための最新技術
+ * プロンプト品質向上処理（最小限）
+ * Web版DALL-Eと同じシンプルなアプローチ
  */
 function enhancePromptForQuality(originalPrompt) {
-  // Web版と同じように、基本的にプロンプトをそのまま使用
-  // ただし、Web版のDALL-E 3も内部的に行っている最小限の処理を適用
-
-  // 1. プロンプトが極端に短い場合のみ、最小限の拡張
-  if (originalPrompt.length < 20) {
-    // 短すぎるプロンプトは品質が低下するため、最小限の詳細を追加
-    return `${originalPrompt}, detailed and high quality`;
-  }
-
-  // 2. 既に十分詳細なプロンプトはそのまま使用
+  // Web版と同じように、ユーザーのプロンプトをそのまま使用
+  // 余計な加工をしないことで、ユーザーの意図を正確に反映
   return originalPrompt;
 }
 
