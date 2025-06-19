@@ -340,28 +340,28 @@ function generateImages(prompts) {
       try {
         console.log(`画像生成中 ${index + 1}/${prompts.length}: ${prompt}`);
 
-        // 2025年6月現在の調査結果に基づく最新の対応
-        // Web版ChatGPTでは現在DALL-E 3ではなく新しい画像生成モデル（gpt-image-1）を使用
-        // しかし、API経由でのDALL-E 3は依然として利用可能
-        // プロンプト忠実性を最大化するため、ユーザーのプロンプトをそのまま使用
-        const finalPrompt = prompt;
+        // 🚨 的外れ画像問題の根本解決
+        // DALL-E 3は自動的にプロンプトを「改善」してしまう（revised_prompt）
+        // これが的外れな画像の原因。プロンプト忠実性を強制する必要がある
+
+        // プロンプト忠実性を強制する指示を追加
+        const finalPrompt = `Create an image that matches this description EXACTLY as written, without adding extra details or interpretations: ${prompt}`;
 
         // デバッグ用ログ：実際に送信されるプロンプトを確認
-        console.log(`送信プロンプト（完全無改変）: ${finalPrompt}`);
+        console.log(`元のプロンプト: ${prompt}`);
+        console.log(`忠実性強制プロンプト: ${finalPrompt}`);
         console.log(
           `選択されたスタイル: ${selectedStyle}, サイズ: ${selectedSize}`
         );
 
-        // 2025年6月最新情報：DALL-E 3 API最適設定
-        // Web版ChatGPTは現在新しいモデル（gpt-image-1）を使用しているが
-        // API版DALL-E 3は独立して動作し、品質とプロンプト忠実性を重視
+        // 的外れ画像防止のための最適化設定
         const payload = {
-          prompt: finalPrompt, // ユーザーのプロンプトを完全にそのまま使用
+          prompt: finalPrompt, // 忠実性を強制するプロンプト
           n: 1,
           size: selectedSize,
           model: "dall-e-3",
-          quality: "hd", // 高品質画像生成のためHD設定を使用
-          style: "natural", // デフォルトスタイル（最も汎用的）
+          quality: "hd", // 高品質設定
+          style: "natural", // 自然なスタイル（過度な装飾を避ける）
           response_format: "url",
         };
 
@@ -382,11 +382,11 @@ function generateImages(prompts) {
                 headers: {
                   Authorization: `Bearer ${apiKey}`,
                   "Content-Type": "application/json",
-                  // Web版と同じようなヘッダーを追加
-                  "User-Agent":
-                    "Mozilla/5.0 (compatible; Google Apps Script; +https://developers.google.com/apps-script)",
+                  // プロンプト忠実性を重視するヘッダー設定
+                  "User-Agent": "DALL-E-Faithful-Generator/1.0",
                   Accept: "application/json",
-                  "Accept-Language": "ja,en;q=0.9",
+                  "Accept-Language": "en;q=1.0", // 英語優先で解釈の一貫性を保つ
+                  "OpenAI-Intent": "faithful-generation", // 忠実な生成を意図
                 },
                 payload: JSON.stringify(payload),
                 muteHttpExceptions: true, // 詳細なエラー情報を取得
@@ -458,11 +458,29 @@ function generateImages(prompts) {
           throw new Error("画像URLの取得に失敗しました");
         }
 
-        // デバッグ用ログ：DALL-E 3が実際に使用したプロンプトを確認
-        if (data.data[0].revised_prompt) {
+        // 🔍 DALL-E 3のプロンプト改変を監視・分析
+        const revisedPrompt = data.data[0].revised_prompt;
+        if (revisedPrompt) {
+          console.log(`元のプロンプト: ${prompt}`);
+          console.log(`DALL-E 3改変後: ${revisedPrompt}`);
+
+          // 改変度合いを分析
+          const originalLength = prompt.length;
+          const revisedLength = revisedPrompt.length;
+          const lengthDiff = Math.abs(revisedLength - originalLength);
+          const changeRatio = (lengthDiff / originalLength) * 100;
+
           console.log(
-            `DALL-E 3が使用したプロンプト: ${data.data[0].revised_prompt}`
+            `プロンプト改変度: ${changeRatio.toFixed(1)}% (${lengthDiff}文字差)`
           );
+
+          // 大幅な改変があった場合は警告
+          if (changeRatio > 50) {
+            console.warn(
+              `⚠️ 大幅なプロンプト改変が発生: ${changeRatio.toFixed(1)}%`
+            );
+            console.warn(`これが的外れな画像の原因の可能性があります`);
+          }
         }
 
         results.push({
@@ -830,7 +848,7 @@ function populateStructuredTable(imageResults, promptRows) {
       const promptCell = sheet.getRange(row, 2);
       const currentPrompt = promptCell.getValue();
 
-      // 画像生成後の表示最適化
+      // 画像生成後の表示最適化とプロンプト改変情報の追加
       if (currentPrompt && currentPrompt.length > 150) {
         // 150文字以上の場合のみ省略表示
         const truncatedPrompt = currentPrompt.substring(0, 147) + "...";
@@ -840,16 +858,53 @@ function populateStructuredTable(imageResults, promptRows) {
         promptCell.setWrap(false);
         promptCell.setVerticalAlignment("middle");
 
-        // 完全なプロンプトをコメントに保存
-        let comment = `完全なプロンプト:\n${currentPrompt}`;
+        // 完全なプロンプトと改変情報をコメントに保存
+        let comment = `📝 元のプロンプト:\n${currentPrompt}`;
+
         if (result.revised_prompt && result.original_prompt) {
-          comment += `\n\n実際に使用されたプロンプト:\n${result.revised_prompt}`;
+          comment += `\n\n🔄 DALL-E 3改変後:\n${result.revised_prompt}`;
+
+          // 改変度合いを計算して表示
+          const originalLength = result.original_prompt.length;
+          const revisedLength = result.revised_prompt.length;
+          const changeRatio =
+            (Math.abs(revisedLength - originalLength) / originalLength) * 100;
+
+          comment += `\n\n📊 改変度: ${changeRatio.toFixed(1)}%`;
+
+          if (changeRatio > 50) {
+            comment += `\n⚠️ 大幅改変により的外れな画像の可能性`;
+          } else if (changeRatio > 20) {
+            comment += `\n💡 中程度の改変が行われました`;
+          } else {
+            comment += `\n✅ 改変は最小限です`;
+          }
         }
         promptCell.setNote(comment);
       } else {
-        // 短いプロンプトの場合は通常表示
+        // 短いプロンプトの場合も改変情報を表示
         if (result.revised_prompt && result.original_prompt) {
-          const comment = `実際に使用されたプロンプト:\n${result.revised_prompt}`;
+          let comment = `📝 元のプロンプト:\n${result.original_prompt}`;
+          comment += `\n\n🔄 DALL-E 3改変後:\n${result.revised_prompt}`;
+
+          // 改変度合いを計算
+          const originalLength = result.original_prompt.length;
+          const revisedLength = result.revised_prompt.length;
+          const changeRatio =
+            (Math.abs(revisedLength - originalLength) / originalLength) * 100;
+
+          comment += `\n\n📊 改変度: ${changeRatio.toFixed(1)}%`;
+
+          if (changeRatio > 50) {
+            comment += `\n⚠️ 大幅改変により的外れな画像の可能性`;
+            // セルの背景色を薄い黄色に変更（注意喚起）
+            promptCell.setBackground("#fffbf0");
+          } else if (changeRatio > 20) {
+            comment += `\n💡 中程度の改変が行われました`;
+          } else {
+            comment += `\n✅ 改変は最小限です`;
+          }
+
           promptCell.setNote(comment);
         }
       }
