@@ -171,8 +171,14 @@ function requestPermissions() {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = spreadsheet.getActiveSheet();
 
-    // 2. Drive権限をテスト
-    const file = DriveApp.getFileById(spreadsheet.getId());
+    // 2. Drive権限をテスト（オプション）
+    try {
+      const file = DriveApp.getFileById(spreadsheet.getId());
+      console.log("✅ Drive権限OK");
+    } catch (driveError) {
+      console.log("⚠️ Drive権限は後で必要になる場合があります");
+      // Drive権限エラーは無視して続行
+    }
 
     // 3. UI権限をテスト（これが重要）
     const ui = SpreadsheetApp.getUi();
@@ -1041,14 +1047,17 @@ function forcePermissionRequest() {
     const sheet = spreadsheet.getActiveSheet();
     console.log("✅ スプレッドシート権限OK");
 
-    // 2. Drive権限のテスト（これが重要）
+    // 2. Drive権限のテスト（オプション）
     try {
       const file = DriveApp.getFileById(spreadsheet.getId());
       const fileName = file.getName();
       console.log("✅ Drive権限OK:", fileName);
     } catch (driveError) {
-      console.error("❌ Drive権限エラー:", driveError);
-      throw new Error("Drive権限が必要です: " + driveError.message);
+      console.log(
+        "⚠️ Drive権限は後で必要になる場合があります:",
+        driveError.message
+      );
+      // Drive権限エラーは無視して続行
     }
 
     // 3. UI権限のテスト
@@ -1132,6 +1141,26 @@ function handlePermissionError(actionName) {
       "メニューから「🎨 画像ツール」→「📱 サイドバーを開く」をクリックしてください。",
       SpreadsheetApp.getUi().ButtonSet.OK
     );
+  }
+}
+
+/**
+ * セットアップダイアログを表示（サイドバーから呼び出し）
+ */
+function showSetupDialog() {
+  try {
+    // 直接初期セットアップを実行
+    const result = initialSetup();
+    return result || "✅ セットアップが完了しました！";
+  } catch (error) {
+    console.error("セットアップエラー:", error);
+
+    // Drive権限エラーの場合は特別処理
+    if (error.message && error.message.includes("Drive権限")) {
+      return "⚠️ 一部の権限が不足していますが、基本機能は使用できます。画像生成時に再度権限承認を求められる場合があります。";
+    }
+
+    throw new Error(`セットアップに失敗しました: ${error.message}`);
   }
 }
 
