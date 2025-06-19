@@ -35,22 +35,22 @@ function onOpen() {
   try {
     Utilities.sleep(100); // 100ms待機で確実な表示
 
-    // 初回使用時は権限チェックをスキップして安全に実行
+    // 初回使用時は簡潔な使い方を表示
     if (isFirstTimeUser()) {
-      console.log("💡 初回使用者: 権限承認が必要な場合があります");
-      showWelcomeMessage();
+      console.log("💡 初回使用者: 使い方ガイドを表示します");
+      showUsageGuide();
     } else {
       showSidebar();
       console.log("✅ サイドバーを自動表示しました");
     }
   } catch (error) {
     console.log("⚠️ サイドバーの自動表示をスキップ:", error.message);
-    // 権限エラーの場合は歓迎メッセージを表示
+    // 権限エラーの場合は使い方ガイドを表示
     if (
       error.message.includes("container.ui") ||
       error.message.includes("permissions")
     ) {
-      showWelcomeMessage();
+      showUsageGuide();
     }
   }
 }
@@ -147,8 +147,8 @@ function showSidebar() {
       } catch (permissionError) {
         // 最後の手段：シンプルなエラーメッセージ
         SpreadsheetApp.getUi().alert(
-          "権限承認が必要です",
-          "メニューから「🔐 権限承認を実行」をクリックしてください。",
+          "🚀 開始方法",
+          "メニューから「🎨 画像ツール」→「📱 サイドバーを開く」をクリックしてください。",
           SpreadsheetApp.getUi().ButtonSet.OK
         );
       }
@@ -994,52 +994,38 @@ function markAsUsed() {
 }
 
 /**
- * 歓迎メッセージ表示
+ * 使い方ガイドを表示（初回使用者向け）
  */
-function showWelcomeMessage() {
+function showUsageGuide() {
   try {
     const ui = SpreadsheetApp.getUi();
     const response = ui.alert(
-      "🎨 DALL-E 画像生成ツールへようこそ！",
-      "このツールを使用するには権限承認が必要です。\n\n" +
-        "🔧 セットアップ手順:\n" +
-        "1️⃣ メニューから「🎨 画像ツール」→「📱 サイドバーを開く」\n" +
-        "2️⃣ 権限承認ダイアログで「許可」をクリック\n" +
-        "3️⃣ 画像生成開始！（APIキーは既に設定済み）\n\n" +
-        "今すぐセットアップを開始しますか？",
+      "🎨 DALL-E 画像生成ツール",
+      "📝 簡単3ステップで画像生成！\n\n" +
+        "1️⃣ 「🔧 初期セットアップ」でテーブル作成\n" +
+        "2️⃣ B列にプロンプト（画像の説明文）を入力\n" +
+        "3️⃣ 「🎨 画像生成」ボタンをクリック\n\n" +
+        "💡 例：「美しい夕日の海辺」「可愛い猫のイラスト」\n\n" +
+        "今すぐ始めますか？",
       ui.ButtonSet.YES_NO
     );
 
     if (response === ui.Button.YES) {
-      // 権限承認を試行
       try {
-        const result = requestPermissions();
-        markAsUsed();
-        ui.alert(
-          "✅ セットアップ完了",
-          "権限承認が完了しました！\n" +
-            "これでツールを使用できます。\n\n" +
-            "メニューから「📱 サイドバーを開く」をクリックして開始してください。",
-          ui.ButtonSet.OK
-        );
+        // 直接サイドバーを表示
         showSidebar();
+        markAsUsed();
       } catch (error) {
+        // エラーの場合は初期セットアップから開始
         ui.alert(
-          "🔐 権限承認が必要です",
-          "Google Apps Scriptから権限承認を求められます。\n\n" +
-            "📋 詳細手順:\n" +
-            "1. 「承認が必要」ダイアログで「権限を確認」をクリック\n" +
-            "2. Googleアカウントを選択\n" +
-            "3. 「このアプリは確認されていません」→「詳細」をクリック\n" +
-            "4. 「〜に移動（安全ではないページ）」をクリック\n" +
-            "5. 「許可」をクリック\n\n" +
-            "承認後、メニューから「📱 サイドバーを開く」を実行してください。",
+          "🚀 スタート",
+          "メニューから「🎨 画像ツール」→「📱 サイドバーを開く」をクリックして開始してください！",
           ui.ButtonSet.OK
         );
       }
     }
   } catch (error) {
-    console.log("歓迎メッセージの表示に失敗:", error.message);
+    console.log("使い方ガイドの表示に失敗:", error.message);
   }
 }
 
@@ -1142,8 +1128,8 @@ function handlePermissionError(actionName) {
   } catch (error) {
     // 失敗した場合のみシンプルなメッセージ
     SpreadsheetApp.getUi().alert(
-      "権限承認が必要です",
-      "メニューから「🔐 権限承認を実行」をクリックしてください。",
+      "🚀 開始方法",
+      "メニューから「🎨 画像ツール」→「📱 サイドバーを開く」をクリックしてください。",
       SpreadsheetApp.getUi().ButtonSet.OK
     );
   }
