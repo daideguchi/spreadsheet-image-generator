@@ -275,16 +275,16 @@
       </div>
 
       <div class="button-group">
-        <button class="btn btn-setup" onclick="executeInitialSetup()">
-          🔧 初期セットアップ
+        <button class="btn btn-setup" onclick="createTableOnly()">
+          🗑️ 表をクリア
         </button>
         
         <button class="btn" onclick="generateFromStructuredTable()">
           🎨 画像生成
         </button>
         
-        <button class="btn btn-create" onclick="createStructuredTableOnly()">
-          🗑️ 表をクリア
+        <button class="btn btn-create" onclick="executeBackup()">
+          💾 バックアップ
         </button>
         
         <button class="btn btn-secondary" onclick="toggleAllImageSelection()">
@@ -335,7 +335,7 @@
       document.getElementById(currentStep).classList.add('active');
     }
 
-    function executeInitialSetup() {
+    function executeBackup() {
       showLoading();
       updateStepIndicator('step1');
       google.script.run
@@ -362,7 +362,7 @@
         .generateImagesFromStructuredTable();
     }
 
-    function createStructuredTableOnly() {
+    function createTableOnly() {
       showLoading();
       updateStepIndicator('step2');
       google.script.run
@@ -372,7 +372,7 @@
         .withFailureHandler(function(error) {
           showResult('エラー: ' + error.message, true);
         })
-        .createStructuredTableOnly();
+        .createStructuredTable();
     }
 
     function toggleAllImageSelection() {

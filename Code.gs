@@ -1164,29 +1164,62 @@ function handlePermissionError(actionName) {
 }
 
 /**
- * セットアップダイアログを表示（サイドバーから呼び出し）
+ * バックアップ機能（現在のデータを保存してから新しいテーブルを作成）
  */
 function showSetupDialog() {
   try {
-    // 直接初期セットアップを実行
-    const result = initialSetup();
-    return result || "✅ セットアップが完了しました！";
-  } catch (error) {
-    console.error("セットアップエラー:", error);
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
 
-    // Drive権限エラーの場合は特別処理
-    if (error.message && error.message.includes("Drive権限")) {
-      return "⚠️ 一部の権限が不足していますが、基本機能は使用できます。画像生成時に再度権限承認を求められる場合があります。";
+    // 既存データがある場合はバックアップを作成
+    if (lastRow > 1) {
+      const timestamp = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[:-]/g, "");
+      const backupSheetName = `バックアップ_${timestamp}`;
+
+      // 新しいシートを作成してデータをコピー
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const backupSheet = spreadsheet.insertSheet(backupSheetName);
+
+      // 全データをバックアップシートにコピー
+      const allData = sheet
+        .getRange(1, 1, lastRow, sheet.getLastColumn())
+        .getValues();
+      const allFormats = sheet
+        .getRange(1, 1, lastRow, sheet.getLastColumn())
+        .getBackgrounds();
+
+      backupSheet
+        .getRange(1, 1, lastRow, sheet.getLastColumn())
+        .setValues(allData);
+      backupSheet
+        .getRange(1, 1, lastRow, sheet.getLastColumn())
+        .setBackgrounds(allFormats);
+
+      // 列幅もコピー
+      for (let col = 1; col <= sheet.getLastColumn(); col++) {
+        backupSheet.setColumnWidth(col, sheet.getColumnWidth(col));
+      }
+
+      console.log(`バックアップシート「${backupSheetName}」を作成しました`);
     }
 
-    throw new Error(`セットアップに失敗しました: ${error.message}`);
+    // 新しいテーブルを作成
+    const result = createStructuredTable();
+
+    return `💾 バックアップを作成して新しいテーブルを準備しました！\n${result}`;
+  } catch (error) {
+    console.error("バックアップエラー:", error);
+    throw new Error(`バックアップ処理に失敗しました: ${error.message}`);
   }
 }
 
 /**
  * 表をクリア（新しいテーブルを作成）
  */
-function createStructuredTableOnly() {
+function createStructuredTable() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
 
@@ -1303,129 +1336,6 @@ function createStructuredTableOnly() {
   } catch (error) {
     console.error("テーブル準備エラー:", error);
     throw new Error(`表のクリアに失敗しました: ${error.message}`);
-  }
-}
-
-/**
- * 構造化テーブルのヘッダーを作成（100行対応・権限チェック付き）
- */
-function createStructuredTable() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-
-    // まずシートを完全にクリア
-    sheet.clear();
-    sheet.clearFormats();
-
-    console.log("シートをクリアしました");
-
-    // ヘッダー行を作成（1行目）
-    const headers = [
-      "No.", // A列
-      "📝 プロンプト", // B列 - ユーザー入力
-      "🤖 AI変換プロンプト", // C列 - DALL-E変換版
-      "🖼️ 生成画像", // D列 - 実際の画像
-      "📐 画像比率", // E列 - アスペクト比
-      "⏰ 生成日時", // F列 - タイムスタンプ
-      "✅ ステータス", // G列 - 生成状況
-      "☑️ 選択", // H列 - チェックボックス
-    ];
-
-    // ヘッダーを設定
-    const headerRange = sheet.getRange(1, 1, 1, headers.length);
-    headerRange.setValues([headers]);
-
-    console.log("ヘッダーを設定しました");
-
-    // ヘッダーのスタイリング
-    headerRange.setBackground("#1a73e8");
-    headerRange.setFontColor("white");
-    headerRange.setFontWeight("bold");
-    headerRange.setHorizontalAlignment("center");
-    headerRange.setVerticalAlignment("middle");
-    headerRange.setFontSize(12);
-    sheet.setRowHeight(1, 45);
-
-    // 列幅の最適化
-    sheet.setColumnWidth(1, 60); // A: No.
-    sheet.setColumnWidth(2, 300); // B: プロンプト
-    sheet.setColumnWidth(3, 250); // C: AI変換
-    sheet.setColumnWidth(4, 220); // D: 画像
-    sheet.setColumnWidth(5, 100); // E: 比率
-    sheet.setColumnWidth(6, 140); // F: 日時
-    sheet.setColumnWidth(7, 100); // G: ステータス
-    sheet.setColumnWidth(8, 80); // H: 選択
-
-    console.log("列幅を設定しました");
-
-    console.log("100行のデータ行を作成開始");
-
-    // 100行のテーブルを作成（2-101行目）
-    for (let i = 1; i <= 100; i++) {
-      const row = i + 1;
-
-      try {
-        // A列: 番号
-        const numberCell = sheet.getRange(row, 1);
-        numberCell.setValue(i);
-        numberCell.setHorizontalAlignment("center");
-        numberCell.setFontWeight("bold");
-        numberCell.setBackground("#f8f9fa");
-
-        // B列の処理（プレースホルダーなし）
-        const promptCell = sheet.getRange(row, 2);
-        promptCell.setWrap(true);
-        promptCell.setVerticalAlignment("middle");
-
-        // 行の高さを設定
-        sheet.setRowHeight(row, 60);
-
-        // 境界線を設定（全8列）
-        const rowRange = sheet.getRange(row, 1, 1, headers.length);
-        rowRange.setBorder(true, true, true, true, true, true);
-
-        // 10行ごとに薄い区切り線を追加
-        if (i % 10 === 0) {
-          rowRange.setBackground("#f0f0f0");
-        }
-
-        // 進捗表示（10行ごと）
-        if (i % 10 === 0) {
-          console.log(`${i}行目まで作成完了`);
-        }
-      } catch (rowError) {
-        console.error(`行${row}の作成でエラー:`, rowError);
-        // 個別行のエラーは続行
-      }
-    }
-
-    console.log("100行の作成完了");
-
-    // 完了メッセージを下部に追加
-    try {
-      const messageRow = 103;
-      const messageRange = sheet.getRange(messageRow, 1, 1, 8);
-      messageRange.merge();
-      messageRange.setValue(
-        `✨ 100行の構造化テーブルが作成されました！B列にプロンプトを入力してください。`
-      );
-      messageRange.setBackground("#e8f5e8");
-      messageRange.setFontColor("#2e7d32");
-      messageRange.setHorizontalAlignment("center");
-      messageRange.setFontWeight("bold");
-      messageRange.setFontSize(14);
-      sheet.setRowHeight(messageRow, 40);
-
-      console.log("完了メッセージを追加しました");
-    } catch (messageError) {
-      console.error("完了メッセージの追加でエラー:", messageError);
-      // メッセージエラーは無視して続行
-    }
-
-    return "✅ 100行の構造化テーブルを作成しました！B列にプロンプトを入力してください。";
-  } catch (error) {
-    console.error("構造化テーブル作成エラー:", error);
-    throw new Error(`構造化テーブルの作成に失敗しました: ${error.message}`);
   }
 }
 
