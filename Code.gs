@@ -276,6 +276,25 @@ function getRangeValues(a1Notation) {
 }
 
 /**
+ * プロンプト品質向上処理
+ * DALL-E 3の高品質生成のためのプロンプト最適化
+ */
+function enhancePromptForQuality(originalPrompt) {
+  // 短すぎるプロンプトは詳細化
+  if (originalPrompt.length < 50) {
+    return `I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS: Create a highly detailed, professional quality image of ${originalPrompt}. Use photorealistic style with excellent lighting, sharp focus, and rich colors. Pay attention to composition, textures, and visual appeal.`;
+  }
+
+  // 既に詳細なプロンプトはそのまま使用（改変防止）
+  if (originalPrompt.length > 200) {
+    return `I NEED to test how the tool works with extremely detailed prompts. DO NOT modify the prompt, just use it AS-IS: ${originalPrompt}`;
+  }
+
+  // 中程度の長さのプロンプトは軽い改善
+  return `Create a high-quality, detailed image: ${originalPrompt}. Use professional photography style with excellent composition, lighting, and visual appeal.`;
+}
+
+/**
  * DALL-E APIを使って画像を生成
  */
 function generateImages(prompts) {
@@ -294,12 +313,17 @@ function generateImages(prompts) {
       const sizes = ["1024x1024", "1024x1792", "1792x1024"];
       const selectedSize = sizes[Math.floor(Math.random() * sizes.length)];
 
+      // プロンプト品質向上処理
+      const enhancedPrompt = enhancePromptForQuality(prompt);
+
       const payload = {
-        prompt: prompt,
+        prompt: enhancedPrompt,
         n: 1,
         size: selectedSize,
         model: "dall-e-3",
-        quality: "standard",
+        quality: "hd", // 最高品質に変更
+        style: "vivid", // より鮮明で高品質な画像
+        response_format: "url", // URL形式で受信
       };
 
       const response = UrlFetchApp.fetch(
@@ -330,6 +354,8 @@ function generateImages(prompts) {
         prompt: prompt,
         url: data.data[0].url,
         size: selectedSize, // 画像サイズ情報を追加
+        revised_prompt: data.data[0].revised_prompt || enhancedPrompt, // 実際に使用されたプロンプト
+        original_prompt: prompt, // 元のプロンプトも保存
       });
 
       // API制限を考慮した待機時間
@@ -1420,14 +1446,21 @@ function populateStructuredTable(imageResults, promptRows) {
       timeCell.setFontSize(9);
       timeCell.setBackground("#f5f5f5");
 
-      // F列: ステータス
+      // F列: ステータス（品質情報付き）
       const statusCell = sheet.getRange(row, 6);
-      statusCell.setValue("✅ 完了");
+      statusCell.setValue("✅ HD品質");
       statusCell.setHorizontalAlignment("center");
       statusCell.setVerticalAlignment("middle");
       statusCell.setFontWeight("bold");
       statusCell.setFontColor("#2e7d32");
       statusCell.setBackground("#e8f5e8");
+
+      // プロンプト改善情報をコメントとして追加
+      if (result.revised_prompt && result.original_prompt) {
+        const promptCell = sheet.getRange(row, 2);
+        const comment = `元のプロンプト:\n${result.original_prompt}\n\n実際に使用されたプロンプト:\n${result.revised_prompt}`;
+        promptCell.setNote(comment);
+      }
 
       // G列: チェックボックス
       const checkboxCell = sheet.getRange(row, 7);
