@@ -961,9 +961,6 @@ function populateStructuredTable(imageResults, promptRows) {
           fullPromptCell.setVerticalAlignment("top");
           fullPromptCell.setFontSize(9);
           fullPromptCell.setBackground("#f8f9fa");
-          fullPromptCell.setNote(
-            "完全なプロンプト情報（ユーザープロンプト無制限版）"
-          );
         }
 
         // 🔧 **技術的解決策**: B列セルコメントもデータ分離で制限回避
@@ -1067,9 +1064,6 @@ function populateStructuredTable(imageResults, promptRows) {
           fullPromptCell.setVerticalAlignment("top");
           fullPromptCell.setFontSize(9);
           fullPromptCell.setBackground("#f8f9fa");
-          fullPromptCell.setNote(
-            "完全なプロンプト情報（ユーザープロンプト無制限版）"
-          );
 
           // 🔧 **技術的解決策**: B列セルコメントもデータ分離で制限回避
           // ユーザープロンプトのみをセルコメントに配置（内部処理版は既にC列コメントに分離済み）

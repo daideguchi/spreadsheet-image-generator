@@ -611,15 +611,12 @@
     // サイドバー読み込み時にボタンの有効/無効を判定
     window.addEventListener('load', () => {
       checkSheetState();
-      // 定期的にシート状態をチェック（0.5秒間隔で高速監視）
-      setInterval(checkSheetState, 500);
+      // 定期的にシート状態をチェック（3秒間隔で適度な監視）
+      setInterval(checkSheetState, 3000);
     });
 
-    // 様々なイベントで即座に状態をチェック
+    // 必要最小限のイベントで状態をチェック
     window.addEventListener('focus', checkSheetState);
-    document.addEventListener('click', () => setTimeout(checkSheetState, 50));
-    document.addEventListener('mouseenter', checkSheetState);
-    document.addEventListener('mousemove', () => setTimeout(checkSheetState, 100));
     
     // ページの可視性が変わった時（他のタブから戻った時など）
     document.addEventListener('visibilitychange', () => {
@@ -628,14 +625,11 @@
       }
     });
 
-    // キーボード操作時にも即座にチェック
-    document.addEventListener('keyup', () => setTimeout(checkSheetState, 100));
-
     function checkSheetState() {
       google.script.run
         .withSuccessHandler(function(state) {
           const { isEmpty, hasPrompt, hasImages } = state;
-          console.log('シート状態:', { isEmpty, hasPrompt }); // デバッグ用
+          // console.log('シート状態:', { isEmpty, hasPrompt }); // デバッグ用（本番では無効化）
 
           const setupBtn = document.getElementById('setupBtn');
           const generateBtn = document.getElementById('generateBtn');
@@ -651,12 +645,12 @@
             generateBtn.disabled = true;
             generateBtn.classList.add('disabled');
             generateBtn.title = 'プロンプトを入力してください';
-            console.log('画像生成ボタンを無効化'); // デバッグ用
+            // console.log('画像生成ボタンを無効化'); // デバッグ用（本番では無効化）
           } else {
             generateBtn.disabled = false;
             generateBtn.classList.remove('disabled');
             generateBtn.title = '';
-            console.log('画像生成ボタンを有効化'); // デバッグ用
+            // console.log('画像生成ボタンを有効化'); // デバッグ用（本番では無効化）
           }
 
           // 画像があれば管理セクションを表示
@@ -762,11 +756,11 @@
     function startProgressWithImageCount(imageCount) {
       // 🔧 **プログレスバー時間配分の改善**: より自然な進行にバランス調整
       const steps = [
-        { inc: 5, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 800 },
-        { inc: 10, text: 'DALL-E APIに接続中...', duration: 1200 },
-        { inc: 70, text: `画像を生成中... (${imageCount}枚)`, duration: Math.max(3000, imageCount * 2000) }, // 最低3秒、画像枚数に応じて調整
-        { inc: 10, text: '結果をシートに配置中...', duration: 1000 },
-        { inc: 5, text: '仕上げ処理中...', duration: 800 }
+        { inc: 5, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 500 },
+        { inc: 10, text: 'DALL-E APIに接続中...', duration: 800 },
+        { inc: 75, text: `画像を生成中... (${imageCount}枚)`, duration: Math.max(3000, imageCount * 2000) }, // 最低3秒、画像枚数に応じて調整
+        { inc: 8, text: '結果をシートに配置中...', duration: 600 },
+        { inc: 2, text: '仕上げ処理中...', duration: 300 }
       ];
 
       let progress = 0;
