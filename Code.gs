@@ -322,9 +322,20 @@ function generateImages(prompts) {
     prompts.forEach((prompt, index) => {
       console.log(`画像生成中 ${index + 1}/${prompts.length}: ${prompt}`);
 
-      // 画像サイズをランダムに選択（多様性向上）
-      const sizes = ["1024x1024", "1024x1792", "1792x1024"];
-      const selectedSize = sizes[Math.floor(Math.random() * sizes.length)];
+      // サイズとスタイルをプロンプト内容から自動判定
+      const wantsSquare = /1:1|正方形|square/i.test(prompt);
+      let selectedSize;
+      if (wantsSquare) {
+        selectedSize = "1024x1024"; // 正方形が指定されている場合は固定
+      } else {
+        const sizes = ["1024x1024", "1024x1792", "1792x1024"];
+        selectedSize = sizes[Math.floor(Math.random() * sizes.length)];
+      }
+
+      const isFlatAnime = /(2D|flat|フラット|ベタ塗り|太め|anime style)/i.test(
+        prompt
+      );
+      const selectedStyle = isFlatAnime ? "natural" : "vivid";
 
       // プロンプト品質向上処理
       const enhancedPrompt = enhancePromptForQuality(prompt);
@@ -335,7 +346,7 @@ function generateImages(prompts) {
         size: selectedSize,
         model: "dall-e-3",
         quality: "hd", // 最高品質に変更
-        style: "vivid", // より鮮明で高品質な画像
+        style: selectedStyle, // より鮮明で高品質な画像
         response_format: "url", // URL形式で受信
       };
 
