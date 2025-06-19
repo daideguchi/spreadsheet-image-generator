@@ -1922,3 +1922,33 @@ function generateImagesWithProgressCallback(prompts, callbackFunction) {
     throw new Error(`画像生成に失敗しました: ${error.message}`);
   }
 }
+
+/**
+ * サイドバーから呼び出し：シートが空かどうか、プロンプトが入力されているかを判定
+ * @return {{isEmpty: boolean, hasPrompt: boolean}}
+ */
+function getSheetState() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    // データが全く無ければ空
+    const isEmpty = lastRow === 0;
+
+    // B列にプロンプトが存在するかチェック（2行目以降最大100行）
+    let hasPrompt = false;
+    if (!isEmpty) {
+      const promptRange = sheet.getRange(2, 2, Math.max(lastRow - 1, 1), 1);
+      const values = promptRange.getValues();
+      hasPrompt = values.some((row) => {
+        const v = row[0];
+        return v && typeof v === "string" && v.trim() !== "";
+      });
+    }
+
+    return { isEmpty, hasPrompt };
+  } catch (e) {
+    console.error("getSheetState error", e);
+    return { isEmpty: false, hasPrompt: true };
+  }
+}

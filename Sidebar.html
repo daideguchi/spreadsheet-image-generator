@@ -460,16 +460,17 @@
         <div id="instruction-text">
           <strong>🚀 簡単3ステップ:</strong><br>
           <strong>1️⃣</strong> 初期設定 → <strong>2️⃣</strong> プロンプト入力 → <strong>3️⃣</strong> 画像生成<br>
-          <span style="color: #ff6600; font-weight: bold;">✨ AI自動判定 + プロンプト100%忠実！ブラウザ版DALL-Eと同等性能</span>
+          <!-- 情報メッセージを簡潔化 -->
+          <span style="color: #1a73e8; font-weight: bold;">📝 ステップに沿って操作してください</span>
         </div>
       </div>
 
       <div class="button-group">
-        <button class="btn btn-setup" onclick="executeBackup()">
+        <button class="btn btn-setup" id="setupBtn" onclick="executeBackup()" title="すでに初期設定済みです">
           🔧 初期設定
         </button>
         
-        <button class="btn" onclick="generateFromStructuredTable()">
+        <button class="btn" id="generateBtn" onclick="generateFromStructuredTable()" title="プロンプトを入力してください">
           🎨 画像生成
         </button>
         
@@ -522,6 +523,44 @@
   </div>
 
   <script>
+    // サイドバー読み込み時にボタンの有効/無効を判定
+    window.addEventListener('load', () => {
+      checkSheetState();
+    });
+
+    function checkSheetState() {
+      google.script.run
+        .withSuccessHandler(function(state) {
+          const { isEmpty, hasPrompt } = state;
+
+          const setupBtn = document.getElementById('setupBtn');
+          const generateBtn = document.getElementById('generateBtn');
+
+          // シートが空なら初期設定ボタンを無効化
+          if (isEmpty) {
+            setupBtn.disabled = true;
+            setupBtn.classList.add('disabled');
+            setupBtn.title = 'すでに初期設定済みです';
+          } else {
+            setupBtn.disabled = false;
+          }
+
+          // プロンプトがなければ画像生成ボタンを無効化
+          if (!hasPrompt) {
+            generateBtn.disabled = true;
+            generateBtn.classList.add('disabled');
+            generateBtn.title = 'プロンプトを入力してください';
+          } else {
+            generateBtn.disabled = false;
+            generateBtn.title = '';
+          }
+        })
+        .withFailureHandler(function() {
+          // エラー時は両方有効化（致命的ではない）
+        })
+        .getSheetState();
+    }
+
     function showLoading() {
       document.getElementById('loading').style.display = 'block';
       document.getElementById('result').style.display = 'none';
@@ -589,26 +628,28 @@
       showProgressModal();
       setProgressTitle('🎨 画像生成中...');
       
-      // シミュレーション的な進捗更新
-      let progress = 0;
       const steps = [
-        { progress: 10, text: 'プロンプトを解析中...', step: 'ステップ 1/5' },
-        { progress: 30, text: 'DALL-E APIに接続中...', step: 'ステップ 2/5' },
-        { progress: 50, text: '画像を生成中...', step: 'ステップ 3/5' },
-        { progress: 80, text: 'スプレッドシートに配置中...', step: 'ステップ 4/5' },
-        { progress: 95, text: '最終処理中...', step: 'ステップ 5/5' }
+        { inc: 15, text: 'プロンプトを解析中...' },
+        { inc: 20, text: 'DALL-E APIに接続中...' },
+        { inc: 25, text: '画像を生成中...' },
+        { inc: 25, text: '結果をシートに配置中...' },
+        { inc: 15, text: '仕上げ処理中...' }
       ];
-      
-      let stepIndex = 0;
+
+      let progress = 0;
+      let stepIdx = 0;
+      updateProgress(progress, '開始しています...', '');
+
       const progressInterval = setInterval(() => {
-        if (stepIndex < steps.length) {
-          const currentStep = steps[stepIndex];
-          updateProgress(currentStep.progress, currentStep.text, currentStep.step);
-          stepIndex++;
+        if (stepIdx < steps.length) {
+          progress += steps[stepIdx].inc;
+          if (progress > 95) progress = 95;
+          updateProgress(progress, steps[stepIdx].text, `ステップ ${stepIdx + 1}/${steps.length}`);
+          stepIdx++;
         } else {
           clearInterval(progressInterval);
         }
-      }, 1000);
+      }, 800);
       
       // 進捗インターバルIDを保存（後で停止するため）
       window.currentProgressInterval = progressInterval;
