@@ -865,19 +865,38 @@ function populateStructuredTable(imageResults, promptRows) {
         promptCell.setWrap(false);
         promptCell.setVerticalAlignment("middle");
 
-        // 完全なプロンプトとGPT-Image-1内部処理情報をコメントに保存
-        let comment = `📝 ユーザー入力プロンプト:\n${currentPrompt}`;
+        // 🔧 50,000文字制限対応：安全な分割保存システム
+        let comment = `📝 ユーザー入力プロンプト:\n${currentPrompt.substring(
+          0,
+          5000
+        )}`;
+
+        if (currentPrompt.length > 5000) {
+          comment += `\n[...${currentPrompt.length - 5000}文字省略...]`;
+        }
 
         if (result.revised_prompt && result.original_prompt) {
-          comment += `\n\n🤖 GPT-Image-1内部処理版:\n${result.revised_prompt}`;
-
-          // 内部処理変更度を計算して表示
+          // 内部処理変更度を計算
           const originalLength = result.original_prompt.length;
           const revisedLength = result.revised_prompt.length;
           const changeRatio =
             (Math.abs(revisedLength - originalLength) / originalLength) * 100;
 
+          comment += `\n\n🤖 GPT-Image-1内部処理版:\n`;
+
+          // 内部処理版プロンプトも安全に制限
+          const maxRevisedLength = 40000 - comment.length; // 残り容量を計算
+          if (result.revised_prompt.length > maxRevisedLength) {
+            comment += result.revised_prompt.substring(0, maxRevisedLength);
+            comment += `\n[...${
+              result.revised_prompt.length - maxRevisedLength
+            }文字省略...]`;
+          } else {
+            comment += result.revised_prompt;
+          }
+
           comment += `\n\n📊 内部処理変更度: ${changeRatio.toFixed(1)}%`;
+          comment += `\n📏 長さ: ${originalLength}文字 → ${revisedLength}文字`;
 
           if (changeRatio > 50) {
             comment += `\n📈 GPT-Image-1が大幅に内部処理を実行`;
@@ -886,21 +905,68 @@ function populateStructuredTable(imageResults, promptRows) {
           } else {
             comment += `\n✅ GPT-Image-1の内部処理は最小限`;
           }
+
+          // 完全版はC列に保存（品質保持）
+          const fullPromptCell = sheet.getRange(row, 3);
+          const fullContent = `【完全版】\n\n📝 ユーザー入力プロンプト:\n${result.original_prompt}\n\n🤖 GPT-Image-1内部処理版:\n${result.revised_prompt}`;
+
+          // C列も50,000文字制限対応
+          if (fullContent.length > 49000) {
+            const truncatedContent =
+              fullContent.substring(0, 49000) +
+              "\n\n[...文字数制限により省略...]";
+            fullPromptCell.setValue(truncatedContent);
+          } else {
+            fullPromptCell.setValue(fullContent);
+          }
+
+          fullPromptCell.setWrap(true);
+          fullPromptCell.setVerticalAlignment("top");
+          fullPromptCell.setFontSize(9);
+          fullPromptCell.setBackground("#f8f9fa");
+          fullPromptCell.setNote("完全なプロンプト情報（制限回避版）");
+        }
+
+        // 安全な長さでコメント設定
+        if (comment.length > 49000) {
+          comment = comment.substring(0, 49000) + "\n[...制限により省略...]";
         }
         promptCell.setNote(comment);
       } else {
-        // 短いプロンプトの場合もGPT-Image-1内部処理情報を表示
+        // 短いプロンプトの場合もGPT-Image-1内部処理情報を表示（50,000文字制限対応）
         if (result.revised_prompt && result.original_prompt) {
-          let comment = `📝 ユーザー入力プロンプト:\n${result.original_prompt}`;
-          comment += `\n\n🤖 GPT-Image-1内部処理版:\n${result.revised_prompt}`;
-
           // 内部処理変更度を計算
           const originalLength = result.original_prompt.length;
           const revisedLength = result.revised_prompt.length;
           const changeRatio =
             (Math.abs(revisedLength - originalLength) / originalLength) * 100;
 
+          let comment = `📝 ユーザー入力プロンプト:\n${result.original_prompt.substring(
+            0,
+            10000
+          )}`;
+
+          if (result.original_prompt.length > 10000) {
+            comment += `\n[...${
+              result.original_prompt.length - 10000
+            }文字省略...]`;
+          }
+
+          comment += `\n\n🤖 GPT-Image-1内部処理版:\n`;
+
+          // 残り容量を計算して安全に追加
+          const maxRevisedLength = 35000 - comment.length;
+          if (result.revised_prompt.length > maxRevisedLength) {
+            comment += result.revised_prompt.substring(0, maxRevisedLength);
+            comment += `\n[...${
+              result.revised_prompt.length - maxRevisedLength
+            }文字省略...]`;
+          } else {
+            comment += result.revised_prompt;
+          }
+
           comment += `\n\n📊 内部処理変更度: ${changeRatio.toFixed(1)}%`;
+          comment += `\n📏 長さ: ${originalLength}文字 → ${revisedLength}文字`;
 
           if (changeRatio > 50) {
             comment += `\n📈 GPT-Image-1が大幅に内部処理を実行`;
@@ -912,6 +978,30 @@ function populateStructuredTable(imageResults, promptRows) {
             comment += `\n✅ GPT-Image-1の内部処理は最小限`;
           }
 
+          // 完全版はC列に保存（短いプロンプトでも品質保持）
+          const fullPromptCell = sheet.getRange(row, 3);
+          const fullContent = `【完全版】\n\n📝 ユーザー入力プロンプト:\n${result.original_prompt}\n\n🤖 GPT-Image-1内部処理版:\n${result.revised_prompt}`;
+
+          // C列も50,000文字制限対応
+          if (fullContent.length > 49000) {
+            const truncatedContent =
+              fullContent.substring(0, 49000) +
+              "\n\n[...文字数制限により省略...]";
+            fullPromptCell.setValue(truncatedContent);
+          } else {
+            fullPromptCell.setValue(fullContent);
+          }
+
+          fullPromptCell.setWrap(true);
+          fullPromptCell.setVerticalAlignment("top");
+          fullPromptCell.setFontSize(9);
+          fullPromptCell.setBackground("#f8f9fa");
+          fullPromptCell.setNote("完全なプロンプト情報（制限回避版）");
+
+          // 安全な長さでコメント設定
+          if (comment.length > 49000) {
+            comment = comment.substring(0, 49000) + "\n[...制限により省略...]";
+          }
           promptCell.setNote(comment);
         }
       }
