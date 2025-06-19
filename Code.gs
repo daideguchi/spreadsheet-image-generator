@@ -1200,12 +1200,12 @@ function createStructuredTableOnly() {
     const headers = [
       "No.", // A列
       "📝 プロンプト", // B列 - ユーザー入力
-      "📋 画像概要", // C列 - 自動生成
-      "🤖 AI変換プロンプト", // D列 - DALL-E変換版
-      "🖼️ 生成画像", // E列 - 実際の画像
-      "📐 画像比率", // F列 - アスペクト比
-      "⏰ 生成日時", // G列 - タイムスタンプ
-      "✅ ステータス", // H列 - 生成状況
+      "🤖 AI変換プロンプト", // C列 - DALL-E変換版
+      "🖼️ 生成画像", // D列 - 実際の画像
+      "📐 画像比率", // E列 - アスペクト比
+      "⏰ 生成日時", // F列 - タイムスタンプ
+      "✅ ステータス", // G列 - 生成状況
+      "☑️ 選択", // H列 - チェックボックス
     ];
 
     // ヘッダーを設定
@@ -1226,12 +1226,12 @@ function createStructuredTableOnly() {
     // 列幅の最適化
     sheet.setColumnWidth(1, 60); // A: No.
     sheet.setColumnWidth(2, 300); // B: プロンプト
-    sheet.setColumnWidth(3, 200); // C: 概要
-    sheet.setColumnWidth(4, 250); // D: AI変換
-    sheet.setColumnWidth(5, 220); // E: 画像
-    sheet.setColumnWidth(6, 100); // F: 比率
-    sheet.setColumnWidth(7, 140); // G: 日時
-    sheet.setColumnWidth(8, 100); // H: ステータス
+    sheet.setColumnWidth(3, 250); // C: AI変換
+    sheet.setColumnWidth(4, 220); // D: 画像
+    sheet.setColumnWidth(5, 100); // E: 比率
+    sheet.setColumnWidth(6, 140); // F: 日時
+    sheet.setColumnWidth(7, 100); // G: ステータス
+    sheet.setColumnWidth(8, 80); // H: 選択
 
     console.log("列幅を設定しました");
 
@@ -1323,12 +1323,12 @@ function createStructuredTable() {
     const headers = [
       "No.", // A列
       "📝 プロンプト", // B列 - ユーザー入力
-      "📋 画像概要", // C列 - 自動生成
-      "🤖 AI変換プロンプト", // D列 - DALL-E変換版
-      "🖼️ 生成画像", // E列 - 実際の画像
-      "📐 画像比率", // F列 - アスペクト比
-      "⏰ 生成日時", // G列 - タイムスタンプ
-      "✅ ステータス", // H列 - 生成状況
+      "🤖 AI変換プロンプト", // C列 - DALL-E変換版
+      "🖼️ 生成画像", // D列 - 実際の画像
+      "📐 画像比率", // E列 - アスペクト比
+      "⏰ 生成日時", // F列 - タイムスタンプ
+      "✅ ステータス", // G列 - 生成状況
+      "☑️ 選択", // H列 - チェックボックス
     ];
 
     // ヘッダーを設定
@@ -1349,12 +1349,12 @@ function createStructuredTable() {
     // 列幅の最適化
     sheet.setColumnWidth(1, 60); // A: No.
     sheet.setColumnWidth(2, 300); // B: プロンプト
-    sheet.setColumnWidth(3, 200); // C: 概要
-    sheet.setColumnWidth(4, 250); // D: AI変換
-    sheet.setColumnWidth(5, 220); // E: 画像
-    sheet.setColumnWidth(6, 100); // F: 比率
-    sheet.setColumnWidth(7, 140); // G: 日時
-    sheet.setColumnWidth(8, 100); // H: ステータス
+    sheet.setColumnWidth(3, 250); // C: AI変換
+    sheet.setColumnWidth(4, 220); // D: 画像
+    sheet.setColumnWidth(5, 100); // E: 比率
+    sheet.setColumnWidth(6, 140); // F: 日時
+    sheet.setColumnWidth(7, 100); // G: ステータス
+    sheet.setColumnWidth(8, 80); // H: 選択
 
     console.log("列幅を設定しました");
 
@@ -1454,7 +1454,7 @@ function generateImagesFromStructuredTable() {
 
       if (prompt && typeof prompt === "string" && prompt.trim() !== "") {
         // 既存データ保護：既に画像が生成されている行はスキップ
-        const existingImageCell = sheet.getRange(actualRow, 5); // E列（画像列）
+        const existingImageCell = sheet.getRange(actualRow, 4); // D列（画像列）
         const existingImage = existingImageCell.getFormula();
 
         if (existingImage && existingImage.includes("=IMAGE(")) {
@@ -1498,17 +1498,8 @@ function populateStructuredTable(imageResults, promptRows) {
     imageResults.forEach((result, index) => {
       const row = promptRows[index];
 
-      // C列: 画像概要（プロンプトの要約）
-      const summaryCell = sheet.getRange(row, 3);
-      const summary = generateImageSummary(result.prompt);
-      summaryCell.setValue(summary);
-      summaryCell.setWrap(true);
-      summaryCell.setVerticalAlignment("middle");
-      summaryCell.setFontSize(10);
-      summaryCell.setBackground("#f0f8ff");
-
-      // D列: AI変換プロンプト
-      const aiPromptCell = sheet.getRange(row, 4);
+      // C列: AI変換プロンプト
+      const aiPromptCell = sheet.getRange(row, 3);
       aiPromptCell.setValue(result.revised_prompt || result.prompt);
       aiPromptCell.setWrap(true);
       aiPromptCell.setVerticalAlignment("middle");
@@ -1517,12 +1508,12 @@ function populateStructuredTable(imageResults, promptRows) {
       aiPromptCell.setFontSize(10);
       aiPromptCell.setBackground("#fff8e1");
 
-      // E列: 生成画像
-      const imageCell = sheet.getRange(row, 5);
+      // D列: 生成画像
+      const imageCell = sheet.getRange(row, 4);
       imageCell.setFormula(`=IMAGE("${result.url}", 1)`);
 
-      // F列: 画像比率（動的検出）
-      const ratioCell = sheet.getRange(row, 6);
+      // E列: 画像比率（動的検出）
+      const ratioCell = sheet.getRange(row, 5);
       const imageSize = result.size || "1024x1024";
       let ratio = "1:1";
 
@@ -1540,22 +1531,28 @@ function populateStructuredTable(imageResults, promptRows) {
       ratioCell.setFontWeight("bold");
       ratioCell.setBackground("#e8f5e8");
 
-      // G列: 生成日時
-      const timeCell = sheet.getRange(row, 7);
+      // F列: 生成日時
+      const timeCell = sheet.getRange(row, 6);
       timeCell.setValue(currentTime);
       timeCell.setHorizontalAlignment("center");
       timeCell.setVerticalAlignment("middle");
       timeCell.setFontSize(9);
       timeCell.setBackground("#f5f5f5");
 
-      // H列: ステータス
-      const statusCell = sheet.getRange(row, 8);
+      // G列: ステータス
+      const statusCell = sheet.getRange(row, 7);
       statusCell.setValue("✅ 完了");
       statusCell.setHorizontalAlignment("center");
       statusCell.setVerticalAlignment("middle");
       statusCell.setFontWeight("bold");
       statusCell.setFontColor("#2e7d32");
       statusCell.setBackground("#e8f5e8");
+
+      // H列: チェックボックス
+      const checkboxCell = sheet.getRange(row, 8);
+      checkboxCell.insertCheckboxes();
+      checkboxCell.setHorizontalAlignment("center");
+      checkboxCell.setVerticalAlignment("middle");
 
       // 行の高さを画像に合わせて調整
       sheet.setRowHeight(row, 180);
@@ -1571,41 +1568,6 @@ function populateStructuredTable(imageResults, promptRows) {
 }
 
 /**
- * 画像概要を生成（プロンプトから要約を作成）
- */
-function generateImageSummary(prompt) {
-  try {
-    // プロンプトから主要なキーワードを抽出して概要を作成
-    const words = prompt.toLowerCase().split(/[\s,]+/);
-    const keyWords = words
-      .filter(
-        (word) =>
-          word.length > 3 &&
-          ![
-            "with",
-            "and",
-            "the",
-            "for",
-            "in",
-            "on",
-            "at",
-            "by",
-            "from",
-          ].includes(word)
-      )
-      .slice(0, 3);
-
-    if (keyWords.length > 0) {
-      return `${keyWords.join(", ")}の画像`;
-    } else {
-      return prompt.substring(0, 30) + (prompt.length > 30 ? "..." : "");
-    }
-  } catch (error) {
-    return prompt.substring(0, 30) + (prompt.length > 30 ? "..." : "");
-  }
-}
-
-/**
  * 画像生成と構造化テーブル配置を同時に実行（新システム）
  */
 function generateImagesAndCreateTable(prompts) {
@@ -1615,5 +1577,202 @@ function generateImagesAndCreateTable(prompts) {
   } catch (error) {
     console.error("構造化画像生成エラー:", error);
     throw new Error(`処理に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 全選択/解除機能
+ */
+function toggleAllImageSelection() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return "❌ データがありません";
+    }
+
+    // H列（チェックボックス列）のチェック状態を確認
+    const checkboxRange = sheet.getRange(2, 8, lastRow - 1, 1);
+    const checkboxValues = checkboxRange.getValues();
+
+    // 現在の状態を確認（true の数を数える）
+    const checkedCount = checkboxValues
+      .flat()
+      .filter((value) => value === true).length;
+    const totalCount = checkboxValues.length;
+
+    // 過半数がチェックされていれば全解除、そうでなければ全選択
+    const shouldCheck = checkedCount < totalCount / 2;
+
+    // 画像が存在する行のみ対象とする
+    for (let i = 2; i <= lastRow; i++) {
+      const imageCell = sheet.getRange(i, 4); // D列（画像列）
+      const imageFormula = imageCell.getFormula();
+
+      if (imageFormula && imageFormula.includes("=IMAGE(")) {
+        const checkboxCell = sheet.getRange(i, 8);
+        checkboxCell.setValue(shouldCheck);
+      }
+    }
+
+    const action = shouldCheck ? "選択" : "解除";
+    return `✅ 全画像を${action}しました`;
+  } catch (error) {
+    console.error("全選択/解除エラー:", error);
+    throw new Error(`全選択/解除に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 選択された画像をダウンロード
+ */
+function downloadSelectedImages() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return "❌ データがありません";
+    }
+
+    const selectedImages = [];
+    let downloadCount = 0;
+
+    // チェックされた行を検索
+    for (let i = 2; i <= lastRow; i++) {
+      const checkboxCell = sheet.getRange(i, 8);
+      const isChecked = checkboxCell.getValue();
+
+      if (isChecked === true) {
+        const imageCell = sheet.getRange(i, 4); // D列（画像列）
+        const imageFormula = imageCell.getFormula();
+
+        if (imageFormula && imageFormula.includes("=IMAGE(")) {
+          // IMAGE関数からURLを抽出
+          const urlMatch = imageFormula.match(/=IMAGE\("([^"]+)"/);
+          if (urlMatch && urlMatch[1]) {
+            const promptCell = sheet.getRange(i, 2); // B列（プロンプト）
+            const prompt = promptCell.getValue() || `画像_${i}`;
+
+            selectedImages.push({
+              url: urlMatch[1],
+              filename: `${prompt
+                .substring(0, 50)
+                .replace(/[^\w\s-]/g, "")}_${i}.png`,
+              row: i,
+            });
+          }
+        }
+      }
+    }
+
+    if (selectedImages.length === 0) {
+      return "❌ 選択された画像がありません。チェックボックスを選択してください。";
+    }
+
+    // Google Driveに画像をダウンロード（実際の実装）
+    const folderId = createDownloadFolder();
+
+    selectedImages.forEach((imageData) => {
+      try {
+        const response = UrlFetchApp.fetch(imageData.url);
+        const blob = response.getBlob();
+        blob.setName(imageData.filename);
+
+        const folder = DriveApp.getFolderById(folderId);
+        folder.createFile(blob);
+
+        downloadCount++;
+      } catch (downloadError) {
+        console.error(
+          `画像ダウンロードエラー (行${imageData.row}):`,
+          downloadError
+        );
+      }
+    });
+
+    return `✅ ${downloadCount}枚の画像をダウンロードしました！\nGoogle Driveの「DALL-E画像ダウンロード」フォルダを確認してください。`;
+  } catch (error) {
+    console.error("画像ダウンロードエラー:", error);
+    throw new Error(`画像ダウンロードに失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * ダウンロード用フォルダを作成
+ */
+function createDownloadFolder() {
+  try {
+    const folderName = "DALL-E画像ダウンロード";
+    const folders = DriveApp.getFoldersByName(folderName);
+
+    if (folders.hasNext()) {
+      return folders.next().getId();
+    } else {
+      const newFolder = DriveApp.createFolder(folderName);
+      return newFolder.getId();
+    }
+  } catch (error) {
+    console.error("フォルダ作成エラー:", error);
+    throw new Error("ダウンロードフォルダの作成に失敗しました");
+  }
+}
+
+/**
+ * 選択された画像を再生成
+ */
+function regenerateSelectedImages() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return "❌ データがありません";
+    }
+
+    const selectedPrompts = [];
+    const selectedRows = [];
+
+    // チェックされた行のプロンプトを収集
+    for (let i = 2; i <= lastRow; i++) {
+      const checkboxCell = sheet.getRange(i, 8);
+      const isChecked = checkboxCell.getValue();
+
+      if (isChecked === true) {
+        const promptCell = sheet.getRange(i, 2); // B列（プロンプト）
+        const prompt = promptCell.getValue();
+
+        if (prompt && typeof prompt === "string" && prompt.trim() !== "") {
+          selectedPrompts.push(prompt.trim());
+          selectedRows.push(i);
+        }
+      }
+    }
+
+    if (selectedPrompts.length === 0) {
+      return "❌ 選択された有効なプロンプトがありません。チェックボックスを選択してください。";
+    }
+
+    console.log(
+      `${selectedPrompts.length}個の選択されたプロンプトを再生成します`
+    );
+
+    // 選択された行のステータスを「再生成中」に更新
+    selectedRows.forEach((row) => {
+      const statusCell = sheet.getRange(row, 7); // G列（ステータス）
+      statusCell.setValue("🔄 再生成中");
+      statusCell.setBackground("#fff3e0");
+      statusCell.setFontColor("#ef6c00");
+    });
+
+    // 画像を再生成
+    const imageResults = generateImages(selectedPrompts);
+
+    // 結果を該当行に配置
+    return populateStructuredTable(imageResults, selectedRows);
+  } catch (error) {
+    console.error("選択画像再生成エラー:", error);
+    throw new Error(`選択画像の再生成に失敗しました: ${error.message}`);
   }
 }

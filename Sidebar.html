@@ -269,13 +269,8 @@
 
       <div class="instructions">
         <div id="instruction-text">
-          <strong>🚀 使い方:</strong><br>
-          <strong>1️⃣</strong> 初期セットアップで100行テーブル作成<br>
-          <strong>2️⃣</strong> B列にプロンプトを入力<br>
-          <strong>3️⃣</strong> 画像生成ボタンをクリック<br><br>
-          <strong>💡 ボタンの説明:</strong><br>
-          <strong>🔧 初期セットアップ</strong> = 初回使用時に実行（推奨）<br>
-          <strong>🗑️ 表をクリア</strong> = 表を空にして新しく始める
+          <strong>🚀 簡単3ステップ:</strong><br>
+          <strong>1️⃣</strong> セットアップ → <strong>2️⃣</strong> プロンプト入力 → <strong>3️⃣</strong> 画像生成
         </div>
       </div>
 
@@ -290,6 +285,18 @@
         
         <button class="btn btn-create" onclick="createStructuredTableOnly()">
           🗑️ 表をクリア
+        </button>
+        
+        <button class="btn btn-secondary" onclick="toggleAllImageSelection()">
+          ☑️ 全選択/解除
+        </button>
+        
+        <button class="btn" onclick="downloadSelectedImages()">
+          📥 選択画像DL
+        </button>
+        
+        <button class="btn" onclick="regenerateSelectedImages()">
+          🔄 選択画像再生成
         </button>
       </div>
 
@@ -366,6 +373,42 @@
           showResult('エラー: ' + error.message, true);
         })
         .createStructuredTableOnly();
+    }
+
+    function toggleAllImageSelection() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .toggleAllImageSelection();
+    }
+
+    function downloadSelectedImages() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .downloadSelectedImages();
+    }
+
+    function regenerateSelectedImages() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .regenerateSelectedImages();
     }
   </script>
 </body>
