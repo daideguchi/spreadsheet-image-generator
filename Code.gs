@@ -1006,38 +1006,39 @@ function backupAndClearSheet() {
 }
 
 /**
- * ワークスペースを作成
+ * ワークスペースを作成（新しい構造化テーブルシステム）
  */
 function createWorkspace(startRow) {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
 
     // タイトルエリアを作成
-    const titleRange = sheet.getRange(startRow, 1, 1, 5);
+    const titleRange = sheet.getRange(startRow, 1, 1, 8);
     titleRange.merge();
-    titleRange.setValue("🎨 DALL-E 画像生成ツール");
+    titleRange.setValue("🎨 DALL-E 画像生成ツール - プロフェッショナル版");
     titleRange.setBackground("#1a73e8");
     titleRange.setFontColor("white");
-    titleRange.setFontSize(16);
+    titleRange.setFontSize(18);
     titleRange.setFontWeight("bold");
     titleRange.setHorizontalAlignment("center");
     titleRange.setVerticalAlignment("middle");
-    sheet.setRowHeight(startRow, 50);
+    sheet.setRowHeight(startRow, 55);
 
     // 説明エリア
-    const instructionRange = sheet.getRange(startRow + 1, 1, 1, 5);
+    const instructionRange = sheet.getRange(startRow + 1, 1, 1, 8);
     instructionRange.merge();
     instructionRange.setValue(
-      "📝 下記にプロンプトを入力して、範囲選択後にサイドバーから「表形式で生成」をクリック"
+      "📋 B列にプロンプトを入力して、サイドバーから「🎨 画像を生成」をクリック！構造化されたテーブルで管理されます。"
     );
     instructionRange.setBackground("#fff3e0");
     instructionRange.setFontColor("#ef6c00");
     instructionRange.setHorizontalAlignment("center");
     instructionRange.setWrap(true);
-    sheet.setRowHeight(startRow + 1, 40);
+    instructionRange.setFontSize(12);
+    sheet.setRowHeight(startRow + 1, 45);
 
-    // プロンプト入力エリアを作成
-    createPromptInputAreaAt(startRow + 3);
+    // 構造化テーブルを作成
+    return createStructuredTable();
   } catch (error) {
     console.error("ワークスペース作成エラー:", error);
     throw new Error(`ワークスペースの作成に失敗しました: ${error.message}`);
@@ -1347,5 +1348,287 @@ function handlePermissionError(actionName) {
       "メニューから「🔐 権限承認を実行」をクリックしてください。",
       SpreadsheetApp.getUi().ButtonSet.OK
     );
+  }
+}
+
+/**
+ * 構造化テーブルのヘッダーを作成
+ */
+function createStructuredTable() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // ヘッダー行を作成（1行目）
+    const headers = [
+      "No.", // A列
+      "📝 プロンプト", // B列 - ユーザー入力
+      "📋 画像概要", // C列 - 自動生成
+      "🤖 AI変換プロンプト", // D列 - DALL-E変換版
+      "🖼️ 生成画像", // E列 - 実際の画像
+      "📐 画像比率", // F列 - アスペクト比
+      "⏰ 生成日時", // G列 - タイムスタンプ
+      "✅ ステータス", // H列 - 生成状況
+    ];
+
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setValues([headers]);
+
+    // ヘッダーのスタイリング
+    headerRange.setBackground("#1a73e8");
+    headerRange.setFontColor("white");
+    headerRange.setFontWeight("bold");
+    headerRange.setHorizontalAlignment("center");
+    headerRange.setVerticalAlignment("middle");
+    headerRange.setFontSize(12);
+    sheet.setRowHeight(1, 45);
+
+    // 列幅の最適化
+    sheet.setColumnWidth(1, 60); // A: No.
+    sheet.setColumnWidth(2, 300); // B: プロンプト
+    sheet.setColumnWidth(3, 200); // C: 概要
+    sheet.setColumnWidth(4, 250); // D: AI変換
+    sheet.setColumnWidth(5, 220); // E: 画像
+    sheet.setColumnWidth(6, 100); // F: 比率
+    sheet.setColumnWidth(7, 140); // G: 日時
+    sheet.setColumnWidth(8, 100); // H: ステータス
+
+    // サンプル行を追加（2-6行目）
+    const samplePrompts = [
+      "a beautiful sunset over the ocean with sailing boats",
+      "a cute cat wearing a wizard hat in a magical forest",
+      "a futuristic city with flying cars and neon lights",
+      "a delicious pizza with colorful vegetables",
+      "a peaceful garden with blooming cherry blossoms",
+    ];
+
+    for (let i = 0; i < samplePrompts.length; i++) {
+      const row = i + 2;
+
+      // A列: 番号
+      sheet.getRange(row, 1).setValue(i + 1);
+      sheet.getRange(row, 1).setHorizontalAlignment("center");
+      sheet.getRange(row, 1).setFontWeight("bold");
+      sheet.getRange(row, 1).setBackground("#f8f9fa");
+
+      // B列: サンプルプロンプト
+      const promptCell = sheet.getRange(row, 2);
+      promptCell.setValue(samplePrompts[i]);
+      promptCell.setWrap(true);
+      promptCell.setVerticalAlignment("middle");
+      promptCell.setFontStyle("italic");
+      promptCell.setFontColor("#666666");
+
+      // 行の高さを設定
+      sheet.setRowHeight(row, 60);
+
+      // 境界線を設定
+      const rowRange = sheet.getRange(row, 1, 1, headers.length);
+      rowRange.setBorder(true, true, true, true, true, true);
+    }
+
+    // 空の行を追加（7-10行目）
+    for (let i = 6; i <= 10; i++) {
+      const row = i + 1;
+
+      // A列: 番号
+      sheet.getRange(row, 1).setValue(i);
+      sheet.getRange(row, 1).setHorizontalAlignment("center");
+      sheet.getRange(row, 1).setFontWeight("bold");
+      sheet.getRange(row, 1).setBackground("#f8f9fa");
+
+      // 行の高さを設定
+      sheet.setRowHeight(row, 60);
+
+      // 境界線を設定
+      const rowRange = sheet.getRange(row, 1, 1, headers.length);
+      rowRange.setBorder(true, true, true, true, true, true);
+    }
+
+    return "✨ 構造化テーブルを作成しました！B列にプロンプトを入力してください。";
+  } catch (error) {
+    console.error("構造化テーブル作成エラー:", error);
+    throw new Error(`構造化テーブルの作成に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * B列のプロンプトを検出して画像生成
+ */
+function generateImagesFromStructuredTable() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      throw new Error("プロンプトが入力されていません");
+    }
+
+    // B列からプロンプトを取得（2行目以降）
+    const promptRange = sheet.getRange(2, 2, lastRow - 1, 1);
+    const promptValues = promptRange.getValues();
+
+    const validPrompts = [];
+    const promptRows = [];
+
+    promptValues.forEach((row, index) => {
+      const prompt = row[0];
+      if (prompt && typeof prompt === "string" && prompt.trim() !== "") {
+        validPrompts.push(prompt.trim());
+        promptRows.push(index + 2); // 実際の行番号
+      }
+    });
+
+    if (validPrompts.length === 0) {
+      throw new Error(
+        "有効なプロンプトが見つかりません。B列にプロンプトを入力してください。"
+      );
+    }
+
+    console.log(`${validPrompts.length}個のプロンプトを検出しました`);
+
+    // 画像を生成
+    const imageResults = generateImages(validPrompts);
+
+    // 構造化テーブルに結果を配置
+    return populateStructuredTable(imageResults, promptRows);
+  } catch (error) {
+    console.error("構造化テーブル画像生成エラー:", error);
+    throw new Error(`画像生成に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 構造化テーブルに画像生成結果を配置
+ */
+function populateStructuredTable(imageResults, promptRows) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const currentTime = new Date().toLocaleString("ja-JP");
+    let processedCount = 0;
+
+    imageResults.forEach((result, index) => {
+      const row = promptRows[index];
+
+      // C列: 画像概要（プロンプトの要約）
+      const summaryCell = sheet.getRange(row, 3);
+      const summary = generateImageSummary(result.prompt);
+      summaryCell.setValue(summary);
+      summaryCell.setWrap(true);
+      summaryCell.setVerticalAlignment("middle");
+      summaryCell.setFontSize(10);
+      summaryCell.setBackground("#f0f8ff");
+
+      // D列: AI変換プロンプト
+      const aiPromptCell = sheet.getRange(row, 4);
+      aiPromptCell.setValue(result.revised_prompt || result.prompt);
+      aiPromptCell.setWrap(true);
+      aiPromptCell.setVerticalAlignment("middle");
+      aiPromptCell.setFontStyle("italic");
+      aiPromptCell.setFontColor("#666666");
+      aiPromptCell.setFontSize(10);
+      aiPromptCell.setBackground("#fff8e1");
+
+      // E列: 生成画像
+      const imageCell = sheet.getRange(row, 5);
+      imageCell.setFormula(`=IMAGE("${result.url}", 1)`);
+
+      // F列: 画像比率
+      const ratioCell = sheet.getRange(row, 6);
+      ratioCell.setValue("1:1");
+      ratioCell.setHorizontalAlignment("center");
+      ratioCell.setVerticalAlignment("middle");
+      ratioCell.setFontWeight("bold");
+      ratioCell.setBackground("#e8f5e8");
+
+      // G列: 生成日時
+      const timeCell = sheet.getRange(row, 7);
+      timeCell.setValue(currentTime);
+      timeCell.setHorizontalAlignment("center");
+      timeCell.setVerticalAlignment("middle");
+      timeCell.setFontSize(9);
+      timeCell.setBackground("#f5f5f5");
+
+      // H列: ステータス
+      const statusCell = sheet.getRange(row, 8);
+      statusCell.setValue("✅ 完了");
+      statusCell.setHorizontalAlignment("center");
+      statusCell.setVerticalAlignment("middle");
+      statusCell.setFontWeight("bold");
+      statusCell.setFontColor("#2e7d32");
+      statusCell.setBackground("#e8f5e8");
+
+      // 行の高さを画像に合わせて調整
+      sheet.setRowHeight(row, 180);
+
+      processedCount++;
+    });
+
+    // 完了メッセージを下部に追加
+    const lastRow = sheet.getLastRow();
+    const messageRow = lastRow + 2;
+    const messageRange = sheet.getRange(messageRow, 1, 1, 8);
+    messageRange.merge();
+    messageRange.setValue(
+      `🎉 ${processedCount}枚の画像生成が完了しました！ - ${currentTime}`
+    );
+    messageRange.setBackground("#e8f5e8");
+    messageRange.setFontColor("#2e7d32");
+    messageRange.setHorizontalAlignment("center");
+    messageRange.setFontWeight("bold");
+    messageRange.setFontSize(14);
+    sheet.setRowHeight(messageRow, 40);
+
+    return `✅ ${processedCount}枚の画像を構造化テーブルに配置しました！`;
+  } catch (error) {
+    console.error("構造化テーブル配置エラー:", error);
+    throw new Error(`結果の配置に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 画像概要を生成（プロンプトから要約を作成）
+ */
+function generateImageSummary(prompt) {
+  try {
+    // プロンプトから主要なキーワードを抽出して概要を作成
+    const words = prompt.toLowerCase().split(/[\s,]+/);
+    const keyWords = words
+      .filter(
+        (word) =>
+          word.length > 3 &&
+          ![
+            "with",
+            "and",
+            "the",
+            "for",
+            "in",
+            "on",
+            "at",
+            "by",
+            "from",
+          ].includes(word)
+      )
+      .slice(0, 3);
+
+    if (keyWords.length > 0) {
+      return `${keyWords.join(", ")}の画像`;
+    } else {
+      return prompt.substring(0, 30) + (prompt.length > 30 ? "..." : "");
+    }
+  } catch (error) {
+    return prompt.substring(0, 30) + (prompt.length > 30 ? "..." : "");
+  }
+}
+
+/**
+ * 画像生成と構造化テーブル配置を同時に実行（新システム）
+ */
+function generateImagesAndCreateTable(prompts) {
+  try {
+    // 新しい構造化テーブルシステムを使用
+    return generateImagesFromStructuredTable();
+  } catch (error) {
+    console.error("構造化画像生成エラー:", error);
+    throw new Error(`処理に失敗しました: ${error.message}`);
   }
 }

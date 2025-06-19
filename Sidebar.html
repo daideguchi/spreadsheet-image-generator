@@ -373,8 +373,8 @@
       <div class="instructions">
         <div id="instruction-text">
           <strong>🚀 初回の方へ:</strong><br>
-          まずは「初期セットアップ」でプロンプト入力エリアを作成しよう！<br>
-          <small style="color: #666;">シートに美しい入力フォームが作られます</small>
+          まずは「初期セットアップ」で構造化テーブルを作成しよう！<br>
+          <small style="color: #666;">プロフェッショナルな8列構造のテーブルが作られます</small>
         </div>
       </div>
       
@@ -391,7 +391,7 @@
         
         <button id="generateTableBtn" class="btn">
           <span id="generateTableSpinner" class="spinner hidden"></span>
-          🎨 隣に画像を生成
+          🎨 画像を生成
         </button>
         
         <button id="downloadBtn" class="btn btn-secondary">
@@ -493,15 +493,15 @@
     function updateInstructions(step) {
       const instructions = {
         step1: {
-          text: '<strong>🚀 初回の方へ:</strong><br>まずは「初期セットアップ」でプロンプト入力エリアを作成しよう！<br><small style="color: #666;">シートに美しい入力フォームが作られます</small>',
+          text: '<strong>🚀 初回の方へ:</strong><br>まずは「初期セットアップ」で構造化テーブルを作成しよう！<br><small style="color: #666;">プロフェッショナルな8列構造のテーブルが作られます</small>',
           button: 'setupBtn'
         },
         step2: {
-          text: '<strong>✨ プロンプトの入力:</strong><br>シートのプロンプト入力エリアに画像生成したい内容を入力しよう！<br><small style="color: #666;">例: "a cute cat in a wizard hat" - 行が足りない場合は「プロンプト行を追加」</small>',
+          text: '<strong>✨ プロンプトの入力:</strong><br>構造化テーブルのB列に画像生成したい内容を入力しよう！<br><small style="color: #666;">例: "a cute cat in a wizard hat" - プロフェッショナルなテーブル管理</small>',
           button: 'createInputBtn'
         },
         step3: {
-          text: '<strong>🎨 画像生成:</strong><br>プロンプトの範囲を選択して「隣に画像を生成」をクリック！<br><small style="color: #666;">選択したプロンプトの隣の列に画像が直接配置されます</small>',
+          text: '<strong>🎨 画像生成:</strong><br>B列にプロンプトを入力後「🎨 画像を生成」をクリック！<br><small style="color: #666;">自動的にA-H列の構造化テーブルに結果が配置されます</small>',
           button: 'generateTableBtn'
         },
         step4: {
@@ -554,7 +554,7 @@
         generateTableBtn.innerHTML = '<span class="spinner"></span>生成中...';
         generateBtn.innerHTML = '<span class="spinner"></span>生成中...';
       } else {
-        generateTableBtn.innerHTML = '🎨 隣に画像を生成';
+        generateTableBtn.innerHTML = '🎨 画像を生成';
         generateBtn.innerHTML = '画像を生成（従来）';
       }
       
@@ -630,7 +630,7 @@
     });
     
     /**
-     * 表形式画像生成処理
+     * 構造化テーブル画像生成処理
      */
     generateTableBtn.addEventListener('click', async () => {
       if (isGenerating) return;
@@ -638,48 +638,24 @@
       try {
         isGenerating = true;
         updateButtonStates();
-        showStatus('選択範囲を確認中...', 'info');
+        showStatus('B列のプロンプトを検出中...', 'info');
         
-        // アクティブレンジを取得
-        const rangeA1 = await new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)
-            .getActiveRangeA1();
-        });
-        
-        showStatus('プロンプトを取得中...', 'info');
-        
-        // プロンプトを取得
-        const prompts = await new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)
-            .getRangeValues(rangeA1);
-        });
-        
-        if (!prompts || prompts.length === 0) {
-          throw new Error('選択範囲にプロンプトが見つかりません');
-        }
-        
-        showStatus(`${prompts.length}個のプロンプトで画像を生成中...`, 'info');
-        
-        // 画像生成と表作成を同時実行
+        // 構造化テーブルから画像生成
         const result = await new Promise((resolve, reject) => {
           google.script.run
             .withSuccessHandler(resolve)
             .withFailureHandler(reject)
-            .generateImagesAndCreateTable(prompts);
+            .generateImagesAndCreateTable();
         });
         
-        showStatus(result.tableMessage, 'success');
+        showStatus(result.tableMessage || result, 'success');
         
         // ステップ4に進む
         updateStepIndicator('step4');
         updateInstructions('step4');
         
       } catch (error) {
-        console.error('表形式生成エラー:', error);
+        console.error('構造化テーブル生成エラー:', error);
         showStatus(`エラー: ${error.message}`, 'error');
       } finally {
         isGenerating = false;
