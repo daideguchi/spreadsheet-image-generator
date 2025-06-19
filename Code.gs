@@ -921,7 +921,7 @@ function populateStructuredTable(imageResults, promptRows) {
             isPromptTruncated = true;
           }
 
-          const userPromptPart = headerText + userPromptForCell;
+          let userPromptPart = headerText + userPromptForCell;
           if (isPromptTruncated) {
             userPromptPart += `\n\n⚠️ プロンプトが長すぎるため表示を制限しています。完全版はセルコメントで確認できます。`;
           }
@@ -929,15 +929,34 @@ function populateStructuredTable(imageResults, promptRows) {
           // セル値に安全な長さで配置
           fullPromptCell.setValue(userPromptPart);
 
-          // 完全版プロンプトは必ずセルコメントに保存
-          const completePromptComment = `📝 完全なユーザープロンプト:\n${result.original_prompt}`;
-          fullPromptCell.setNote(completePromptComment);
+          // 🔧 **セルコメント統合**: 複数のsetNote()呼び出しを1つに統合して50,000文字制限を回避
+          let combinedComment = `📝 完全なユーザープロンプト:\n${result.original_prompt}`;
 
-          // 内部処理版は**セルコメント**に分離配置（制限回避）
+          // 内部処理版がある場合は追加（長さ制限付き）
           if (result.revised_prompt && result.revised_prompt.trim() !== "") {
-            const internalComment = `🤖 GPT-Image-1内部処理版:\n${result.revised_prompt}\n\n💡 この情報はAIが自動生成した内部処理版です。`;
-            fullPromptCell.setNote(internalComment);
+            const maxRevisedLength = Math.max(
+              1000,
+              45000 - combinedComment.length
+            ); // 安全マージン確保
+            let revisedPart = result.revised_prompt;
+
+            if (revisedPart.length > maxRevisedLength) {
+              revisedPart =
+                revisedPart.substring(0, maxRevisedLength) +
+                "\n[内部処理版が長すぎるため省略...]";
+            }
+
+            combinedComment += `\n\n🤖 GPT-Image-1内部処理版:\n${revisedPart}\n\n💡 この情報はAIが自動生成した内部処理版です。`;
           }
+
+          // 最終的な長さチェック
+          if (combinedComment.length > 49500) {
+            combinedComment =
+              combinedComment.substring(0, 49000) +
+              "\n[コメントが長すぎるため省略...]";
+          }
+
+          fullPromptCell.setNote(combinedComment);
           fullPromptCell.setWrap(true);
           fullPromptCell.setVerticalAlignment("top");
           fullPromptCell.setFontSize(9);
@@ -1008,7 +1027,7 @@ function populateStructuredTable(imageResults, promptRows) {
             isPromptTruncated = true;
           }
 
-          const userPromptPart = headerText + userPromptForCell;
+          let userPromptPart = headerText + userPromptForCell;
           if (isPromptTruncated) {
             userPromptPart += `\n\n⚠️ プロンプトが長すぎるため表示を制限しています。完全版はセルコメントで確認できます。`;
           }
@@ -1016,15 +1035,34 @@ function populateStructuredTable(imageResults, promptRows) {
           // セル値に安全な長さで配置
           fullPromptCell.setValue(userPromptPart);
 
-          // 完全版プロンプトは必ずセルコメントに保存
-          const completePromptComment = `📝 完全なユーザープロンプト:\n${result.original_prompt}`;
-          fullPromptCell.setNote(completePromptComment);
+          // 🔧 **セルコメント統合**: 複数のsetNote()呼び出しを1つに統合して50,000文字制限を回避
+          let combinedComment = `📝 完全なユーザープロンプト:\n${result.original_prompt}`;
 
-          // 内部処理版は**セルコメント**に分離配置（制限回避）
+          // 内部処理版がある場合は追加（長さ制限付き）
           if (result.revised_prompt && result.revised_prompt.trim() !== "") {
-            const internalComment = `🤖 GPT-Image-1内部処理版:\n${result.revised_prompt}\n\n💡 この情報はAIが自動生成した内部処理版です。`;
-            fullPromptCell.setNote(internalComment);
+            const maxRevisedLength = Math.max(
+              1000,
+              45000 - combinedComment.length
+            ); // 安全マージン確保
+            let revisedPart = result.revised_prompt;
+
+            if (revisedPart.length > maxRevisedLength) {
+              revisedPart =
+                revisedPart.substring(0, maxRevisedLength) +
+                "\n[内部処理版が長すぎるため省略...]";
+            }
+
+            combinedComment += `\n\n🤖 GPT-Image-1内部処理版:\n${revisedPart}\n\n💡 この情報はAIが自動生成した内部処理版です。`;
           }
+
+          // 最終的な長さチェック
+          if (combinedComment.length > 49500) {
+            combinedComment =
+              combinedComment.substring(0, 49000) +
+              "\n[コメントが長すぎるため省略...]";
+          }
+
+          fullPromptCell.setNote(combinedComment);
           fullPromptCell.setWrap(true);
           fullPromptCell.setVerticalAlignment("top");
           fullPromptCell.setFontSize(9);
