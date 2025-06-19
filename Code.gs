@@ -348,7 +348,6 @@ function generateImages(prompts) {
           model: "gpt-image-1", // 🔥 最新モデル復活（32,000文字対応）
           quality: "high", // 🔥 最新の品質設定（high/medium/low）
           background: "auto", // 🔥 背景自動最適化（新機能）
-          output_compression: 90, // 🔥 圧縮率最適化（新機能）
           output_format: "png", // 🔥 PNG出力（新機能）
           moderation: "auto", // 🔥 モデレーション自動（新機能）
         };
