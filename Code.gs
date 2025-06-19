@@ -289,10 +289,14 @@ function generateImages(prompts) {
     prompts.forEach((prompt, index) => {
       console.log(`画像生成中 ${index + 1}/${prompts.length}: ${prompt}`);
 
+      // 画像サイズをランダムに選択（多様性向上）
+      const sizes = ["1024x1024", "1024x1792", "1792x1024"];
+      const selectedSize = sizes[Math.floor(Math.random() * sizes.length)];
+
       const payload = {
         prompt: prompt,
         n: 1,
-        size: "1024x1024",
+        size: selectedSize,
         model: "dall-e-3",
         quality: "standard",
       };
@@ -325,6 +329,7 @@ function generateImages(prompts) {
         prompt: prompt,
         url: data.data[0].url,
         revised_prompt: data.data[0].revised_prompt || prompt,
+        size: selectedSize, // 画像サイズ情報を追加
       });
 
       // API制限を考慮した待機時間
@@ -1477,9 +1482,20 @@ function generateImagesFromStructuredTable() {
 
     promptValues.forEach((row, index) => {
       const prompt = row[0];
+      const actualRow = index + 2; // 実際の行番号
+
       if (prompt && typeof prompt === "string" && prompt.trim() !== "") {
+        // 既存データ保護：既に画像が生成されている行はスキップ
+        const existingImageCell = sheet.getRange(actualRow, 5); // E列（画像列）
+        const existingImage = existingImageCell.getFormula();
+
+        if (existingImage && existingImage.includes("=IMAGE(")) {
+          console.log(`行${actualRow}は既に画像が生成済みのためスキップ`);
+          return; // この行をスキップ
+        }
+
         validPrompts.push(prompt.trim());
-        promptRows.push(index + 2); // 実際の行番号
+        promptRows.push(actualRow);
       }
     });
 
@@ -1537,9 +1553,20 @@ function populateStructuredTable(imageResults, promptRows) {
       const imageCell = sheet.getRange(row, 5);
       imageCell.setFormula(`=IMAGE("${result.url}", 1)`);
 
-      // F列: 画像比率
+      // F列: 画像比率（動的検出）
       const ratioCell = sheet.getRange(row, 6);
-      ratioCell.setValue("1:1");
+      const imageSize = result.size || "1024x1024";
+      let ratio = "1:1";
+
+      if (imageSize === "1024x1792") {
+        ratio = "9:16";
+      } else if (imageSize === "1792x1024") {
+        ratio = "16:9";
+      } else {
+        ratio = "1:1";
+      }
+
+      ratioCell.setValue(ratio);
       ratioCell.setHorizontalAlignment("center");
       ratioCell.setVerticalAlignment("middle");
       ratioCell.setFontWeight("bold");
