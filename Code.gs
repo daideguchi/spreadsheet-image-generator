@@ -262,8 +262,8 @@ function getRangeValues(a1Notation) {
 }
 
 /**
- * サイズ判定のみの最小限解析（DALL-E 3準拠）
- * プロンプトに基づいてサイズのみを判定し、DALL-E 3の解像度オプションを使用
+ * サイズ判定のみの最小限解析（GPT-Image-1準拠）
+ * プロンプトに基づいてサイズのみを判定し、最新の解像度オプションを使用
  */
 function analyzePromptForOptimalSettings(prompt) {
   // サイズ判定のみ（最小限の解析）
@@ -277,16 +277,17 @@ function analyzePromptForOptimalSettings(prompt) {
       ),
   };
 
-  // 🔄 DALL-E 3のサイズオプション（実証済み）
+  // 🔥 GPT-Image-1の新サイズオプション復活
   let selectedSize = "1024x1024"; // デフォルト（正方形）
 
   if (sizeAnalysis.portrait) {
-    selectedSize = "1024x1792"; // 縦長（DALL-E 3対応）
+    selectedSize = "1024x1536"; // 縦長（GPT-Image-1対応）
   } else if (sizeAnalysis.landscape) {
-    selectedSize = "1792x1024"; // 横長（DALL-E 3対応）
+    selectedSize = "1536x1024"; // 横長（GPT-Image-1対応）
   }
 
-  console.log(`DALL-E 3サイズ判定結果: size=${selectedSize}`);
+  // スタイル判定は削除（GPT-Image-1はstyleパラメータなし）
+  console.log(`GPT-Image-1サイズ判定結果: size=${selectedSize}`);
   return { size: selectedSize };
 }
 
@@ -332,7 +333,7 @@ function generateImages(prompts) {
 
         // 🚨 プロンプト完全無改変の実現
         // ユーザーのプロンプトを一切改変せずそのまま使用
-        // DALL-E 3の自動改変を防ぐため、パラメーター側で制御
+        // GPT-Image-1の自動改変を防ぐため、パラメーター側で制御
         const finalPrompt = prompt; // ユーザープロンプトを完全にそのまま使用
 
         // デバッグ用ログ：送信されるプロンプトを確認
@@ -344,9 +345,12 @@ function generateImages(prompts) {
           prompt: finalPrompt, // ユーザープロンプトを完全にそのまま使用
           n: 1,
           size: selectedSize, // 自動サイズ判定
-          model: "dall-e-3", // 🔄 実証済みモデルに戻す（組織認証不要）
-          quality: "hd", // 🔄 DALL-E 3対応の品質設定
-          style: "natural", // 🔄 DALL-E 3のスタイル設定を復活
+          model: "gpt-image-1", // 🔥 最新モデル復活（32,000文字対応）
+          quality: "high", // 🔥 最新の品質設定（high/medium/low）
+          background: "auto", // 🔥 背景自動最適化（新機能）
+          output_compression: 90, // 🔥 圧縮率最適化（新機能）
+          output_format: "png", // 🔥 PNG出力（新機能）
+          moderation: "auto", // 🔥 モデレーション自動（新機能）
         };
 
         // リトライ機能付きAPIリクエスト
@@ -441,19 +445,25 @@ function generateImages(prompts) {
           throw new Error("画像データの取得に失敗しました");
         }
 
-        // 🔄 DALL-E 3の標準レスポンス処理
+        // 🔥 GPT-Image-1はbase64レスポンスのみ
         const imageData = data.data[0];
-        const imageUrl = imageData.url;
+        let imageUrl;
 
-        if (!imageUrl) {
-          throw new Error("画像URLの取得に失敗しました");
+        if (imageData.b64_json) {
+          // base64データをData URLに変換
+          imageUrl = `data:image/png;base64,${imageData.b64_json}`;
+        } else if (imageData.url) {
+          // 従来のURL形式（フォールバック）
+          imageUrl = imageData.url;
+        } else {
+          throw new Error("画像データの形式が不正です");
         }
 
-        // 🔍 DALL-E 3の内部処理を監視（ユーザー情報提供用）
+        // 🔍 GPT-Image-1の内部処理を監視（ユーザー情報提供用）
         const revisedPrompt = imageData.revised_prompt;
         if (revisedPrompt) {
           console.log(`📝 ユーザー入力プロンプト: ${prompt}`);
-          console.log(`🤖 DALL-E 3内部処理版: ${revisedPrompt}`);
+          console.log(`🤖 GPT-Image-1内部処理版: ${revisedPrompt}`);
 
           // 改変度合いを分析
           const originalLength = prompt.length;
@@ -470,14 +480,14 @@ function generateImages(prompts) {
           // 情報提供としての分析
           if (changeRatio > 50) {
             console.log(
-              `📈 DALL-E 3が大幅に内部処理を行いました: ${changeRatio.toFixed(
+              `📈 GPT-Image-1が大幅に内部処理を行いました: ${changeRatio.toFixed(
                 1
               )}%`
             );
           } else if (changeRatio > 20) {
-            console.log(`📊 DALL-E 3が中程度の内部処理を行いました`);
+            console.log(`📊 GPT-Image-1が中程度の内部処理を行いました`);
           } else {
-            console.log(`✅ DALL-E 3の内部処理は最小限でした`);
+            console.log(`✅ GPT-Image-1の内部処理は最小限でした`);
           }
         }
 
@@ -794,7 +804,7 @@ function populateStructuredTable(imageResults, promptRows) {
 
         // G列: ステータス（品質・忠実性情報付き）
         const statusCell = sheet.getRange(row, 7);
-        statusCell.setValue("✅ DALL-E 3");
+        statusCell.setValue("✅ GPT-Image-1");
         statusCell.setHorizontalAlignment("center");
         statusCell.setVerticalAlignment("middle");
         statusCell.setFontWeight("bold");
@@ -805,15 +815,15 @@ function populateStructuredTable(imageResults, promptRows) {
         const imageCell = sheet.getRange(row, 4);
         imageCell.setFormula(`=IMAGE("${result.url}", 1)`);
 
-        // E列: 画像比率（動的検出）
+        // C列: 画像比率（動的検出）
         const ratioCell = sheet.getRange(row, 5);
         const imageSize = result.size || "1024x1024";
         let ratio = "1:1";
 
-        if (imageSize === "1024x1792") {
-          ratio = "9:16"; // DALL-E 3縦長
-        } else if (imageSize === "1792x1024") {
-          ratio = "16:9"; // DALL-E 3横長
+        if (imageSize === "1024x1536") {
+          ratio = "2:3"; // GPT-Image-1縦長
+        } else if (imageSize === "1536x1024") {
+          ratio = "3:2"; // GPT-Image-1横長
         } else {
           ratio = "1:1"; // 正方形
         }
@@ -834,7 +844,7 @@ function populateStructuredTable(imageResults, promptRows) {
 
         // G列: ステータス（品質・忠実性情報付き）
         const statusCell = sheet.getRange(row, 7);
-        statusCell.setValue("✅ DALL-E 3");
+        statusCell.setValue("✅ GPT-Image-1");
         statusCell.setHorizontalAlignment("center");
         statusCell.setVerticalAlignment("middle");
         statusCell.setFontWeight("bold");
@@ -856,11 +866,11 @@ function populateStructuredTable(imageResults, promptRows) {
         promptCell.setWrap(false);
         promptCell.setVerticalAlignment("middle");
 
-        // 完全なプロンプトとDALL-E 3内部処理情報をコメントに保存
+        // 完全なプロンプトとGPT-Image-1内部処理情報をコメントに保存
         let comment = `📝 ユーザー入力プロンプト:\n${currentPrompt}`;
 
         if (result.revised_prompt && result.original_prompt) {
-          comment += `\n\n🤖 DALL-E 3内部処理版:\n${result.revised_prompt}`;
+          comment += `\n\n🤖 GPT-Image-1内部処理版:\n${result.revised_prompt}`;
 
           // 内部処理変更度を計算して表示
           const originalLength = result.original_prompt.length;
@@ -871,19 +881,19 @@ function populateStructuredTable(imageResults, promptRows) {
           comment += `\n\n📊 内部処理変更度: ${changeRatio.toFixed(1)}%`;
 
           if (changeRatio > 50) {
-            comment += `\n📈 DALL-E 3が大幅に内部処理を実行`;
+            comment += `\n📈 GPT-Image-1が大幅に内部処理を実行`;
           } else if (changeRatio > 20) {
-            comment += `\n📊 DALL-E 3が中程度の内部処理を実行`;
+            comment += `\n📊 GPT-Image-1が中程度の内部処理を実行`;
           } else {
-            comment += `\n✅ DALL-E 3の内部処理は最小限`;
+            comment += `\n✅ GPT-Image-1の内部処理は最小限`;
           }
         }
         promptCell.setNote(comment);
       } else {
-        // 短いプロンプトの場合もDALL-E 3内部処理情報を表示
+        // 短いプロンプトの場合もGPT-Image-1内部処理情報を表示
         if (result.revised_prompt && result.original_prompt) {
           let comment = `📝 ユーザー入力プロンプト:\n${result.original_prompt}`;
-          comment += `\n\n🤖 DALL-E 3内部処理版:\n${result.revised_prompt}`;
+          comment += `\n\n🤖 GPT-Image-1内部処理版:\n${result.revised_prompt}`;
 
           // 内部処理変更度を計算
           const originalLength = result.original_prompt.length;
@@ -894,13 +904,13 @@ function populateStructuredTable(imageResults, promptRows) {
           comment += `\n\n📊 内部処理変更度: ${changeRatio.toFixed(1)}%`;
 
           if (changeRatio > 50) {
-            comment += `\n📈 DALL-E 3が大幅に内部処理を実行`;
+            comment += `\n📈 GPT-Image-1が大幅に内部処理を実行`;
             // 情報提供として薄い青色に変更
             promptCell.setBackground("#f0f8ff");
           } else if (changeRatio > 20) {
-            comment += `\n📊 DALL-E 3が中程度の内部処理を実行`;
+            comment += `\n📊 GPT-Image-1が中程度の内部処理を実行`;
           } else {
-            comment += `\n✅ DALL-E 3の内部処理は最小限`;
+            comment += `\n✅ GPT-Image-1の内部処理は最小限`;
           }
 
           promptCell.setNote(comment);
