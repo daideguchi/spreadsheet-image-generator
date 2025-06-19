@@ -69,25 +69,33 @@ function initialSetup() {
     let setupOption;
 
     if (hasData) {
-      // データがある場合：2択で選択
+      // データがある場合：明確な選択肢で選択
       const response = ui.alert(
         "⚠️ 既存データが検出されました",
-        "シートにデータが見つかりました。\n\n" +
+        "シートにデータが見つかりました。どちらを選択しますか？\n\n" +
           "🔄 **バックアップを取って新規作成**\n" +
-          "　→ 既存データを別シートに保存してから、\n" +
-          "　　 シートを完全クリアして新しく表を作成\n" +
+          "　→ 既存データを別シートに保存してから新規作成\n" +
           "　　 （プロンプト行追加が正しい位置で機能します）\n\n" +
           "🧹 **完全クリアして新規作成**\n" +
-          "　→ データを削除して新しく表を作成\n" +
-          "　　 （既存データは失われます）\n\n" +
-          "どちらを選択しますか？",
-        ui.ButtonSet.YES_NO
+          "　→ データを削除して新規作成（既存データは失われます）",
+        ui.ButtonSet.OK_CANCEL
       );
 
-      if (response === ui.Button.YES) {
-        setupOption = "backup"; // バックアップを取って新規作成
-      } else if (response === ui.Button.NO) {
-        setupOption = "clear"; // 完全クリアして新規作成
+      if (response === ui.Button.OK) {
+        // さらに詳細な選択
+        const detailResponse = ui.alert(
+          "📋 データ処理方法の選択",
+          "🔄 バックアップを取って新規作成\n" +
+            "🧹 完全クリアして新規作成\n\n" +
+            "どちらを選択しますか？",
+          ui.ButtonSet.YES_NO
+        );
+
+        if (detailResponse === ui.Button.YES) {
+          setupOption = "backup"; // バックアップを取って新規作成
+        } else {
+          setupOption = "clear"; // 完全クリアして新規作成
+        }
       } else {
         return "初期セットアップをキャンセルしました";
       }
@@ -130,13 +138,46 @@ function initialSetup() {
 }
 
 /**
- * サイドバーを表示（透明な権限承認付き）
+ * サイドバーを表示（スマート権限承認付き）
  */
 function showSidebar() {
   try {
+    // 権限承認済みかチェック
+    if (!isPermissionGranted()) {
+      // 初回または権限未承認の場合
+      const ui = SpreadsheetApp.getUi();
+      const response = ui.alert(
+        "🔐 権限承認が必要です",
+        "DALL-E画像生成ツールを使用するために、\n" +
+          "Googleアカウントの権限承認が必要です。\n\n" +
+          "✅ 承認後、自動的にサイドバーが開きます\n" +
+          "❌ この承認は一度だけ必要です\n\n" +
+          "権限承認を開始しますか？",
+        ui.ButtonSet.YES_NO
+      );
+
+      if (response === ui.Button.YES) {
+        try {
+          // 権限承認を実行
+          forcePermissionRequest();
+          markPermissionGranted();
+
+          // 承認成功後、サイドバーを開く
+          const html = HtmlService.createHtmlOutputFromFile("Sidebar")
+            .setTitle("🎨 DALL-E 画像生成ツール")
+            .setWidth(500);
+          SpreadsheetApp.getUi().showSidebar(html);
+        } catch (permissionError) {
+          handlePermissionError("サイドバーを開く");
+        }
+      }
+      return;
+    }
+
+    // 権限承認済みの場合は直接サイドバーを開く
     const html = HtmlService.createHtmlOutputFromFile("Sidebar")
       .setTitle("🎨 DALL-E 画像生成ツール")
-      .setWidth(500); // サイドバー最大幅に設定
+      .setWidth(500);
     SpreadsheetApp.getUi().showSidebar(html);
   } catch (error) {
     // 権限エラーの場合は自動的に権限承認を案内
@@ -1098,6 +1139,32 @@ function isFirstTimeUser() {
 }
 
 /**
+ * 権限承認済みかどうか判定
+ */
+function isPermissionGranted() {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    const permissionGranted = properties.getProperty("PERMISSION_GRANTED");
+    return permissionGranted === "true";
+  } catch (error) {
+    return false; // エラーの場合は未承認とみなす
+  }
+}
+
+/**
+ * 権限承認済みを記録
+ */
+function markPermissionGranted() {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    properties.setProperty("PERMISSION_GRANTED", "true");
+    markAsUsed(); // 使用記録も同時に保存
+  } catch (error) {
+    console.log("権限承認記録の保存に失敗:", error.message);
+  }
+}
+
+/**
  * 使用記録を保存
  */
 function markAsUsed() {
@@ -1192,8 +1259,8 @@ function forcePermissionRequest() {
 
     console.log("✅ すべての権限承認が完了しました");
 
-    // 使用記録を保存
-    markAsUsed();
+    // 権限承認記録を保存
+    markPermissionGranted();
 
     return "✅ 権限承認が完了しました";
   } catch (error) {
