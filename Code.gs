@@ -57,7 +57,7 @@ function onOpen() {
 }
 
 /**
- * 初期セットアップ（プロンプト入力エリアを作成）- 改良版
+ * 初期セットアップ（プロンプト入力エリアを作成）- 常時表示版
  */
 function initialSetup() {
   try {
@@ -85,22 +85,8 @@ function initialSetup() {
         setupOption = "clear"; // 完全クリアして新規作成
       }
     } else {
-      // 空のシートの場合
-      const response = ui.alert(
-        "🚀 表を初期化",
-        "画像生成用のワークスペースを作成します。\n\n" +
-          "📝 プロンプト入力エリア\n" +
-          "🎨 見やすいタイトルとガイド\n" +
-          "✨ 美しいレイアウト\n\n" +
-          "続行しますか？",
-        ui.ButtonSet.YES_NO
-      );
-
-      if (response === ui.Button.YES) {
-        setupOption = "new";
-      } else {
-        return "表の初期化をキャンセルしました";
-      }
+      // 空のシートの場合も常に実行（確認なし）
+      setupOption = "new";
     }
 
     // セットアップ実行
@@ -354,11 +340,13 @@ function generateImages(prompts) {
       try {
         console.log(`画像生成中 ${index + 1}/${prompts.length}: ${prompt}`);
 
-        // ユーザーのプロンプトをそのまま使用（一切の改変なし）
-        const finalPrompt = prompt;
+        // ユーザーのプロンプトをそのまま使用（Web版互換性のため完全無改変）
+        // Web版ChatGPTと同じ方式：プロンプト改変防止指示を追加
+        const finalPrompt = `I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS: ${prompt}`;
 
         // デバッグ用ログ：実際に送信されるプロンプトを確認
-        console.log(`送信プロンプト: ${finalPrompt}`);
+        console.log(`元のプロンプト: ${prompt}`);
+        console.log(`送信プロンプト（改変防止付き）: ${finalPrompt}`);
         console.log(
           `選択されたスタイル: ${selectedStyle}, サイズ: ${selectedSize}`
         );
@@ -369,7 +357,7 @@ function generateImages(prompts) {
           n: 1,
           size: selectedSize,
           model: "dall-e-3",
-          quality: "standard", // Web版デフォルトはstandard（HDは特別指定時のみ）
+          quality: "hd", // Web版ChatGPTは常にHD品質を使用
           style: "natural", // Web版デフォルトはnatural（vividは特別指定時のみ）
           response_format: "url",
         };
@@ -827,7 +815,7 @@ function populateStructuredTable(imageResults, promptRows) {
 
         // G列: ステータス（品質・忠実性情報付き）
         const statusCell = sheet.getRange(row, 7);
-        statusCell.setValue("✅ HD忠実");
+        statusCell.setValue("✅ HD品質");
         statusCell.setHorizontalAlignment("center");
         statusCell.setVerticalAlignment("middle");
         statusCell.setFontWeight("bold");
