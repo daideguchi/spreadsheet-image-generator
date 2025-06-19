@@ -197,6 +197,29 @@
       box-shadow: 0 12px 30px rgba(255, 106, 0, 0.4);
     }
 
+    /* ボタン無効化スタイル */
+    .btn:disabled,
+    .btn.disabled {
+      background: linear-gradient(135deg, #cccccc 0%, #999999 100%) !important;
+      color: #666666 !important;
+      cursor: not-allowed !important;
+      transform: none !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+      opacity: 0.6;
+    }
+
+    .btn:disabled::before,
+    .btn.disabled::before {
+      display: none;
+    }
+
+    .btn:disabled:hover,
+    .btn.disabled:hover {
+      transform: none !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+      background: linear-gradient(135deg, #cccccc 0%, #999999 100%) !important;
+    }
+
     .button-group {
       margin-top: 16px;
       display: flex;
@@ -536,13 +559,15 @@
           const setupBtn = document.getElementById('setupBtn');
           const generateBtn = document.getElementById('generateBtn');
 
-          // シートが空なら初期設定ボタンを無効化
-          if (isEmpty) {
+          // シートが空でなければ初期設定ボタンを無効化（既に設定済み）
+          if (!isEmpty) {
             setupBtn.disabled = true;
             setupBtn.classList.add('disabled');
             setupBtn.title = 'すでに初期設定済みです';
           } else {
             setupBtn.disabled = false;
+            setupBtn.classList.remove('disabled');
+            setupBtn.title = '構造化テーブルを作成します';
           }
 
           // プロンプトがなければ画像生成ボタンを無効化
@@ -552,6 +577,7 @@
             generateBtn.title = 'プロンプトを入力してください';
           } else {
             generateBtn.disabled = false;
+            generateBtn.classList.remove('disabled');
             generateBtn.title = '';
           }
         })
@@ -666,20 +692,34 @@
     }
 
     function executeBackup() {
+      // ボタンが無効化されている場合は処理しない
+      const setupBtn = document.getElementById('setupBtn');
+      if (setupBtn.disabled) {
+        return;
+      }
+
       showLoading();
       updateStepIndicator('step1');
       google.script.run
         .withSuccessHandler(function(result) {
           showResult(result);
           updateStepIndicator('step2');
+          // 初期設定完了後にボタン状態を再チェック
+          checkSheetState();
         })
         .withFailureHandler(function(error) {
           showResult('エラー: ' + error.message, true);
         })
-        .showSetupDialog();
+        .createStructuredTable();
     }
 
     function generateFromStructuredTable() {
+      // ボタンが無効化されている場合は処理しない
+      const generateBtn = document.getElementById('generateBtn');
+      if (generateBtn.disabled) {
+        return;
+      }
+
       showLoading();
       updateStepIndicator('step3');
       startImageGenerationProgress();
@@ -688,12 +728,14 @@
         .withSuccessHandler(function(result) {
           completeImageGeneration();
           showResult(result);
+          // 画像生成完了後にボタン状態を再チェック
+          checkSheetState();
         })
         .withFailureHandler(function(error) {
           hideProgressModal();
           showResult('エラー: ' + error.message, true);
         })
-        .generateImagesFromStructuredTableWithProgress();
+        .generateImagesFromStructuredTable();
     }
 
     function createTableOnly() {
@@ -702,6 +744,8 @@
       google.script.run
         .withSuccessHandler(function(result) {
           showResult(result);
+          // 表クリア完了後にボタン状態を再チェック
+          checkSheetState();
         })
         .withFailureHandler(function(error) {
           showResult('エラー: ' + error.message, true);

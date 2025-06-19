@@ -1932,18 +1932,21 @@ function getSheetState() {
     const sheet = SpreadsheetApp.getActiveSheet();
     const lastRow = sheet.getLastRow();
 
-    // データが全く無ければ空
-    const isEmpty = lastRow === 0;
+    // データが全く無いか、ヘッダー行のみなら空とみなす
+    const isEmpty = lastRow <= 1;
 
     // B列にプロンプトが存在するかチェック（2行目以降最大100行）
     let hasPrompt = false;
     if (!isEmpty) {
-      const promptRange = sheet.getRange(2, 2, Math.max(lastRow - 1, 1), 1);
-      const values = promptRange.getValues();
-      hasPrompt = values.some((row) => {
-        const v = row[0];
-        return v && typeof v === "string" && v.trim() !== "";
-      });
+      const maxRows = Math.min(lastRow - 1, 100);
+      if (maxRows > 0) {
+        const promptRange = sheet.getRange(2, 2, maxRows, 1);
+        const values = promptRange.getValues();
+        hasPrompt = values.some((row) => {
+          const v = row[0];
+          return v && typeof v === "string" && v.trim() !== "";
+        });
+      }
     }
 
     return { isEmpty, hasPrompt };
