@@ -63,45 +63,31 @@ function initialSetup() {
     const sheet = SpreadsheetApp.getActiveSheet();
     const ui = SpreadsheetApp.getUi();
 
-    // より正確な既存データの確認
-    const hasExistingWorkspace = checkExistingWorkspace();
-    const hasOtherData = checkOtherData();
+    // シートにデータがあるかチェック
+    const hasData = checkForAnyData();
 
     let setupOption;
 
-    if (hasExistingWorkspace) {
-      // 既存のワークスペースがある場合
-      const response = ui.alert(
-        "🎨 画像生成ワークスペースが既に存在します",
-        "画像生成ツールのワークスペースが既に作成されています。\n\n" +
-          "✅ はい：新しいワークスペースを下に追加\n" +
-          "❌ いいえ：既存データをバックアップして再作成\n" +
-          "🚫 キャンセル：セットアップを中止",
-        ui.ButtonSet.YES_NO_CANCEL
-      );
-
-      if (response === ui.Button.YES) {
-        setupOption = "append";
-      } else if (response === ui.Button.NO) {
-        setupOption = "backup";
-      } else {
-        return "初期セットアップをキャンセルしました";
-      }
-    } else if (hasOtherData) {
-      // 他のデータがある場合
+    if (hasData) {
+      // データがある場合：2択で選択
       const response = ui.alert(
         "⚠️ 既存データが検出されました",
-        "シートに他のデータが見つかりました。\n\n" +
-          "✅ はい：データを保持して下に追加\n" +
-          "❌ いいえ：バックアップして新規作成\n" +
-          "🚫 キャンセル：セットアップを中止",
-        ui.ButtonSet.YES_NO_CANCEL
+        "シートにデータが見つかりました。\n\n" +
+          "🔄 **バックアップを取って新規作成**\n" +
+          "　→ 既存データを別シートに保存してから、\n" +
+          "　　 シートを完全クリアして新しく表を作成\n" +
+          "　　 （プロンプト行追加が正しい位置で機能します）\n\n" +
+          "🧹 **完全クリアして新規作成**\n" +
+          "　→ データを削除して新しく表を作成\n" +
+          "　　 （既存データは失われます）\n\n" +
+          "どちらを選択しますか？",
+        ui.ButtonSet.YES_NO
       );
 
       if (response === ui.Button.YES) {
-        setupOption = "append";
+        setupOption = "backup"; // バックアップを取って新規作成
       } else if (response === ui.Button.NO) {
-        setupOption = "backup";
+        setupOption = "clear"; // 完全クリアして新規作成
       } else {
         return "初期セットアップをキャンセルしました";
       }
@@ -110,7 +96,6 @@ function initialSetup() {
       const response = ui.alert(
         "🚀 初期セットアップ",
         "画像生成用のワークスペースを作成します。\n\n" +
-          "⚠️ シートを完全にクリアして綺麗に配置します\n" +
           "📝 プロンプト入力エリア\n" +
           "🎨 見やすいタイトルとガイド\n" +
           "✨ 美しいレイアウト\n\n" +
@@ -768,9 +753,10 @@ function executeSetup(option) {
         startRow = 1;
         break;
 
-      case "append":
-        // 既存データの下に追加（正確な最終行を検出）
-        startRow = findLastDataRow() + 3; // 2行空白を追加
+      case "clear":
+        // 完全クリアして新規作成
+        clearSheetCompletely();
+        startRow = 1;
         break;
 
       case "new":
@@ -783,7 +769,7 @@ function executeSetup(option) {
     // ワークスペースを作成
     createWorkspace(startRow);
 
-    return "🎉 セットアップ完了！プロンプト入力エリアを作成しました！";
+    return "🎉 セットアップ完了！プロンプト入力エリアを作成しました！\n\n💡 これでプロンプト行追加が正しい位置で機能します！";
   } catch (error) {
     console.error("セットアップ実行エラー:", error);
     throw new Error(`セットアップの実行に失敗しました: ${error.message}`);
@@ -1017,6 +1003,28 @@ function createPromptInputAreaAt(startRow) {
   } catch (error) {
     console.error("入力エリア作成エリア:", error);
     throw new Error(`入力エリアの作成に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * シートにデータがあるかチェック（統一版）
+ */
+function checkForAnyData() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const dataRange = sheet.getDataRange();
+
+    if (dataRange.getNumRows() <= 1 && dataRange.getNumColumns() <= 1) {
+      // 空のシートまたは1セルのみ
+      const value = sheet.getRange(1, 1).getValue();
+      return value !== "" && value != null;
+    }
+
+    // 複数セルにデータがある
+    return true;
+  } catch (error) {
+    console.error("データチェックエラー:", error);
+    return false;
   }
 }
 
