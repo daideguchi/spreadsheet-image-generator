@@ -1931,24 +1931,33 @@ function getSheetState() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
     const lastRow = sheet.getLastRow();
+    console.log("getSheetState: lastRow =", lastRow);
 
     // データが全く無いか、ヘッダー行のみなら空とみなす
     const isEmpty = lastRow <= 1;
+    console.log("getSheetState: isEmpty =", isEmpty);
 
     // B列にプロンプトが存在するかチェック（2行目以降最大100行）
     let hasPrompt = false;
     if (!isEmpty) {
       const maxRows = Math.min(lastRow - 1, 100);
+      console.log("getSheetState: maxRows =", maxRows);
       if (maxRows > 0) {
         const promptRange = sheet.getRange(2, 2, maxRows, 1);
         const values = promptRange.getValues();
+        console.log("getSheetState: B列の値 =", values);
         hasPrompt = values.some((row) => {
           const v = row[0];
+          const isValid = v && typeof v === "string" && v.trim() !== "";
+          if (isValid) {
+            console.log("getSheetState: 有効なプロンプト発見 =", v);
+          }
           return v && typeof v === "string" && v.trim() !== "";
         });
       }
     }
 
+    console.log("getSheetState: hasPrompt =", hasPrompt);
     return { isEmpty, hasPrompt };
   } catch (e) {
     console.error("getSheetState error", e);

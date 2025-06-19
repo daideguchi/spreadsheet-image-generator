@@ -512,6 +512,10 @@
         <button class="btn" onclick="regenerateSelectedImages()">
           🔄 選択画像再生成
         </button>
+        
+        <button class="btn btn-secondary" onclick="checkSheetState()" style="font-size: 12px; padding: 8px 16px;">
+          🔄 状態更新
+        </button>
       </div>
 
       <div class="loading" id="loading">
@@ -549,12 +553,25 @@
     // サイドバー読み込み時にボタンの有効/無効を判定
     window.addEventListener('load', () => {
       checkSheetState();
+      // 定期的にシート状態をチェック（5秒間隔）
+      setInterval(checkSheetState, 5000);
+    });
+
+    // ウィンドウがフォーカスされた時にも状態をチェック
+    window.addEventListener('focus', () => {
+      checkSheetState();
+    });
+
+    // サイドバーがクリックされた時にも状態をチェック
+    document.addEventListener('click', () => {
+      checkSheetState();
     });
 
     function checkSheetState() {
       google.script.run
         .withSuccessHandler(function(state) {
           const { isEmpty, hasPrompt } = state;
+          console.log('シート状態:', { isEmpty, hasPrompt }); // デバッグ用
 
           const setupBtn = document.getElementById('setupBtn');
           const generateBtn = document.getElementById('generateBtn');
@@ -575,14 +592,23 @@
             generateBtn.disabled = true;
             generateBtn.classList.add('disabled');
             generateBtn.title = 'プロンプトを入力してください';
+            console.log('画像生成ボタンを無効化'); // デバッグ用
           } else {
             generateBtn.disabled = false;
             generateBtn.classList.remove('disabled');
             generateBtn.title = '';
+            console.log('画像生成ボタンを有効化'); // デバッグ用
           }
         })
-        .withFailureHandler(function() {
+        .withFailureHandler(function(error) {
+          console.error('シート状態取得エラー:', error);
           // エラー時は両方有効化（致命的ではない）
+          const setupBtn = document.getElementById('setupBtn');
+          const generateBtn = document.getElementById('generateBtn');
+          setupBtn.disabled = false;
+          setupBtn.classList.remove('disabled');
+          generateBtn.disabled = false;
+          generateBtn.classList.remove('disabled');
         })
         .getSheetState();
     }
