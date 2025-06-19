@@ -523,10 +523,19 @@ function insertImages(imageResults, rangeA1) {
           sheet.setRowHeight(promptRow, 200);
           sheet.setColumnWidth(imageCol, 200);
 
-          // プロンプトセルも見やすく調整
+          // プロンプトセルを最適化（長いプロンプトでも表示を制限）
           const promptCell = sheet.getRange(promptRow, promptCol);
-          promptCell.setWrap(true);
+          promptCell.setWrap(false); // 折り返しを無効化
           promptCell.setVerticalAlignment("middle");
+
+          // プロンプトが長い場合は省略表示
+          const originalPrompt = cellValue;
+          if (originalPrompt.length > 100) {
+            const truncatedPrompt = originalPrompt.substring(0, 97) + "...";
+            promptCell.setValue(truncatedPrompt);
+            // 元のプロンプトをコメントとして保存
+            promptCell.setNote(`完全なプロンプト:\n${originalPrompt}`);
+          }
 
           // ヘッダーを設定（初回のみ）
           if (imageIndex === 0) {
@@ -1391,13 +1400,10 @@ function createStructuredTable() {
 
         // B列の処理（プロンプト列の最適化）
         const promptCell = sheet.getRange(row, 2);
-        promptCell.setWrap(true);
-        promptCell.setVerticalAlignment("top"); // 上詰めに変更
-        promptCell.setFontSize(11); // フォントサイズを小さく
-        promptCell.setPadding(8, 8, 8, 8); // パディング設定
-
-        // テキストオーバーフロー対策
-        promptCell.setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
+        promptCell.setWrap(false); // 折り返しを無効化
+        promptCell.setVerticalAlignment("middle");
+        promptCell.setFontSize(11);
+        promptCell.setPadding(8, 8, 8, 8);
 
         // G列: チェックボックスを挿入
         const checkboxCell = sheet.getRange(row, 7);
@@ -1567,8 +1573,21 @@ function populateStructuredTable(imageResults, promptRows) {
       statusCell.setBackground("#e8f5e8");
 
       // プロンプト改善情報をコメントとして追加
-      if (result.revised_prompt && result.original_prompt) {
-        const promptCell = sheet.getRange(row, 2);
+      const promptCell = sheet.getRange(row, 2);
+      const currentPrompt = promptCell.getValue();
+
+      // プロンプトが長い場合は省略表示
+      if (currentPrompt && currentPrompt.length > 100) {
+        const truncatedPrompt = currentPrompt.substring(0, 97) + "...";
+        promptCell.setValue(truncatedPrompt);
+
+        // 元のプロンプトをコメントに保存
+        let comment = `完全なプロンプト:\n${currentPrompt}`;
+        if (result.revised_prompt && result.original_prompt) {
+          comment += `\n\n元のプロンプト:\n${result.original_prompt}\n\n実際に使用されたプロンプト:\n${result.revised_prompt}`;
+        }
+        promptCell.setNote(comment);
+      } else if (result.revised_prompt && result.original_prompt) {
         const comment = `元のプロンプト:\n${result.original_prompt}\n\n実際に使用されたプロンプト:\n${result.revised_prompt}`;
         promptCell.setNote(comment);
       }
