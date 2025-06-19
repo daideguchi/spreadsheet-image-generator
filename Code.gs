@@ -658,7 +658,16 @@ function createImageTable(imageResults) {
 
     // 見出し行を作成（行番号を調整）
     const headerRow = startRow + 3;
-    const headers = ["No.", "プロンプト", "🖼️ 生成画像", "⏰ 生成時刻"];
+    const headers = [
+      "No.",
+      "プロンプト",
+      "📄 完全プロンプト",
+      "🖼️ 生成画像",
+      "📐 画像比率",
+      "⏰ 生成日時",
+      "✅ ステータス",
+      "☑️ 選択",
+    ];
     const headerRange = sheet.getRange(headerRow, 1, 1, headers.length);
     headerRange.setValues([headers]);
 
@@ -668,719 +677,18 @@ function createImageTable(imageResults) {
     headerRange.setFontWeight("bold");
     headerRange.setHorizontalAlignment("center");
     headerRange.setVerticalAlignment("middle");
-    sheet.setRowHeight(headerRow, 40);
-
-    // データ行を作成
-    const currentTime = new Date().toLocaleString("ja-JP");
-    const dataRows = imageResults.map((result, index) => [
-      `🎯 ${index + 1}`,
-      result.prompt,
-      `=IMAGE("${result.url}", 1)`,
-      currentTime,
-    ]);
-
-    if (dataRows.length > 0) {
-      const dataRange = sheet.getRange(
-        headerRow + 1,
-        1,
-        dataRows.length,
-        headers.length
-      );
-      dataRange.setValues(dataRows);
-
-      // データ行の高度なスタイル設定
-      dataRange.setBorder(true, true, true, true, true, true);
-      dataRange.setVerticalAlignment("middle");
-
-      // 交互の行色設定
-      for (let i = 0; i < dataRows.length; i++) {
-        const rowRange = sheet.getRange(
-          headerRow + 1 + i,
-          1,
-          1,
-          headers.length
-        );
-        if (i % 2 === 0) {
-          rowRange.setBackground("#f8f9fa");
-        } else {
-          rowRange.setBackground("#ffffff");
-        }
-      }
-
-      // 列幅を最適化
-      sheet.setColumnWidth(1, 60); // No.
-      sheet.setColumnWidth(2, 300); // プロンプト（拡大）
-      sheet.setColumnWidth(3, 200); // 生成画像
-      sheet.setColumnWidth(4, 140); // 生成日時
-
-      // 画像行の高さを調整
-      for (let i = 0; i < dataRows.length; i++) {
-        sheet.setRowHeight(headerRow + 1 + i, 150);
-      }
-
-      // 🎯 結果エリアにスクロール（表示範囲に移動）
-      sheet.setActiveRange(sheet.getRange(startRow, 1));
-    }
-
-    // 📍 区切り線を追加
-    const separatorRow = headerRow + dataRows.length + 1;
-    const separatorRange = sheet.getRange(separatorRow, 1, 1, 4);
-    separatorRange.merge();
-    separatorRange.setValue("═".repeat(50));
-    separatorRange.setHorizontalAlignment("center");
-    separatorRange.setFontColor("#cccccc");
-
-    return `🎉 ${
-      imageResults.length
-    }枚の画像を表形式で生成しました！（行 ${startRow}～${
-      headerRow + dataRows.length
-    }）`;
-  } catch (error) {
-    console.error("表作成エラー:", error);
-    throw new Error(`表の作成に失敗しました: ${error.message}`);
-  }
-}
-
-/**
- * 画像生成と隣接配置を同時に実行
- */
-function generateImagesAndCreateTable(prompts) {
-  try {
-    // 画像を生成
-    const imageResults = generateImages(prompts);
-
-    // 選択範囲を取得
-    const selection = SpreadsheetApp.getSelection();
-    const activeRange = selection.getActiveRange();
-
-    if (!activeRange) {
-      throw new Error("プロンプト範囲が選択されていません");
-    }
-
-    // プロンプトの隣に画像を配置
-    const insertResult = insertImages(
-      imageResults,
-      activeRange.getA1Notation()
-    );
-
-    return {
-      imageResults: imageResults,
-      tableMessage: insertResult,
-    };
-  } catch (error) {
-    console.error("画像生成・配置エラー:", error);
-    throw new Error(`処理に失敗しました: ${error.message}`);
-  }
-}
-
-/**
- * セットアップを実行
- */
-function executeSetup(option) {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-
-    let startRow = 1;
-
-    switch (option) {
-      case "backup":
-        // 既存データをバックアップしてクリア
-        backupAndClearSheet();
-        startRow = 1;
-        break;
-
-      case "clear":
-        // 完全クリアして新規作成
-        clearSheetCompletely();
-        startRow = 1;
-        break;
-
-      case "new":
-        // 新規作成 - シートを完全にクリアしてから作成
-        clearSheetCompletely();
-        startRow = 1;
-        break;
-    }
-
-    // ワークスペースを作成
-    createWorkspace(startRow);
-
-    return "🎉 セットアップ完了！プロンプト入力エリアを作成しました！\n\n💡 これでプロンプト行追加が正しい位置で機能します！";
-  } catch (error) {
-    console.error("セットアップ実行エラー:", error);
-    throw new Error(`セットアップの実行に失敗しました: ${error.message}`);
-  }
-}
-
-/**
- * シートを完全にクリア
- */
-function clearSheetCompletely() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-
-    // シート全体をクリア
-    sheet.clear();
-
-    // フォーマットもクリア
-    sheet.clearFormats();
-
-    // 行の高さと列の幅をデフォルトに戻す
-    const maxRows = sheet.getMaxRows();
-    const maxCols = sheet.getMaxColumns();
-
-    if (maxRows > 0 && maxCols > 0) {
-      // 行の高さをデフォルトに
-      sheet.setRowHeights(1, maxRows, 21);
-
-      // 列の幅をデフォルトに
-      sheet.setColumnWidths(1, maxCols, 100);
-    }
-
-    console.log("シートを完全にクリアしました");
-  } catch (error) {
-    console.error("シートクリアエラー:", error);
-    throw new Error(`シートのクリアに失敗しました: ${error.message}`);
-  }
-}
-
-/**
- * メニューからのシートクリア（確認ダイアログ付き）
- */
-function clearSheetMenu() {
-  try {
-    const ui = SpreadsheetApp.getUi();
-
-    const response = ui.alert(
-      "🧹 シートを完全クリア",
-      "⚠️ 警告：この操作は元に戻せません！\n\n" +
-        "以下の内容が完全に削除されます：\n" +
-        "• 全てのデータ\n" +
-        "• 全てのフォーマット\n" +
-        "• 行の高さと列の幅\n\n" +
-        "本当にシートを完全にクリアしますか？",
-      ui.ButtonSet.YES_NO
-    );
-
-    if (response === ui.Button.YES) {
-      clearSheetCompletely();
-
-      ui.alert(
-        "✅ クリア完了",
-        "シートを完全にクリアしました！\n\n" +
-          "💡 新しいワークスペースを作成するには\n" +
-          "「🔧 初期セットアップ」をご利用ください。",
-        ui.ButtonSet.OK
-      );
-    } else {
-      ui.alert(
-        "キャンセル",
-        "シートクリアをキャンセルしました。",
-        ui.ButtonSet.OK
-      );
-    }
-  } catch (error) {
-    console.error("メニュークリアエラー:", error);
-    SpreadsheetApp.getUi().alert(
-      "エラー",
-      `シートクリアに失敗しました: ${error.message}`,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-  }
-}
-
-/**
- * 最後のデータ行を正確に見つける
- */
-function findLastDataRow() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-    let lastRow = 0;
-
-    // 各列の最後のデータ行をチェック
-    for (let col = 1; col <= Math.max(5, sheet.getLastColumn()); col++) {
-      const columnData = sheet
-        .getRange(1, col, sheet.getLastRow() || 1, 1)
-        .getValues();
-      for (let row = columnData.length - 1; row >= 0; row--) {
-        if (columnData[row][0] !== "" && columnData[row][0] != null) {
-          lastRow = Math.max(lastRow, row + 1);
-          break;
-        }
-      }
-    }
-
-    return lastRow || sheet.getLastRow() || 0;
-  } catch (error) {
-    console.error("最後のデータ行検索エラー:", error);
-    return sheet.getLastRow() || 0;
-  }
-}
-
-/**
- * 既存データをバックアップしてシートをクリア
- */
-function backupAndClearSheet() {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const currentSheet = ss.getActiveSheet();
-
-    // バックアップシートを作成
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
-    const backupName = `バックアップ_${timestamp}`;
-    const backupSheet = currentSheet.copyTo(ss);
-    backupSheet.setName(backupName);
-
-    // 元のシートを完全にクリア
-    clearSheetCompletely();
-
-    SpreadsheetApp.getUi().alert(
-      "📁 バックアップ完了",
-      `既存データを「${backupName}」シートにバックアップしました。\n元のシートは新しいワークスペースとして利用できます。`,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-  } catch (error) {
-    console.error("バックアップエラー:", error);
-    throw new Error(`データのバックアップに失敗しました: ${error.message}`);
-  }
-}
-
-/**
- * ワークスペースを作成（新しい構造化テーブルシステム）
- */
-function createWorkspace(startRow) {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-
-    // タイトルエリアを作成
-    const titleRange = sheet.getRange(startRow, 1, 1, 8);
-    titleRange.merge();
-    titleRange.setValue("🎨 DALL-E 画像生成ツール - プロフェッショナル版");
-    titleRange.setBackground("#1a73e8");
-    titleRange.setFontColor("white");
-    titleRange.setFontSize(18);
-    titleRange.setFontWeight("bold");
-    titleRange.setHorizontalAlignment("center");
-    titleRange.setVerticalAlignment("middle");
-    sheet.setRowHeight(startRow, 55);
-
-    // 説明エリア
-    const instructionRange = sheet.getRange(startRow + 1, 1, 1, 8);
-    instructionRange.merge();
-    instructionRange.setValue(
-      "📋 B列にプロンプトを入力して、サイドバーから「🎨 画像を生成」をクリック！構造化されたテーブルで管理されます。"
-    );
-    instructionRange.setBackground("#fff3e0");
-    instructionRange.setFontColor("#ef6c00");
-    instructionRange.setHorizontalAlignment("center");
-    instructionRange.setWrap(true);
-    instructionRange.setFontSize(12);
-    sheet.setRowHeight(startRow + 1, 45);
-
-    // 構造化テーブルを作成
-    return createStructuredTable();
-  } catch (error) {
-    console.error("ワークスペース作成エラー:", error);
-    throw new Error(`ワークスペースの作成に失敗しました: ${error.message}`);
-  }
-}
-
-/**
- * シートにデータがあるかチェック（統一版）
- */
-function checkForAnyData() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-    const dataRange = sheet.getDataRange();
-
-    if (dataRange.getNumRows() <= 1 && dataRange.getNumColumns() <= 1) {
-      // 空のシートまたは1セルのみ
-      const value = sheet.getRange(1, 1).getValue();
-      return value !== "" && value != null;
-    }
-
-    // 複数セルにデータがある
-    return true;
-  } catch (error) {
-    console.error("データチェックエラー:", error);
-    return false;
-  }
-}
-
-/**
- * 既存のワークスペースをチェック
- */
-function checkExistingWorkspace() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-    const dataRange = sheet.getDataRange();
-
-    if (dataRange.getNumRows() < 1) return false;
-
-    // タイトル行をチェック
-    for (let row = 1; row <= dataRange.getNumRows(); row++) {
-      const cellValue = sheet.getRange(row, 1).getValue().toString();
-      if (
-        cellValue.includes("DALL-E") &&
-        cellValue.includes("画像生成ツール")
-      ) {
-        return true;
-      }
-    }
-
-    return false;
-  } catch (error) {
-    console.error("ワークスペースチェックエラー:", error);
-    return false;
-  }
-}
-
-/**
- * 他のデータをチェック
- */
-function checkOtherData() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-    const dataRange = sheet.getDataRange();
-
-    if (dataRange.getNumRows() <= 1 && dataRange.getNumColumns() <= 1) {
-      const cellValue = sheet.getRange(1, 1).getValue();
-      return cellValue !== "" && cellValue != null;
-    }
-
-    return dataRange.getNumRows() > 1 || dataRange.getNumColumns() > 1;
-  } catch (error) {
-    console.error("データチェックエラー:", error);
-    return false;
-  }
-}
-
-/**
- * エラーログを記録
- */
-function logError(functionName, error) {
-  console.error(`[${functionName}] エラー:`, error);
-  // 必要に応じてスプレッドシートにログを記録することも可能
-}
-
-/**
- * 初回使用者かどうか判定
- */
-function isFirstTimeUser() {
-  try {
-    const properties = PropertiesService.getScriptProperties();
-    const hasUsed = properties.getProperty("TOOL_USED_BEFORE");
-    return !hasUsed;
-  } catch (error) {
-    return true; // エラーの場合は初回とみなす
-  }
-}
-
-/**
- * 権限承認済みかどうか判定
- */
-function isPermissionGranted() {
-  try {
-    const properties = PropertiesService.getScriptProperties();
-    const permissionGranted = properties.getProperty("PERMISSION_GRANTED");
-    return permissionGranted === "true";
-  } catch (error) {
-    return false; // エラーの場合は未承認とみなす
-  }
-}
-
-/**
- * 権限承認済みを記録
- */
-function markPermissionGranted() {
-  try {
-    const properties = PropertiesService.getScriptProperties();
-    properties.setProperty("PERMISSION_GRANTED", "true");
-    markAsUsed(); // 使用記録も同時に保存
-  } catch (error) {
-    console.log("権限承認記録の保存に失敗:", error.message);
-  }
-}
-
-/**
- * 使用記録を保存
- */
-function markAsUsed() {
-  try {
-    const properties = PropertiesService.getScriptProperties();
-    properties.setProperty("TOOL_USED_BEFORE", "true");
-  } catch (error) {
-    console.log("使用記録の保存に失敗:", error.message);
-  }
-}
-
-/**
- * 使い方ガイドを表示（初回使用者向け）
- */
-function showUsageGuide() {
-  try {
-    const ui = SpreadsheetApp.getUi();
-    const response = ui.alert(
-      "🎨 DALL-E 画像生成ツール",
-      "📝 簡単3ステップで画像生成！\n\n" +
-        "1️⃣ 「🔧 初期セットアップ」でテーブル作成\n" +
-        "2️⃣ B列にプロンプト（画像の説明文）を入力\n" +
-        "3️⃣ 「🎨 画像生成」ボタンをクリック\n\n" +
-        "💡 例：「美しい夕日の海辺」「可愛い猫のイラスト」\n\n" +
-        "⚠️ もし権限承認が必要な場合は、表示されるダイアログで「許可」をクリックしてください。\n\n" +
-        "今すぐ始めますか？",
-      ui.ButtonSet.YES_NO
-    );
-
-    if (response === ui.Button.YES) {
-      try {
-        // 直接サイドバーを表示
-        showSidebar();
-        markAsUsed();
-      } catch (error) {
-        // エラーの場合は初期セットアップから開始
-        ui.alert(
-          "🚀 スタート",
-          "メニューから「🎨 画像ツール」→「📱 サイドバーを開く」をクリックして開始してください！\n\n" +
-            "💡 権限承認が求められた場合は「許可」をクリックしてください。",
-          ui.ButtonSet.OK
-        );
-      }
-    }
-  } catch (error) {
-    console.log("使い方ガイドの表示に失敗:", error.message);
-  }
-}
-
-/**
- * 権限承認を強制実行（メニューから呼び出し可能）
- */
-function forcePermissionRequest() {
-  try {
-    console.log("権限承認を開始します");
-
-    // 1. スプレッドシート権限のテスト
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getActiveSheet();
-    console.log("✅ スプレッドシート権限OK");
-
-    // 2. Drive権限のテスト（オプション）
-    try {
-      const file = DriveApp.getFileById(spreadsheet.getId());
-      const fileName = file.getName();
-      console.log("✅ Drive権限OK:", fileName);
-    } catch (driveError) {
-      console.log(
-        "⚠️ Drive権限は後で必要になる場合があります:",
-        driveError.message
-      );
-      // Drive権限エラーは無視して続行
-    }
-
-    // 3. UI権限のテスト
-    const ui = SpreadsheetApp.getUi();
-    console.log("✅ UI権限OK");
-
-    // 4. 外部リクエスト権限のテスト（オプション）
-    try {
-      const testResponse = UrlFetchApp.fetch("https://httpbin.org/get", {
-        method: "GET",
-        muteHttpExceptions: true,
-        headers: { "User-Agent": "DALL-E Image Generator Test" },
-      });
-      console.log("✅ 外部リクエスト権限OK");
-    } catch (fetchError) {
-      console.log(
-        "⚠️ 外部リクエスト権限は画像生成時に必要になります:",
-        fetchError.message
-      );
-      // 外部リクエスト権限エラーは無視して続行
-    }
-
-    // 5. サイドバー表示権限のテスト（オプション）
-    try {
-      const html = HtmlService.createHtmlOutput("<p>権限テスト完了</p>")
-        .setTitle("権限テスト")
-        .setWidth(300);
-      ui.showSidebar(html);
-
-      // テスト用サイドバーを短時間表示後に本来のサイドバーに切り替え
-      Utilities.sleep(500);
-      showSidebar();
-
-      console.log("✅ サイドバー権限OK");
-    } catch (sidebarError) {
-      console.log(
-        "⚠️ サイドバー権限は後で必要になります:",
-        sidebarError.message
-      );
-      // サイドバー権限エラーは無視して続行
-    }
-
-    // 権限承認完了を記録
-    markPermissionGranted();
-
-    ui.alert(
-      "✅ 権限承認完了",
-      "すべての権限が正常に承認されました！\n" +
-        "これでツールの全機能を使用できます。",
-      ui.ButtonSet.OK
-    );
-
-    return "✅ 権限承認が完了しました";
-  } catch (error) {
-    console.error("権限承認エラー:", error);
-
-    SpreadsheetApp.getUi().alert(
-      "🔐 権限承認が必要です",
-      "以下の手順で権限を承認してください：\n\n" +
-        "1️⃣ 表示されるダイアログで「許可を確認」をクリック\n" +
-        "2️⃣ Googleアカウントを選択\n" +
-        "3️⃣ 「安全ではないアプリ」の警告が出た場合：\n" +
-        "   ・「詳細」をクリック\n" +
-        "   ・「〜に移動（安全ではないページ）」をクリック\n" +
-        "4️⃣ 「許可」をクリック\n\n" +
-        "エラー詳細: " +
-        error.message,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-
-    throw error; // エラーを再スローして権限ダイアログを表示
-  }
-}
-
-/**
- * 権限エラーを統一的に処理（簡素版）
- */
-function handlePermissionError(actionName) {
-  try {
-    // 自動的に権限承認を試行
-    forcePermissionRequest();
-    markPermissionGranted();
-  } catch (error) {
-    // 失敗した場合のみシンプルなメッセージ
-    SpreadsheetApp.getUi().alert(
-      "🚀 開始方法",
-      "メニューから「🎨 画像ツール」→「📱 サイドバーを開く」をクリックしてください。",
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-  }
-}
-
-/**
- * 初期設定（シンプルなテーブル作成）
- */
-function showSetupDialog() {
-  try {
-    // 新しいテーブルを作成
-    const result = createStructuredTable();
-    return `🔧 初期設定完了！\n${result}`;
-  } catch (error) {
-    console.error("初期設定エラー:", error);
-    throw new Error(`初期設定に失敗しました: ${error.message}`);
-  }
-}
-
-/**
- * バックアップ機能（現在のデータを保存してから新しいテーブルを作成）
- */
-function createBackupAndNewTable() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-    const lastRow = sheet.getLastRow();
-
-    // 既存データがある場合はバックアップを作成
-    if (lastRow > 1) {
-      const timestamp = new Date()
-        .toISOString()
-        .slice(0, 19)
-        .replace(/[:-]/g, "");
-      const backupSheetName = `バックアップ_${timestamp}`;
-
-      // 新しいシートを作成してデータをコピー
-      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      const backupSheet = spreadsheet.insertSheet(backupSheetName);
-
-      // 全データをバックアップシートにコピー
-      const allData = sheet
-        .getRange(1, 1, lastRow, sheet.getLastColumn())
-        .getValues();
-      const allFormats = sheet
-        .getRange(1, 1, lastRow, sheet.getLastColumn())
-        .getBackgrounds();
-
-      backupSheet
-        .getRange(1, 1, lastRow, sheet.getLastColumn())
-        .setValues(allData);
-      backupSheet
-        .getRange(1, 1, lastRow, sheet.getLastColumn())
-        .setBackgrounds(allFormats);
-
-      // 列幅もコピー
-      for (let col = 1; col <= sheet.getLastColumn(); col++) {
-        backupSheet.setColumnWidth(col, sheet.getColumnWidth(col));
-      }
-
-      console.log(`バックアップシート「${backupSheetName}」を作成しました`);
-    }
-
-    // 新しいテーブルを作成
-    const result = createStructuredTable();
-
-    return `💾 バックアップを作成して新しいテーブルを準備しました！\n${result}`;
-  } catch (error) {
-    console.error("バックアップエラー:", error);
-    throw new Error(`バックアップ処理に失敗しました: ${error.message}`);
-  }
-}
-
-/**
- * 表をクリア（新しいテーブルを作成）
- */
-function createStructuredTable() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-
-    // まずシートを完全にクリア
-    sheet.clear();
-    sheet.clearFormats();
-
-    console.log("シートをクリアしました");
-
-    // ヘッダー行を作成（1行目）
-    const headers = [
-      "No.", // A列
-      "📝 プロンプト", // B列 - ユーザー入力
-      "🖼️ 生成画像", // C列 - 実際の画像
-      "📐 画像比率", // D列 - アスペクト比
-      "⏰ 生成日時", // E列 - タイムスタンプ
-      "✅ ステータス", // F列 - 生成状況
-      "☑️ 選択", // G列 - チェックボックス
-    ];
-
-    // ヘッダーを設定
-    const headerRange = sheet.getRange(1, 1, 1, headers.length);
-    headerRange.setValues([headers]);
-
-    console.log("ヘッダーを設定しました");
-
-    // ヘッダーのスタイリング
-    headerRange.setBackground("#1a73e8");
-    headerRange.setFontColor("white");
-    headerRange.setFontWeight("bold");
-    headerRange.setHorizontalAlignment("center");
-    headerRange.setVerticalAlignment("middle");
     headerRange.setFontSize(12);
-    sheet.setRowHeight(1, 45);
+    sheet.setRowHeight(headerRow, 45);
 
     // 列幅の最適化
     sheet.setColumnWidth(1, 60); // A: No.
-    sheet.setColumnWidth(2, 350); // B: プロンプト（幅を拡大）
-    sheet.setColumnWidth(3, 220); // C: 画像
-    sheet.setColumnWidth(4, 100); // D: 比率
-    sheet.setColumnWidth(5, 140); // E: 日時
-    sheet.setColumnWidth(6, 100); // F: ステータス
-    sheet.setColumnWidth(7, 80); // G: 選択
+    sheet.setColumnWidth(2, 280); // B: プロンプト（省略表示）
+    sheet.setColumnWidth(3, 350); // C: 完全プロンプト（スクロール表示）
+    sheet.setColumnWidth(4, 220); // D: 画像
+    sheet.setColumnWidth(5, 100); // E: 比率
+    sheet.setColumnWidth(6, 140); // F: 日時
+    sheet.setColumnWidth(7, 100); // G: ステータス
+    sheet.setColumnWidth(8, 80); // H: 選択
 
     console.log("列幅を設定しました");
 
@@ -1411,8 +719,8 @@ function createStructuredTable() {
           "ここに画像生成用のプロンプトを入力してください。\n長いプロンプトでも問題ありません。"
         );
 
-        // G列: チェックボックスを挿入
-        const checkboxCell = sheet.getRange(row, 7);
+        // H列: チェックボックスを挿入（新しい8列構造）
+        const checkboxCell = sheet.getRange(row, 8);
         checkboxCell.insertCheckboxes();
         checkboxCell.setHorizontalAlignment("center");
         checkboxCell.setVerticalAlignment("middle");
@@ -1420,7 +728,7 @@ function createStructuredTable() {
         // 行の高さを柔軟に（長いプロンプト入力に対応）
         sheet.setRowHeight(row, 120);
 
-        // 境界線を設定（全7列）
+        // 境界線を設定（全8列）
         const rowRange = sheet.getRange(row, 1, 1, headers.length);
         rowRange.setBorder(true, true, true, true, true, true);
 
@@ -1444,7 +752,7 @@ function createStructuredTable() {
     // 完了メッセージを下部に追加
     try {
       const messageRow = 103;
-      const messageRange = sheet.getRange(messageRow, 1, 1, 7);
+      const messageRange = sheet.getRange(messageRow, 1, 1, 8);
       messageRange.merge();
       messageRange.setValue(
         `✨ 表をクリアしました！B列にプロンプトを入力してください。`
@@ -1494,7 +802,7 @@ function generateImagesFromStructuredTable() {
 
       if (prompt && typeof prompt === "string" && prompt.trim() !== "") {
         // 既存データ保護：既に画像が生成されている行はスキップ
-        const existingImageCell = sheet.getRange(actualRow, 3); // C列（画像列）
+        const existingImageCell = sheet.getRange(actualRow, 4); // D列（画像列）
         const existingImage = existingImageCell.getFormula();
 
         if (existingImage && existingImage.includes("=IMAGE(")) {
@@ -1502,21 +810,17 @@ function generateImagesFromStructuredTable() {
           return; // この行をスキップ
         }
 
-        // セルコメントから完全なプロンプトを取得（省略表示対応）
-        const promptCell = sheet.getRange(actualRow, 2);
-        const cellNote = promptCell.getNote();
-        let fullPrompt = prompt.trim();
+        // 完全なプロンプトを取得（新しい省略表示システム対応）
+        let fullPrompt = getFullPrompt(sheet, actualRow);
+        
+        if (!fullPrompt) {
+          console.log(`行${actualRow}: プロンプトが取得できませんでした`);
+          return; // この行をスキップ
+        }
 
-        // コメントに完全なプロンプトが保存されている場合はそれを使用
-        if (cellNote && cellNote.includes("完全なプロンプト:")) {
-          const match = cellNote.match(
-            /完全なプロンプト:\n([\s\S]*?)(?:\n\n|$)/
-          );
-          if (match && match[1]) {
-            fullPrompt = match[1].trim();
-            console.log(
-              `行${actualRow}: コメントから完全プロンプト取得: ${fullPrompt.substring(
-                0,
+        console.log(
+          `行${actualRow}: 完全プロンプト取得: ${fullPrompt.substring(
+            0,
                 50
               )}...`
             );
@@ -1559,12 +863,12 @@ function populateStructuredTable(imageResults, promptRows) {
     imageResults.forEach((result, index) => {
       const row = promptRows[index];
 
-      // C列: 生成画像
-      const imageCell = sheet.getRange(row, 3);
+      // D列: 生成画像（新しい8列構造）
+      const imageCell = sheet.getRange(row, 4);
       imageCell.setFormula(`=IMAGE("${result.url}", 1)`);
 
-      // D列: 画像比率（動的検出）
-      const ratioCell = sheet.getRange(row, 4);
+      // E列: 画像比率（動的検出）
+      const ratioCell = sheet.getRange(row, 5);
       const imageSize = result.size || "1024x1024";
       let ratio = "1:1";
 
@@ -1582,16 +886,16 @@ function populateStructuredTable(imageResults, promptRows) {
       ratioCell.setFontWeight("bold");
       ratioCell.setBackground("#e8f5e8");
 
-      // E列: 生成日時
-      const timeCell = sheet.getRange(row, 5);
+      // F列: 生成日時
+      const timeCell = sheet.getRange(row, 6);
       timeCell.setValue(currentTime);
       timeCell.setHorizontalAlignment("center");
       timeCell.setVerticalAlignment("middle");
       timeCell.setFontSize(9);
       timeCell.setBackground("#f5f5f5");
 
-      // F列: ステータス（品質・忠実性情報付き）
-      const statusCell = sheet.getRange(row, 6);
+      // G列: ステータス（品質・忠実性情報付き）
+      const statusCell = sheet.getRange(row, 7);
       statusCell.setValue("✅ HD忠実");
       statusCell.setHorizontalAlignment("center");
       statusCell.setVerticalAlignment("middle");
@@ -1627,8 +931,8 @@ function populateStructuredTable(imageResults, promptRows) {
         }
       }
 
-      // G列: チェックボックス
-      const checkboxCell = sheet.getRange(row, 7);
+      // H列: チェックボックス（新しい8列構造）
+      const checkboxCell = sheet.getRange(row, 8);
       checkboxCell.insertCheckboxes();
       checkboxCell.setHorizontalAlignment("center");
       checkboxCell.setVerticalAlignment("middle");
@@ -1671,8 +975,8 @@ function toggleAllImageSelection() {
       return "❌ データがありません";
     }
 
-    // G列（チェックボックス列）のチェック状態を確認
-    const checkboxRange = sheet.getRange(2, 7, lastRow - 1, 1);
+    // H列（チェックボックス列）のチェック状態を確認
+    const checkboxRange = sheet.getRange(2, 8, lastRow - 1, 1);
     const checkboxValues = checkboxRange.getValues();
 
     // 現在の状態を確認（true の数を数える）
@@ -1686,11 +990,11 @@ function toggleAllImageSelection() {
 
     // 画像が存在する行のみ対象とする
     for (let i = 2; i <= lastRow; i++) {
-      const imageCell = sheet.getRange(i, 3); // C列（画像列）
+      const imageCell = sheet.getRange(i, 4); // D列（画像列）
       const imageFormula = imageCell.getFormula();
 
       if (imageFormula && imageFormula.includes("=IMAGE(")) {
-        const checkboxCell = sheet.getRange(i, 7);
+        const checkboxCell = sheet.getRange(i, 8);
         checkboxCell.setValue(shouldCheck);
       }
     }
@@ -1720,19 +1024,20 @@ function downloadSelectedImages() {
 
     // チェックされた行を検索
     for (let i = 2; i <= lastRow; i++) {
-      const checkboxCell = sheet.getRange(i, 7);
+      const checkboxCell = sheet.getRange(i, 8); // H列（チェックボックス）
       const isChecked = checkboxCell.getValue();
 
       if (isChecked === true) {
-        const imageCell = sheet.getRange(i, 3); // C列（画像列）
+        const imageCell = sheet.getRange(i, 4); // D列（画像列）
         const imageFormula = imageCell.getFormula();
 
         if (imageFormula && imageFormula.includes("=IMAGE(")) {
           // IMAGE関数からURLを抽出
           const urlMatch = imageFormula.match(/=IMAGE\("([^"]+)"/);
           if (urlMatch && urlMatch[1]) {
-            const promptCell = sheet.getRange(i, 2); // B列（プロンプト）
-            const prompt = promptCell.getValue() || `画像_${i}`;
+            // 完全なプロンプトを取得（省略表示対応）
+            const fullPrompt = getFullPrompt(sheet, i);
+            const prompt = fullPrompt || `画像_${i}`;
 
             selectedImages.push({
               url: urlMatch[1],
@@ -1991,8 +1296,8 @@ function getSheetState() {
           return v && typeof v === "string" && v.trim() !== "";
         });
 
-        // C列に画像が存在するかチェック
-        const imageRange = sheet.getRange(2, 3, maxRows, 1);
+        // D列に画像が存在するかチェック（新しい8列構造）
+        const imageRange = sheet.getRange(2, 4, maxRows, 1);
         const imageFormulas = imageRange.getFormulas();
         hasImages = imageFormulas.some((row) => {
           const formula = row[0];
@@ -2011,5 +1316,148 @@ function getSheetState() {
   } catch (e) {
     console.error("getSheetState error", e);
     return { isEmpty: false, hasPrompt: true, hasImages: false };
+  }
+}
+
+/**
+ * プロンプト入力後の自動処理（省略表示＋隣接セル完全版表示）
+ */
+function onEdit(e) {
+  try {
+    const range = e.range;
+    const sheet = range.getSheet();
+    const row = range.getRow();
+    const col = range.getColumn();
+
+    // B列（プロンプト列）の編集をチェック
+    if (col === 2 && row >= 2) {
+      const promptValue = range.getValue();
+
+      if (
+        promptValue &&
+        typeof promptValue === "string" &&
+        promptValue.trim() !== ""
+      ) {
+        handlePromptInput(sheet, row, promptValue.trim());
+      }
+    }
+  } catch (error) {
+    console.error("onEdit エラー:", error);
+    // エラーが発生してもユーザーの入力を妨げないよう、エラーは無視
+  }
+}
+
+/**
+ * プロンプト入力処理（省略表示＋隣接セル完全版表示）
+ */
+function handlePromptInput(sheet, row, fullPrompt) {
+  try {
+    const promptCell = sheet.getRange(row, 2); // B列
+    const fullPromptCell = sheet.getRange(row, 3); // C列（完全プロンプト表示用）
+
+    // 省略表示の閾値（100文字）
+    const truncateLength = 100;
+
+    if (fullPrompt.length > truncateLength) {
+      // 長いプロンプトの場合：省略表示
+      const truncatedPrompt =
+        fullPrompt.substring(0, truncateLength - 3) + "...";
+
+      // B列に省略版を表示
+      promptCell.setValue(truncatedPrompt);
+      promptCell.setWrap(false); // セル高の自動拡大を防止
+      promptCell.setNote(
+        `完全なプロンプト:\n${fullPrompt}\n\n💡 完全版はC列で確認できます`
+      );
+
+      // C列に完全版を表示（スクロール可能）
+      fullPromptCell.setValue(fullPrompt);
+      fullPromptCell.setWrap(true);
+      fullPromptCell.setVerticalAlignment("top");
+      fullPromptCell.setFontSize(10);
+      fullPromptCell.setBackground("#f8f9fa");
+      fullPromptCell.setBorder(
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        "#e0e0e0",
+        SpreadsheetApp.BorderStyle.SOLID
+      );
+      fullPromptCell.setNote("完全なプロンプト（DALL-Eに送信される原文）");
+
+      console.log(
+        `行${row}: プロンプトを省略表示に変更 (${fullPrompt.length}文字 → ${truncatedPrompt.length}文字)`
+      );
+    } else {
+      // 短いプロンプトの場合：B列に全文表示、C列はクリア
+      promptCell.setValue(fullPrompt);
+      promptCell.setWrap(false);
+      promptCell.setNote("プロンプト（DALL-Eに送信される原文）");
+
+      // C列をクリア（短いプロンプトの場合は不要）
+      fullPromptCell.clear();
+      fullPromptCell.setNote("短いプロンプトのため、B列に全文表示中");
+
+      console.log(`行${row}: プロンプトを全文表示 (${fullPrompt.length}文字)`);
+    }
+
+    // 入力完了のスタイリング
+    promptCell.setBackground("#ffffff");
+    promptCell.setBorder(
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      "#d0d0d0",
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+  } catch (error) {
+    console.error(`行${row}のプロンプト処理エラー:`, error);
+    // エラーが発生してもユーザーの入力を妨げない
+  }
+}
+
+/**
+ * 完全なプロンプトを取得（省略表示対応）
+ */
+function getFullPrompt(sheet, row) {
+  try {
+    const promptCell = sheet.getRange(row, 2); // B列
+    const fullPromptCell = sheet.getRange(row, 3); // C列
+
+    // C列に完全版がある場合はそれを使用
+    const fullPromptValue = fullPromptCell.getValue();
+    if (
+      fullPromptValue &&
+      typeof fullPromptValue === "string" &&
+      fullPromptValue.trim() !== ""
+    ) {
+      return fullPromptValue.trim();
+    }
+
+    // C列が空の場合はB列から取得
+    const promptValue = promptCell.getValue();
+    if (promptValue && typeof promptValue === "string") {
+      return promptValue.trim();
+    }
+
+    // セルコメントからの取得（従来の互換性）
+    const cellNote = promptCell.getNote();
+    if (cellNote && cellNote.includes("完全なプロンプト:")) {
+      const match = cellNote.match(/完全なプロンプト:\n([\s\S]*?)(?:\n\n|$)/);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+
+    return promptValue ? promptValue.toString().trim() : "";
+  } catch (error) {
+    console.error(`行${row}の完全プロンプト取得エラー:`, error);
+    return "";
   }
 }
