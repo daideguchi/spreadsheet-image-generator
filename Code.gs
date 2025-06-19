@@ -183,11 +183,17 @@ function requestPermissions() {
     // 3. UI権限をテスト（これが重要）
     const ui = SpreadsheetApp.getUi();
 
-    // 4. 外部リクエスト権限をテスト
-    UrlFetchApp.fetch("https://httpbin.org/get", {
-      muteHttpExceptions: true,
-      headers: { "User-Agent": "DALL-E Image Generator" },
-    });
+    // 4. 外部リクエスト権限をテスト（オプション）
+    try {
+      UrlFetchApp.fetch("https://httpbin.org/get", {
+        muteHttpExceptions: true,
+        headers: { "User-Agent": "DALL-E Image Generator" },
+      });
+      console.log("✅ 外部リクエスト権限OK");
+    } catch (fetchError) {
+      console.log("⚠️ 外部リクエスト権限は画像生成時に必要になります");
+      // 外部リクエスト権限エラーは無視して続行
+    }
 
     // 5. サイドバー表示権限をテスト（これが最も重要）
     const html = HtmlService.createHtmlOutput("<p>権限テスト</p>")
@@ -1064,7 +1070,7 @@ function forcePermissionRequest() {
     const ui = SpreadsheetApp.getUi();
     console.log("✅ UI権限OK");
 
-    // 4. 外部リクエスト権限のテスト
+    // 4. 外部リクエスト権限のテスト（オプション）
     try {
       const testResponse = UrlFetchApp.fetch("https://httpbin.org/get", {
         method: "GET",
@@ -1073,8 +1079,11 @@ function forcePermissionRequest() {
       });
       console.log("✅ 外部リクエスト権限OK");
     } catch (fetchError) {
-      console.error("❌ 外部リクエスト権限エラー:", fetchError);
-      throw new Error("外部リクエスト権限が必要です: " + fetchError.message);
+      console.log(
+        "⚠️ 外部リクエスト権限は画像生成時に必要になります:",
+        fetchError.message
+      );
+      // 外部リクエスト権限エラーは無視して続行
     }
 
     // 5. サイドバー表示権限のテスト
