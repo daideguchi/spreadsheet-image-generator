@@ -1122,15 +1122,15 @@ function regenerateSelectedImages() {
 
     // チェックされた行のプロンプトを収集
     for (let i = 2; i <= lastRow; i++) {
-      const checkboxCell = sheet.getRange(i, 7);
+      const checkboxCell = sheet.getRange(i, 8); // H列（チェックボックス）
       const isChecked = checkboxCell.getValue();
 
       if (isChecked === true) {
-        const promptCell = sheet.getRange(i, 2); // B列（プロンプト）
-        const prompt = promptCell.getValue();
+        // 完全なプロンプトを取得（省略表示対応）
+        const fullPrompt = getFullPrompt(sheet, i);
 
-        if (prompt && typeof prompt === "string" && prompt.trim() !== "") {
-          selectedPrompts.push(prompt.trim());
+        if (fullPrompt && fullPrompt.trim() !== "") {
+          selectedPrompts.push(fullPrompt.trim());
           selectedRows.push(i);
         }
       }
@@ -1146,7 +1146,7 @@ function regenerateSelectedImages() {
 
     // 選択された行のステータスを「再生成中」に更新
     selectedRows.forEach((row) => {
-      const statusCell = sheet.getRange(row, 6); // F列（ステータス）
+      const statusCell = sheet.getRange(row, 7); // G列（ステータス）
       statusCell.setValue("🔄 再生成中");
       statusCell.setBackground("#fff3e0");
       statusCell.setFontColor("#ef6c00");
