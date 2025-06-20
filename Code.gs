@@ -3560,8 +3560,12 @@ function updateCommonPromptDropdown() {
 
     range.setDataValidation(rule);
 
+    // 📱 追加: 共通プロンプト列の配置を中央に統一
+    range.setHorizontalAlignment("center");
+    range.setVerticalAlignment("middle");
+
     console.log(
-      `✅ C列ドロップダウンを更新しました（${promptNames.length}個のプロンプト）`
+      `✅ C列ドロップダウンを更新しました（${promptNames.length}個のプロンプト + 中央配置統一）`
     );
   } catch (error) {
     console.error("ドロップダウン更新エラー:", error);
