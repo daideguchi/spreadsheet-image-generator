@@ -943,32 +943,8 @@ function populateStructuredTable(imageResults, promptRows) {
         statusCell.setFontColor("#4caf50"); // 📱 視覚改善: 成功を示す緑色フォント
         statusCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアのグレー
 
-        // 💡 改善要求: ライブラリシートに生成記録を確実に追加
-        try {
-          const finalPrompt = getCombinedPrompt(sheet, row);
-          const aspectRatio = sheet.getRange(row, 6).getValue() || "1024x1024";
-          console.log(
-            `📚 ライブラリ記録開始: 行${row}, URL: ${result.imageUrl}`
-          );
-
-          const libraryResult = addToImageLibrary({
-            prompt: finalPrompt,
-            imageUrl: result.imageUrl,
-            aspectRatio: aspectRatio,
-            status: "✅ GPT-Image-1",
-            timestamp: new Date(),
-            originalRow: row,
-          });
-
-          if (libraryResult) {
-            console.log(`📚 ライブラリ記録成功: 行${row}`);
-          } else {
-            console.warn(`📚 ライブラリ記録失敗: 行${row}`);
-          }
-        } catch (libraryError) {
-          console.error("ライブラリ記録エラー:", libraryError);
-          // ライブラリエラーは画像生成を妨げない
-        }
+        // 💡 改善要求: 画像設定完了後にライブラリ記録（画像確実コピーのため）
+        // ライブラリ記録は後で実行（画像設定完了後）
         statusCell.setBorder(
           true,
           true,
@@ -1028,6 +1004,39 @@ function populateStructuredTable(imageResults, promptRows) {
 
       processedCount++;
     });
+
+    // 💡 改善要求: 全ての画像設定完了後にライブラリ記録を実行
+    console.log("🔄 画像設定完了、ライブラリ記録を開始します...");
+    imageResults.forEach((result, index) => {
+      if (!result.failed) {
+        const row = selectedRows[index];
+        try {
+          const finalPrompt = getCombinedPrompt(sheet, row);
+          const aspectRatio = sheet.getRange(row, 6).getValue() || "1024x1024";
+
+          console.log(`📚 ライブラリ記録開始: 行${row}`);
+
+          const libraryResult = addToImageLibrary({
+            prompt: finalPrompt,
+            imageUrl: result.imageUrl,
+            aspectRatio: aspectRatio,
+            status: "✅ GPT-Image-1",
+            timestamp: new Date(),
+            originalRow: row,
+          });
+
+          if (libraryResult) {
+            console.log(`📚 ライブラリ記録成功: 行${row}`);
+          } else {
+            console.warn(`📚 ライブラリ記録失敗: 行${row}`);
+          }
+        } catch (libraryError) {
+          console.error(`📚 ライブラリ記録エラー 行${row}:`, libraryError);
+          // ライブラリエラーは画像生成を妨げない
+        }
+      }
+    });
+    console.log("✅ ライブラリ記録処理完了");
 
     // 成功・失敗の詳細を含む結果メッセージ
     const successCount = imageResults.filter((r) => !r.failed).length;
@@ -3697,9 +3706,9 @@ function addToImageLibrary(imageData) {
     // 通し番号を計算（ヘッダー除く）
     const recordNumber = lastRow > 1 ? lastRow - 1 : 1;
 
-    // 💡 改善要求: 元シートから画像を確実にコピー取得
+    // 💡 改善要求: 元シートから画像を直接コピーペースト
     let sourceImageCell = null;
-    let copiedImageFormula = "";
+    let imageSuccessfullyCopied = false;
 
     if (imageData.originalRow && imageData.originalRow !== "-") {
       try {
@@ -3708,9 +3717,8 @@ function addToImageLibrary(imageData) {
         const sourceFormula = sourceImageCell.getFormula();
 
         if (sourceFormula && sourceFormula.includes("=IMAGE(")) {
-          copiedImageFormula = sourceFormula;
           console.log(
-            `📷 元シートから画像コピー: 行${imageData.originalRow} → ライブラリ行${newRow}`
+            `📷 元シートから画像直接コピー準備: 行${imageData.originalRow} → ライブラリ行${newRow}`
           );
         } else {
           console.warn(
@@ -3718,7 +3726,7 @@ function addToImageLibrary(imageData) {
           );
         }
       } catch (copyError) {
-        console.error("元シートからの画像コピーエラー:", copyError);
+        console.error("元シートからの画像コピー準備エラー:", copyError);
       }
     }
 
@@ -3785,35 +3793,46 @@ function addToImageLibrary(imageData) {
       `📄 完全なプロンプト:\n${promptText}\n\n💡 このセルをクリックして全文を確認できます。`
     );
 
-    // 💡 改善要求: 画像セルに確実にコピー配置
+    // 💡 改善要求: 画像セルに直接コピーペースト配置
     const imageCell = librarySheet.getRange(newRow, 3);
     imageCell.setHorizontalAlignment("center");
     imageCell.setVerticalAlignment("middle");
 
-    // 💡 改善要求: 元シートからコピーした画像を最優先で使用
-    if (copiedImageFormula) {
-      imageCell.setFormula(copiedImageFormula);
-      console.log(
-        `✅ 元シートから画像を確実にコピー配置: ${copiedImageFormula.substring(
-          0,
-          50
-        )}...`
-      );
-    } else if (
-      imageData.imageUrl &&
-      (imageData.imageUrl.startsWith("http") ||
-        imageData.imageUrl.startsWith("data:"))
-    ) {
-      // フォールバック: 直接URLから画像挿入
-      imageCell.setFormula(`=IMAGE("${imageData.imageUrl}")`);
-      console.log(
-        `📷 URLから画像挿入: ${imageData.imageUrl.substring(0, 50)}...`
-      );
-    } else {
-      imageCell.setValue("❌ 画像コピー失敗");
-      console.warn(
-        `⚠️ 画像のコピー配置に失敗: 元行${imageData.originalRow}, URL: ${imageData.imageUrl}`
-      );
+    // 💡 改善要求: 元シートからcopyToメソッドで直接コピー
+    if (sourceImageCell) {
+      try {
+        sourceImageCell.copyTo(imageCell);
+        imageSuccessfullyCopied = true;
+        console.log(
+          `✅ 元シートから画像を直接コピーペースト成功: 行${imageData.originalRow} → ライブラリ行${newRow}`
+        );
+      } catch (copyError) {
+        console.error("画像直接コピーエラー:", copyError);
+        imageSuccessfullyCopied = false;
+      }
+    }
+
+    // 💡 改善要求: コピー失敗時のフォールバック処理
+    if (!imageSuccessfullyCopied) {
+      if (
+        imageData.imageUrl &&
+        (imageData.imageUrl.startsWith("http") ||
+          imageData.imageUrl.startsWith("data:"))
+      ) {
+        // フォールバック: 直接URLから画像挿入
+        imageCell.setFormula(`=IMAGE("${imageData.imageUrl}")`);
+        console.log(
+          `📷 フォールバック - URLから画像挿入: ${imageData.imageUrl.substring(
+            0,
+            50
+          )}...`
+        );
+      } else {
+        imageCell.setValue("❌ 画像コピー失敗");
+        console.warn(
+          `⚠️ 画像のコピー配置に失敗: 元行${imageData.originalRow}, URL: ${imageData.imageUrl}`
+        );
+      }
     }
 
     librarySheet.getRange(newRow, 4).setHorizontalAlignment("center"); // 比率
@@ -3833,7 +3852,7 @@ function addToImageLibrary(imageData) {
 
     console.log(
       `✅ ライブラリに記録追加完了: 行${newRow} - 画像コピー${
-        copiedImageFormula ? "成功" : "フォールバック"
+        imageSuccessfullyCopied ? "成功" : "フォールバック"
       } - ${promptText.substring(0, 30)}...`
     );
     return true;
