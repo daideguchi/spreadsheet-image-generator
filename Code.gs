@@ -59,12 +59,28 @@ function onOpen() {
 }
 
 /**
- * 初期セットアップ（プロンプト入力エリアを作成）- 常時表示版
+ * 初期セットアップ（プロンプト入力エリアを作成）- 確認アラート付き
  */
 function initialSetup() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
     const ui = SpreadsheetApp.getUi();
+
+    // 🔧 必ず確認アラートを表示
+    const confirmResponse = ui.alert(
+      "🔧 表の初期化確認",
+      "📝 表を初期化しますか？\n\n" +
+        "⚠️ この操作により：\n" +
+        "• 現在のシート内容が変更されます\n" +
+        "• 100行の構造化テーブルが作成されます\n" +
+        "• 共通プロンプトのプルダウンが設定されます\n\n" +
+        "💡 初期化を実行しますか？",
+      ui.ButtonSet.YES_NO
+    );
+
+    if (confirmResponse !== ui.Button.YES) {
+      return "❌ 初期化をキャンセルしました";
+    }
 
     // シートにデータがあるかチェック
     const hasData = checkForAnyData();
@@ -87,7 +103,7 @@ function initialSetup() {
         setupOption = "clear"; // 完全クリアして新規作成
       }
     } else {
-      // 空のシートの場合も常に実行（確認なし）
+      // 空のシートの場合も常に実行
       setupOption = "new";
     }
 
@@ -2440,6 +2456,182 @@ function createStructuredTable() {
   } catch (error) {
     console.error("構造化テーブル作成エラー:", error);
     throw new Error(`構造化テーブルの作成に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 共通プロンプトのプルダウン設定（管理シート連動版）
+ */
+function setupCommonPromptValidation() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+    console.log("共通プロンプトのプルダウン設定を開始");
+
+    // 共通プロンプト設定シートを取得または作成
+    let commonSheet = spreadsheet.getSheetByName("共通プロンプト設定");
+    if (!commonSheet) {
+      createCommonPromptSheet();
+      commonSheet = spreadsheet.getSheetByName("共通プロンプト設定");
+    }
+
+    // プルダウンの選択肢を取得
+    const dropdownOptions = getCommonPromptOptions();
+
+    if (dropdownOptions.length === 0) {
+      console.warn(
+        "共通プロンプトの選択肢が空です。デフォルト選択肢を使用します。"
+      );
+      return;
+    }
+
+    // C列（共通プロンプト選択）にプルダウンを設定（2-101行目）
+    const validationRange = sheet.getRange(2, 3, 100, 1); // C2:C101
+
+    // データ検証ルールを作成
+    const rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(dropdownOptions, true)
+      .setAllowInvalid(false)
+      .setHelpText(
+        "💡 共通プロンプトを選択してください。新しいプロンプトは「共通プロンプト設定」シートで追加できます。"
+      )
+      .build();
+
+    // プルダウンを適用
+    validationRange.setDataValidation(rule);
+
+    console.log(
+      `✅ 共通プロンプトのプルダウンを設定しました（選択肢: ${dropdownOptions.length}個）`
+    );
+    console.log("選択肢:", dropdownOptions);
+  } catch (error) {
+    console.error("共通プロンプトプルダウン設定エラー:", error);
+    // エラーでも処理を継続（初期化を止めない）
+    console.warn("プルダウン設定に失敗しましたが、初期化を継続します");
+  }
+}
+
+/**
+ * 共通プロンプトの選択肢を取得（管理シート + デフォルト）
+ */
+function getCommonPromptOptions() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let options = [];
+
+    // デフォルトの選択肢（常に含める）
+    const defaultOptions = ["なし", "高品質写真", "アニメ風"];
+    options = options.concat(defaultOptions);
+
+    // 共通プロンプト設定シートから追加の選択肢を取得
+    const commonSheet = spreadsheet.getSheetByName("共通プロンプト設定");
+    if (commonSheet) {
+      const lastRow = commonSheet.getLastRow();
+      if (lastRow > 1) {
+        // A列（プロンプト名）からデータを取得（2行目以降）
+        const promptNames = commonSheet
+          .getRange(2, 1, lastRow - 1, 1)
+          .getValues();
+
+        for (let row of promptNames) {
+          const promptName = row[0];
+          if (promptName && promptName.toString().trim() !== "") {
+            const name = promptName.toString().trim();
+            // デフォルト選択肢と重複しないもののみ追加
+            if (!options.includes(name)) {
+              options.push(name);
+            }
+          }
+        }
+      }
+    }
+
+    console.log("共通プロンプト選択肢を取得:", options);
+    return options;
+  } catch (error) {
+    console.error("共通プロンプト選択肢取得エラー:", error);
+    // エラーの場合はデフォルト選択肢のみ返す
+    return ["なし", "高品質写真", "アニメ風"];
+  }
+}
+
+/**
+ * 共通プロンプトのプルダウンを更新（管理シート変更時）
+ */
+function updateCommonPromptDropdown() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // メインシートでない場合は処理しない
+    if (sheet.getName() === "共通プロンプト設定") {
+      console.log("管理シートの変更を検出 - プルダウンを更新します");
+
+      // 全シートのプルダウンを更新
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const sheets = spreadsheet.getSheets();
+
+      for (let targetSheet of sheets) {
+        // 「共通プロンプト設定」シート以外を更新
+        if (
+          targetSheet.getName() !== "共通プロンプト設定" &&
+          targetSheet.getName() !== "画像生成ライブラリ" &&
+          targetSheet.getName() !== "バージョン記録"
+        ) {
+          updateSheetCommonPromptDropdown(targetSheet);
+        }
+      }
+
+      return "✅ 全シートのプルダウンを更新しました";
+    }
+
+    return null;
+  } catch (error) {
+    console.error("プルダウン更新エラー:", error);
+    return `❌ プルダウン更新に失敗: ${error.message}`;
+  }
+}
+
+/**
+ * 指定シートの共通プロンプトプルダウンを更新
+ */
+function updateSheetCommonPromptDropdown(targetSheet) {
+  try {
+    // C列の範囲を確認
+    const lastRow = targetSheet.getLastRow();
+    if (lastRow < 2) return; // データがない場合はスキップ
+
+    // 最大100行またはデータがある行まで
+    const maxRow = Math.min(101, lastRow);
+    const validationRange = targetSheet.getRange(2, 3, maxRow - 1, 1);
+
+    // 新しい選択肢を取得
+    const dropdownOptions = getCommonPromptOptions();
+
+    if (dropdownOptions.length === 0) return;
+
+    // データ検証ルールを作成
+    const rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(dropdownOptions, true)
+      .setAllowInvalid(false)
+      .setHelpText(
+        "💡 共通プロンプトを選択してください。新しいプロンプトは「共通プロンプト設定」シートで追加できます。"
+      )
+      .build();
+
+    // プルダウンを適用
+    validationRange.setDataValidation(rule);
+
+    console.log(
+      `✅ ${targetSheet.getName()}シートのプルダウンを更新 (選択肢: ${
+        dropdownOptions.length
+      }個)`
+    );
+  } catch (error) {
+    console.error(
+      `シート「${targetSheet.getName()}」のプルダウン更新エラー:`,
+      error
+    );
   }
 }
 
