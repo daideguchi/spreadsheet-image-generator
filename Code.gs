@@ -943,11 +943,15 @@ function populateStructuredTable(imageResults, promptRows) {
         statusCell.setFontColor("#4caf50"); // 📱 視覚改善: 成功を示す緑色フォント
         statusCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアのグレー
 
-        // 🆕 ライブラリシートに生成記録を追加
+        // 💡 改善要求: ライブラリシートに生成記録を確実に追加
         try {
           const finalPrompt = getCombinedPrompt(sheet, row);
           const aspectRatio = sheet.getRange(row, 6).getValue() || "1024x1024";
-          addToImageLibrary({
+          console.log(
+            `📚 ライブラリ記録開始: 行${row}, URL: ${result.imageUrl}`
+          );
+
+          const libraryResult = addToImageLibrary({
             prompt: finalPrompt,
             imageUrl: result.imageUrl,
             aspectRatio: aspectRatio,
@@ -955,6 +959,12 @@ function populateStructuredTable(imageResults, promptRows) {
             timestamp: new Date(),
             originalRow: row,
           });
+
+          if (libraryResult) {
+            console.log(`📚 ライブラリ記録成功: 行${row}`);
+          } else {
+            console.warn(`📚 ライブラリ記録失敗: 行${row}`);
+          }
         } catch (libraryError) {
           console.error("ライブラリ記録エラー:", libraryError);
           // ライブラリエラーは画像生成を妨げない
@@ -3676,6 +3686,7 @@ function getOrCreateLibrarySheet() {
         "⏰ 生成日時", // E列: 生成日時
         "✅ ステータス", // F列: 生成ステータス
         "🔗 元行", // G列: 元のシート行番号
+        "☑️ 選択", // H列: チェックボックス（💡 改善要求: ダウンロード機能追加）
       ];
 
       const headerRange = librarySheet.getRange(1, 1, 1, headers.length);
@@ -3699,14 +3710,15 @@ function getOrCreateLibrarySheet() {
         SpreadsheetApp.BorderStyle.SOLID
       );
 
-      // 列幅の最適化
+      // 列幅の最適化（💡 改善要求: チェックボックス列追加）
       librarySheet.setColumnWidth(1, 60); // No.
-      librarySheet.setColumnWidth(2, 300); // プロンプト
+      librarySheet.setColumnWidth(2, 250); // プロンプト（💡 改善要求: 幅を少し縮小）
       librarySheet.setColumnWidth(3, 200); // 画像
-      librarySheet.setColumnWidth(4, 100); // 比率
-      librarySheet.setColumnWidth(5, 150); // 日時
-      librarySheet.setColumnWidth(6, 120); // ステータス
-      librarySheet.setColumnWidth(7, 80); // 元行
+      librarySheet.setColumnWidth(4, 80); // 比率
+      librarySheet.setColumnWidth(5, 130); // 日時
+      librarySheet.setColumnWidth(6, 100); // ステータス
+      librarySheet.setColumnWidth(7, 60); // 元行
+      librarySheet.setColumnWidth(8, 60); // チェックボックス
 
       // ヘッダー行の高さ
       librarySheet.setRowHeight(1, 45);
@@ -3754,15 +3766,16 @@ function addToImageLibrary(imageData) {
     // 通し番号を計算（ヘッダー除く）
     const recordNumber = lastRow > 1 ? lastRow - 1 : 1;
 
-    // データを行に追加
+    // 💡 改善要求: チェックボックス列追加とデータ改善
     const rowData = [
       recordNumber, // A列: No.
       imageData.prompt || "プロンプト不明", // B列: プロンプト
-      `=IMAGE("${imageData.imageUrl}")`, // C列: 画像（IMAGE関数）
+      `=IMAGE("${imageData.imageUrl}")`, // C列: 画像（IMAGE関数）- 💡 改善要求: 画像表示確実化
       imageData.aspectRatio || "1024x1024", // D列: 比率
       imageData.timestamp.toLocaleString("ja-JP"), // E列: 日時
       imageData.status || "✅ 生成完了", // F列: ステータス
       imageData.originalRow || "-", // G列: 元行
+      false, // H列: チェックボックス（💡 改善要求: ダウンロード機能のため）
     ];
 
     const dataRange = librarySheet.getRange(newRow, 1, 1, rowData.length);
@@ -3784,14 +3797,25 @@ function addToImageLibrary(imageData) {
     const bgColor = newRow % 2 === 0 ? "#f8f9fa" : "#ffffff";
     dataRange.setBackground(bgColor);
 
-    // 各列の配置設定
+    // 💡 改善要求: 各列の配置設定とプロンプト表示改善
     librarySheet.getRange(newRow, 1).setHorizontalAlignment("center"); // No.
-    librarySheet.getRange(newRow, 2).setWrap(true).setVerticalAlignment("top"); // プロンプト
+    const promptCell = librarySheet.getRange(newRow, 2); // プロンプト
+    promptCell.setWrap(true).setVerticalAlignment("top");
+    promptCell.setFontSize(8); // 💡 改善要求: プロンプト表示を小さく
+    promptCell.setPadding(2, 2, 2, 2); // 💡 改善要求: パディング縮小
+
     librarySheet.getRange(newRow, 3).setHorizontalAlignment("center"); // 画像
     librarySheet.getRange(newRow, 4).setHorizontalAlignment("center"); // 比率
     librarySheet.getRange(newRow, 5).setHorizontalAlignment("center"); // 日時
     librarySheet.getRange(newRow, 6).setHorizontalAlignment("center"); // ステータス
     librarySheet.getRange(newRow, 7).setHorizontalAlignment("center"); // 元行
+
+    // 💡 改善要求: チェックボックスの挿入と設定
+    const checkboxCell = librarySheet.getRange(newRow, 8);
+    checkboxCell.insertCheckboxes();
+    checkboxCell.setHorizontalAlignment("center");
+    checkboxCell.setVerticalAlignment("middle");
+    checkboxCell.setBackground("#e8f5e8"); // 操作エリアを明るい緑色に
 
     // 行の高さを画像に合わせて調整
     librarySheet.setRowHeight(newRow, 120);
@@ -3807,6 +3831,140 @@ function addToImageLibrary(imageData) {
     console.error("ライブラリ記録追加エラー:", error);
     // エラーでも画像生成を止めない
     return false;
+  }
+}
+
+/**
+ * 💡 改善要求: ライブラリからの選択画像ダウンロード機能
+ */
+function downloadSelectedLibraryImages() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const librarySheet = spreadsheet.getSheetByName("画像生成ライブラリ");
+
+    if (!librarySheet) {
+      return "❌ 画像生成ライブラリシートが見つかりません";
+    }
+
+    const lastRow = librarySheet.getLastRow();
+    if (lastRow < 4) {
+      // ヘッダー + 説明行 + データ行
+      return "❌ ライブラリにデータがありません";
+    }
+
+    const selectedImages = [];
+    let selectedCount = 0;
+
+    // 4行目以降からデータを収集（ヘッダー・説明行をスキップ）
+    for (let i = 4; i <= lastRow; i++) {
+      const checkboxCell = librarySheet.getRange(i, 8); // H列（チェックボックス）
+      const isChecked = checkboxCell.getValue();
+
+      if (isChecked === true) {
+        const imageCell = librarySheet.getRange(i, 3); // C列（画像）
+        const imageFormula = imageCell.getFormula();
+        const promptCell = librarySheet.getRange(i, 2); // B列（プロンプト）
+        const prompt = promptCell.getValue() || `ライブラリ画像_${i}`;
+
+        if (imageFormula && imageFormula.includes("=IMAGE(")) {
+          // IMAGE関数からURLを抽出
+          const urlMatch = imageFormula.match(/=IMAGE\("([^"]+)"/);
+          if (urlMatch && urlMatch[1]) {
+            selectedImages.push({
+              url: urlMatch[1],
+              filename: `${prompt
+                .toString()
+                .substring(0, 50)
+                .replace(/[^\w\s-]/g, "")}_library_${i}.png`,
+              row: i,
+            });
+            selectedCount++;
+          }
+        }
+      }
+    }
+
+    if (selectedCount === 0) {
+      return "❌ ダウンロード対象の画像が選択されていません。チェックボックスを選択してから実行してください。";
+    }
+
+    // ダウンロード処理実行
+    if (selectedImages.length > 0) {
+      // Drive APIを使用してダウンロード
+      const driveResults = [];
+      selectedImages.forEach((imageData, index) => {
+        try {
+          const response = UrlFetchApp.fetch(imageData.url);
+          const blob = response.getBlob();
+          blob.setName(imageData.filename);
+
+          const file = DriveApp.createFile(blob);
+          driveResults.push({
+            filename: imageData.filename,
+            url: file.getDownloadUrl(),
+          });
+        } catch (error) {
+          console.error(`画像ダウンロードエラー (行${imageData.row}):`, error);
+        }
+      });
+
+      return `✅ ライブラリから${selectedCount}枚の画像をGoogle Driveにダウンロードしました！\n\n📊 ダウンロード詳細:\n• 選択された画像: ${selectedCount}枚\n• Google Drive保存完了: ${driveResults.length}枚\n\n📁 Google Driveの「マイドライブ」をご確認ください。`;
+    }
+
+    return "❌ ダウンロードに失敗しました";
+  } catch (error) {
+    console.error("ライブラリダウンロードエラー:", error);
+    throw new Error(
+      `ライブラリからのダウンロードに失敗しました: ${error.message}`
+    );
+  }
+}
+
+/**
+ * 💡 改善要求: ライブラリの全選択/解除機能
+ */
+function toggleAllLibrarySelection() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const librarySheet = spreadsheet.getSheetByName("画像生成ライブラリ");
+
+    if (!librarySheet) {
+      return "❌ 画像生成ライブラリシートが見つかりません";
+    }
+
+    const lastRow = librarySheet.getLastRow();
+    if (lastRow < 4) {
+      return "❌ ライブラリにデータがありません";
+    }
+
+    // 現在のチェック状態を確認
+    let checkedCount = 0;
+    let totalCount = 0;
+
+    for (let i = 4; i <= lastRow; i++) {
+      const checkboxCell = librarySheet.getRange(i, 8);
+      const isChecked = checkboxCell.getValue();
+
+      if (isChecked === true) {
+        checkedCount++;
+      }
+      totalCount++;
+    }
+
+    // 過半数がチェックされていれば全解除、そうでなければ全選択
+    const shouldCheck = checkedCount < totalCount / 2;
+
+    // 全チェックボックスを更新
+    for (let i = 4; i <= lastRow; i++) {
+      const checkboxCell = librarySheet.getRange(i, 8);
+      checkboxCell.setValue(shouldCheck);
+    }
+
+    const action = shouldCheck ? "選択" : "解除";
+    return `✅ ライブラリの全画像を${action}しました（${totalCount}枚）`;
+  } catch (error) {
+    console.error("ライブラリ全選択エラー:", error);
+    throw new Error(`ライブラリの全選択に失敗しました: ${error.message}`);
   }
 }
 

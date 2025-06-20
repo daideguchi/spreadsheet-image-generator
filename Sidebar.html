@@ -565,6 +565,19 @@
           </div>
         </div>
 
+        <!-- ライブラリ操作グループ（💡 改善要求: ライブラリダウンロード機能追加） -->
+        <div class="button-section" id="librarySection">
+          <div class="section-title">📚 ライブラリ管理</div>
+          <div class="button-row">
+            <button class="btn btn-secondary btn-small" onclick="toggleAllLibrarySelection()">
+              ☑️ ライブラリ全選択
+            </button>
+            <button class="btn btn-create btn-small" onclick="downloadSelectedLibraryImages()">
+              📥 ライブラリDL
+            </button>
+          </div>
+        </div>
+
         <!-- その他操作グループ -->
         <div class="button-section">
           <div class="section-title">⚙️ その他</div>
@@ -1183,6 +1196,31 @@
           showResult('エラー: ' + error.message, true);
         })
         .createBackupAndNewTable();
+    }
+
+    // 💡 改善要求: ライブラリ管理機能のJavaScript実装
+    function toggleAllLibrarySelection() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .toggleAllLibrarySelection();
+    }
+
+    function downloadSelectedLibraryImages() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .downloadSelectedLibraryImages();
     }
   </script>
 </body>
