@@ -3686,7 +3686,7 @@ function getOrCreateLibrarySheet() {
 }
 
 /**
- * ライブラリシートに生成記録を追加
+ * ライブラリシートに生成記録を追加（💡 改善要求: 画像確実コピー＆結合プロンプト形式）
  */
 function addToImageLibrary(imageData) {
   try {
@@ -3697,18 +3697,40 @@ function addToImageLibrary(imageData) {
     // 通し番号を計算（ヘッダー除く）
     const recordNumber = lastRow > 1 ? lastRow - 1 : 1;
 
-    // 💡 改善要求: プロンプト省略版とデータ改善
+    // 💡 改善要求: 元シートから画像を確実にコピー取得
+    let sourceImageCell = null;
+    let copiedImageFormula = "";
+
+    if (imageData.originalRow && imageData.originalRow !== "-") {
+      try {
+        const mainSheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+        sourceImageCell = mainSheet.getRange(imageData.originalRow, 5); // E列から画像取得
+        const sourceFormula = sourceImageCell.getFormula();
+
+        if (sourceFormula && sourceFormula.includes("=IMAGE(")) {
+          copiedImageFormula = sourceFormula;
+          console.log(
+            `📷 元シートから画像コピー: 行${imageData.originalRow} → ライブラリ行${newRow}`
+          );
+        } else {
+          console.warn(
+            `⚠️ 元シート行${imageData.originalRow}に画像が見つかりません`
+          );
+        }
+      } catch (copyError) {
+        console.error("元シートからの画像コピーエラー:", copyError);
+      }
+    }
+
+    // 💡 改善要求: プロンプト表示を結合プロンプト形式に変更
     const promptText = imageData.prompt || "プロンプト不明";
-    const maxPromptLength = 30;
     const displayPrompt =
-      promptText.length > maxPromptLength
-        ? promptText.substring(0, maxPromptLength) + "..."
-        : promptText;
+      promptText.length > 80 ? promptText.substring(0, 77) + "..." : promptText;
 
     const rowData = [
       recordNumber, // A列: No.
-      displayPrompt, // B列: プロンプト（💡 改善要求: 省略版）
-      "", // C列: 画像（後で個別設定）
+      displayPrompt, // B列: プロンプト（💡 改善要求: 結合プロンプト形式）
+      "", // C列: 画像（後で確実にコピー設定）
       imageData.aspectRatio || "1024x1024", // D列: 比率
       imageData.timestamp.toLocaleString("ja-JP"), // E列: 日時
       imageData.status || "✅ 生成完了", // F列: ステータス
@@ -3735,33 +3757,63 @@ function addToImageLibrary(imageData) {
     const bgColor = newRow % 2 === 0 ? "#f8f9fa" : "#ffffff";
     dataRange.setBackground(bgColor);
 
-    // 💡 改善要求: 各列の配置設定とプロンプト表示改善
+    // 💡 改善要求: 各列の配置設定
     librarySheet.getRange(newRow, 1).setHorizontalAlignment("center"); // No.
 
-    // 💡 改善要求: プロンプトセルの縦幅短縮とコンパクト化
+    // 💡 改善要求: プロンプトセルを結合プロンプト形式に統一
     const promptCell = librarySheet.getRange(newRow, 2); // プロンプト
-    promptCell.setWrap(false); // 💡 改善要求: 折り返しを無効にして縦幅短縮
+    promptCell.setWrap(true); // 💡 改善要求: 結合プロンプト形式に合わせて折り返し有効
     promptCell.setVerticalAlignment("middle"); // 💡 改善要求: 中央配置
-    promptCell.setFontSize(8); // 💡 改善要求: より小さなフォント
-    promptCell.setPadding(1, 1, 1, 1); // 💡 改善要求: 最小パディング
+    promptCell.setFontSize(8); // 💡 改善要求: 結合プロンプトと同じ小さなフォント
+    promptCell.setPadding(2, 2, 2, 2); // 💡 改善要求: 結合プロンプトと同じパディング
     promptCell.setFontWeight("normal");
-    promptCell.setFontColor("#424242");
-    // 💡 改善要求: 完全なプロンプトをツールチップに保存
-    if (promptText.length > maxPromptLength) {
-      promptCell.setNote(`📝 完全なプロンプト:\n${promptText}`); // ツールチップに完全版
-    }
+    promptCell.setFontColor("#757575"); // 💡 改善要求: 結合プロンプトと同じグレー文字色
+    promptCell.setBackground("#eeeeee"); // 💡 改善要求: 結合プロンプトと同じグレー背景
+    promptCell.setBorder(
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      "#bdbdbd",
+      SpreadsheetApp.BorderStyle.DASHED
+    ); // 💡 改善要求: 結合プロンプトと同じ破線境界線
 
-    // 💡 改善要求: 画像セルの適切な設定
+    // 💡 改善要求: 完全なプロンプトをツールチップに保存（結合プロンプト形式）
+    promptCell.setNote(
+      `📄 完全なプロンプト:\n${promptText}\n\n💡 このセルをクリックして全文を確認できます。`
+    );
+
+    // 💡 改善要求: 画像セルに確実にコピー配置
     const imageCell = librarySheet.getRange(newRow, 3);
     imageCell.setHorizontalAlignment("center");
     imageCell.setVerticalAlignment("middle");
-    // 💡 改善要求: 画像URLの有効性を確認してから挿入
-    if (imageData.imageUrl && imageData.imageUrl.startsWith("http")) {
+
+    // 💡 改善要求: 元シートからコピーした画像を最優先で使用
+    if (copiedImageFormula) {
+      imageCell.setFormula(copiedImageFormula);
+      console.log(
+        `✅ 元シートから画像を確実にコピー配置: ${copiedImageFormula.substring(
+          0,
+          50
+        )}...`
+      );
+    } else if (
+      imageData.imageUrl &&
+      (imageData.imageUrl.startsWith("http") ||
+        imageData.imageUrl.startsWith("data:"))
+    ) {
+      // フォールバック: 直接URLから画像挿入
       imageCell.setFormula(`=IMAGE("${imageData.imageUrl}")`);
-      console.log(`📷 画像挿入: ${imageData.imageUrl.substring(0, 50)}...`);
+      console.log(
+        `📷 URLから画像挿入: ${imageData.imageUrl.substring(0, 50)}...`
+      );
     } else {
-      imageCell.setValue("❌ 画像URL無効");
-      console.warn(`⚠️ 無効な画像URL: ${imageData.imageUrl}`);
+      imageCell.setValue("❌ 画像コピー失敗");
+      console.warn(
+        `⚠️ 画像のコピー配置に失敗: 元行${imageData.originalRow}, URL: ${imageData.imageUrl}`
+      );
     }
 
     librarySheet.getRange(newRow, 4).setHorizontalAlignment("center"); // 比率
@@ -3776,14 +3828,13 @@ function addToImageLibrary(imageData) {
     checkboxCell.setVerticalAlignment("middle");
     checkboxCell.setBackground("#e8f5e8"); // 操作エリアを明るい緑色に
 
-    // 💡 改善要求: 行の高さを大幅に短縮（プロンプト縦幅短縮）
-    librarySheet.setRowHeight(newRow, 60); // 120px → 60px に短縮
+    // 💡 改善要求: 行の高さを結合プロンプト形式に合わせて調整
+    librarySheet.setRowHeight(newRow, 50); // 💡 改善要求: 結合プロンプトと同じ50pxに統一
 
     console.log(
-      `✅ ライブラリに記録追加: 行${newRow} - ${imageData.prompt?.substring(
-        0,
-        30
-      )}...`
+      `✅ ライブラリに記録追加完了: 行${newRow} - 画像コピー${
+        copiedImageFormula ? "成功" : "フォールバック"
+      } - ${promptText.substring(0, 30)}...`
     );
     return true;
   } catch (error) {
@@ -4425,10 +4476,10 @@ function createEmptyLibrarySheet() {
       SpreadsheetApp.BorderStyle.SOLID
     );
 
-    // 💡 改善要求: 列幅の最適化（プロンプト表示改善対応）
+    // 💡 改善要求: 列幅の最適化（結合プロンプト形式対応）
     librarySheet.setColumnWidth(1, 60); // No.
-    librarySheet.setColumnWidth(2, 200); // プロンプト（💡 さらに縮小）
-    librarySheet.setColumnWidth(3, 180); // 画像（💡 少し縮小）
+    librarySheet.setColumnWidth(2, 200); // プロンプト（💡 改善要求: 結合プロンプトと同じ200px）
+    librarySheet.setColumnWidth(3, 180); // 画像
     librarySheet.setColumnWidth(4, 70); // 比率
     librarySheet.setColumnWidth(5, 120); // 日時
     librarySheet.setColumnWidth(6, 90); // ステータス
