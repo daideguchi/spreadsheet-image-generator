@@ -1598,6 +1598,149 @@ function getFullPrompt(sheet, row) {
 }
 
 /**
+ * 結合プロンプトを更新（D列に表示）
+ */
+function updateCombinedPrompt(sheet, row) {
+  try {
+    const individualPrompt = sheet.getRange(row, 2).getValue(); // B列：個別プロンプト
+    const commonPromptName = sheet.getRange(row, 3).getValue(); // C列：共通プロンプト選択
+
+    // 結合プロンプトを生成
+    const combinedPrompt = combinePrompts(individualPrompt, commonPromptName);
+
+    // D列に結合プロンプトを設定
+    const combinedCell = sheet.getRange(row, 4);
+    combinedCell.setValue(combinedPrompt);
+
+    // スタイル設定（自動生成エリア）
+    combinedCell.setBackground("#f5f5f5"); // グレー背景
+    combinedCell.setFontColor("#616161"); // グレー文字
+    combinedCell.setWrap(true);
+    combinedCell.setVerticalAlignment("top");
+    combinedCell.setBorder(
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      "#bdbdbd",
+      SpreadsheetApp.BorderStyle.DASHED
+    );
+
+    console.log(`行${row}: 結合プロンプトを更新しました`);
+    return combinedPrompt;
+  } catch (error) {
+    console.error(`行${row}の結合プロンプト更新エラー:`, error);
+    return "";
+  }
+}
+
+/**
+ * 結合プロンプトを取得（D列から）
+ */
+function getCombinedPrompt(sheet, row) {
+  try {
+    const combinedPrompt = sheet.getRange(row, 4).getValue(); // D列：結合プロンプト
+
+    if (
+      combinedPrompt &&
+      typeof combinedPrompt === "string" &&
+      combinedPrompt.trim()
+    ) {
+      return combinedPrompt.trim();
+    }
+
+    // D列が空の場合は自動生成
+    return updateCombinedPrompt(sheet, row);
+  } catch (error) {
+    console.error(`行${row}の結合プロンプト取得エラー:`, error);
+    return "";
+  }
+}
+
+/**
+ * 個別プロンプトと共通プロンプトを結合
+ */
+function combinePrompts(individualPrompt, commonPromptName) {
+  try {
+    // 個別プロンプトを取得
+    let individual = "";
+    if (individualPrompt && typeof individualPrompt === "string") {
+      individual = individualPrompt.trim();
+    }
+
+    // 共通プロンプトを取得
+    let common = "";
+    if (
+      commonPromptName &&
+      typeof commonPromptName === "string" &&
+      commonPromptName.trim() !== "なし"
+    ) {
+      const commonPromptContent = getCommonPromptContent(
+        commonPromptName.trim()
+      );
+      if (commonPromptContent) {
+        common = commonPromptContent.trim();
+      }
+    }
+
+    // 結合ロジック
+    if (individual && common) {
+      return `${individual}, ${common}`;
+    } else if (individual) {
+      return individual;
+    } else if (common) {
+      return common;
+    } else {
+      return "";
+    }
+  } catch (error) {
+    console.error("プロンプト結合エラー:", error);
+    return individualPrompt || "";
+  }
+}
+
+/**
+ * 共通プロンプト名から内容を取得
+ */
+function getCommonPromptContent(promptName) {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const commonSheet = spreadsheet.getSheetByName("共通プロンプト設定");
+
+    if (!commonSheet) {
+      console.log("共通プロンプト設定シートが見つかりません");
+      return "";
+    }
+
+    const lastRow = commonSheet.getLastRow();
+
+    // 4行目以降からプロンプト名を検索
+    for (let i = 4; i <= lastRow; i++) {
+      const nameCell = commonSheet.getRange(i, 1).getValue(); // A列：プロンプト名
+      const contentCell = commonSheet.getRange(i, 2).getValue(); // B列：プロンプト内容
+
+      if (
+        nameCell &&
+        typeof nameCell === "string" &&
+        nameCell.trim() === promptName
+      ) {
+        if (contentCell && typeof contentCell === "string") {
+          return contentCell.trim();
+        }
+      }
+    }
+
+    console.log(`共通プロンプト「${promptName}」が見つかりません`);
+    return "";
+  } catch (error) {
+    console.error("共通プロンプト内容取得エラー:", error);
+    return "";
+  }
+}
+
+/**
  * 権限承認済みを記録
  */
 function markPermissionGranted() {
