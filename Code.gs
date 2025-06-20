@@ -3812,6 +3812,21 @@ function getOrCreateLibrarySheet() {
  * ライブラリシートに生成記録を追加（💡 改善要求: 画像確実コピー＆結合プロンプト形式）
  */
 function addToImageLibrary(imageData) {
+  // 🚨 緊急デバッグ: 関数実行を強制的に記録
+  console.log("🚨🚨🚨 CRITICAL: addToImageLibrary関数が実行されました!");
+  console.log("🚨🚨🚨 実行時刻:", new Date().toISOString());
+  console.log("🚨🚨🚨 呼び出し元:", new Error().stack);
+
+  // スプレッドシートに直接ログを書き込み（デバッグ用）
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    sheet
+      .getRange("Z1")
+      .setValue(`addToImageLibrary実行: ${new Date().toISOString()}`);
+  } catch (e) {
+    console.log("デバッグログ書き込みエラー:", e);
+  }
+
   console.log(
     "🔥🔥🔥 addToImageLibrary開始:",
     JSON.stringify({
