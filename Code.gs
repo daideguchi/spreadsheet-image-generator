@@ -2059,6 +2059,9 @@ function createStructuredTable() {
       // メッセージエラーは無視して続行
     }
 
+    console.log(
+      `✅ 改善された共通プロンプト設定シートを作成しました（${defaultPrompts.length}個のプロンプト）`
+    );
     return "✅ 共通プロンプト機能付きテーブルを作成しました！B列に個別プロンプト、C列で共通プロンプトを選択してください。";
   } catch (error) {
     console.error("構造化テーブル作成エラー:", error);
