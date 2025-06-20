@@ -27,6 +27,8 @@ function onOpen() {
     .addItem("💾 バックアップ作成", "createBackupAndNewTable")
     .addItem("🧹 シートを完全クリア", "clearSheetMenu")
     .addSeparator()
+    .addItem("📋 バージョン記録を開く", "openVersionSheet")
+    .addSeparator()
     .addItem("🔐 権限承認を実行", "forcePermissionRequest")
     .addSeparator()
     .addItem("⚙️ 設定を確認", "checkSettings")
@@ -2402,6 +2404,15 @@ function createStructuredTable() {
     // 共通プロンプト機能を初期設定
     setupCommonPromptValidation();
 
+    // 🆕 バージョン記録シートも自動作成
+    try {
+      getOrCreateVersionSheet();
+      console.log("✅ バージョン記録シートを自動作成しました");
+    } catch (versionError) {
+      console.error("バージョン記録シート作成エラー:", versionError);
+      // エラーでもメイン機能は続行
+    }
+
     // 完了メッセージを下部に追加
     try {
       const messageRow = 103;
@@ -3421,400 +3432,308 @@ function getLibraryStats() {
 }
 
 /**
- * 結合プロンプトを取得する関数
- */
-function getCombinedPrompt(sheet, row) {
-  try {
-    const combinedCell = sheet.getRange(row, 4); // D列: 結合プロンプト
-    const combinedValue = combinedCell.getValue();
-
-    if (combinedValue && combinedValue.toString().trim() !== "") {
-      // 結合プロンプトが既に存在する場合
-      return combinedValue.toString().replace("🔗 ", "").trim();
-    }
-
-    // 結合プロンプトが存在しない場合は個別プロンプトを返す
-    const individualPrompt = sheet.getRange(row, 2).getValue(); // B列: 個別プロンプト
-    return individualPrompt
-      ? individualPrompt.toString().trim()
-      : "プロンプト不明";
-  } catch (error) {
-    console.error("結合プロンプト取得エラー:", error);
-    return "プロンプト取得エラー";
-  }
-}
-
-/**
- * 🔧 共通プロンプト管理の便利機能
+ * 🆕 バージョン記録シート管理
  */
 
 /**
- * 人気の共通プロンプトを取得（使用頻度順）
+ * バージョン記録シートを作成または取得
  */
-function getPopularCommonPrompts() {
-  try {
-    const commonSheet =
-      SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-        "共通プロンプト設定"
-      );
-    if (!commonSheet) {
-      return [];
-    }
-
-    const lastRow = commonSheet.getLastRow();
-    if (lastRow < 2) {
-      return [];
-    }
-
-    // データを取得（カテゴリ、名前、内容、説明、使用頻度）
-    const data = commonSheet.getRange(2, 1, lastRow - 1, 5).getValues();
-
-    // 使用頻度（★の数）でソート
-    const sortedData = data.sort((a, b) => {
-      const freqA = (a[4] || "").toString().split("★").length - 1;
-      const freqB = (b[4] || "").toString().split("★").length - 1;
-      return freqB - freqA; // 降順
-    });
-
-    return sortedData.slice(0, 10).map((row) => ({
-      category: row[0],
-      name: row[1],
-      content: row[2],
-      description: row[3],
-      frequency: row[4],
-    }));
-  } catch (error) {
-    console.error("人気プロンプト取得エラー:", error);
-    return [];
-  }
-}
-
-/**
- * カテゴリ別の共通プロンプトを取得
- */
-function getCommonPromptsByCategory(category) {
-  try {
-    const commonSheet =
-      SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-        "共通プロンプト設定"
-      );
-    if (!commonSheet) {
-      return [];
-    }
-
-    const lastRow = commonSheet.getLastRow();
-    if (lastRow < 2) {
-      return [];
-    }
-
-    const data = commonSheet.getRange(2, 1, lastRow - 1, 5).getValues();
-
-    return data
-      .filter((row) => row[0].includes(category))
-      .map((row) => ({
-        category: row[0],
-        name: row[1],
-        content: row[2],
-        description: row[3],
-        frequency: row[4],
-      }));
-  } catch (error) {
-    console.error("カテゴリ別プロンプト取得エラー:", error);
-    return [];
-  }
-}
-
-/**
- * 共通プロンプトの統計情報を取得
- */
-function getCommonPromptStats() {
-  try {
-    const commonSheet =
-      SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-        "共通プロンプト設定"
-      );
-    if (!commonSheet) {
-      return { total: 0, byCategory: {} };
-    }
-
-    const lastRow = commonSheet.getLastRow();
-    if (lastRow < 2) {
-      return { total: 0, byCategory: {} };
-    }
-
-    const data = commonSheet.getRange(2, 1, lastRow - 1, 1).getValues();
-    const byCategory = {};
-
-    data.forEach((row) => {
-      const category = row[0];
-      byCategory[category] = (byCategory[category] || 0) + 1;
-    });
-
-    return {
-      total: data.length,
-      byCategory: byCategory,
-      lastUpdated: new Date().toLocaleString("ja-JP"),
-    };
-  } catch (error) {
-    console.error("統計情報取得エラー:", error);
-    return { total: 0, byCategory: {} };
-  }
-}
-
-/**
- * 共通プロンプト機能の初期設定（テーブル作成時用）
- */
-function setupCommonPromptValidation() {
-  try {
-    console.log("共通プロンプト機能を初期設定中...");
-
-    // 共通プロンプト設定シートが存在することを確認
-    const commonSheet =
-      SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-        "共通プロンプト設定"
-      );
-    if (!commonSheet) {
-      console.log("共通プロンプト設定シートを作成します...");
-      createCommonPromptSheet();
-    }
-
-    // ドロップダウンを設定
-    updateCommonPromptDropdown();
-
-    console.log("✅ 共通プロンプト機能の初期設定が完了しました");
-    return true;
-  } catch (error) {
-    console.error("共通プロンプト初期設定エラー:", error);
-    throw new Error(
-      `共通プロンプト機能の初期設定に失敗しました: ${error.message}`
-    );
-  }
-}
-
-/**
- * 個別プロンプトと共通プロンプトを結合
- */
-function combinePrompts(individualPrompt, commonPromptName) {
-  try {
-    if (!individualPrompt || individualPrompt.trim() === "") {
-      return ""; // 個別プロンプトが空の場合
-    }
-
-    if (
-      !commonPromptName ||
-      commonPromptName === "（なし）" ||
-      commonPromptName.trim() === ""
-    ) {
-      return individualPrompt.trim(); // 共通プロンプトが選択されていない場合
-    }
-
-    // 共通プロンプトの内容を取得
-    const commonPromptContent = getCommonPromptContent(commonPromptName);
-    if (!commonPromptContent) {
-      return individualPrompt.trim(); // 共通プロンプトが見つからない場合
-    }
-
-    // プロンプトを結合（共通プロンプト + 個別プロンプト）
-    const combinedPrompt = `${commonPromptContent}, ${individualPrompt.trim()}`;
-
-    console.log(
-      `プロンプト結合: "${commonPromptName}" + "${individualPrompt.substring(
-        0,
-        30
-      )}..." = ${combinedPrompt.length}文字`
-    );
-    return combinedPrompt;
-  } catch (error) {
-    console.error("プロンプト結合エラー:", error);
-    return individualPrompt || ""; // エラーの場合は個別プロンプトのみ返す
-  }
-}
-
-/**
- * 共通プロンプト名から内容を取得（ユーザー主導版）
- */
-function getCommonPromptContent(promptName) {
-  try {
-    if (!promptName || promptName.trim() === "") {
-      return "";
-    }
-
-    const prompts = getCommonPrompts();
-    const matchedPrompt = prompts.find((p) => p.name === promptName.trim());
-
-    if (matchedPrompt) {
-      console.log(
-        `✅ 共通プロンプト「${promptName}」の内容を取得: ${matchedPrompt.content.substring(
-          0,
-          50
-        )}...`
-      );
-      return matchedPrompt.content;
-    } else {
-      console.log(
-        `⚠️ 共通プロンプト「${promptName}」が見つかりません。そのまま使用します。`
-      );
-      return promptName; // 見つからない場合はそのまま返す（手動入力対応）
-    }
-  } catch (error) {
-    console.error("共通プロンプト内容取得エラー:", error);
-    return promptName || ""; // エラー時は元の値をそのまま返す
-  }
-}
-
-/**
- * 結合プロンプトを自動更新（編集時トリガー）
- */
-function updateCombinedPrompt(sheet, row) {
-  try {
-    const individualPrompt = sheet.getRange(row, 2).getValue(); // B列
-    const commonPromptName = sheet.getRange(row, 3).getValue(); // C列
-    const combinedCell = sheet.getRange(row, 4); // D列
-
-    const combinedPrompt = combinePrompts(individualPrompt, commonPromptName);
-
-    if (combinedPrompt && combinedPrompt.trim() !== "") {
-      // 📱 改善: 結合プロンプトの表示を最適化（折り返し対応）
-      let displayText = "🔗";
-      if (combinedPrompt.length > 0) {
-        // 60文字まで表示（折り返し対応）
-        displayText =
-          combinedPrompt.length > 60
-            ? `🔗 ${combinedPrompt.substring(0, 57)}...`
-            : `🔗 ${combinedPrompt}`;
-      }
-
-      combinedCell.setValue(displayText);
-      combinedCell.setNote(
-        `🤖 自動結合完了！（${combinedPrompt.length}文字）\n\n${combinedPrompt}`
-      );
-      combinedCell.setBackground("#dcedc8"); // 📱 視覚改善: 結合済みを示す薄い緑色（自動生成エリア内）
-      combinedCell.setFontColor("#4caf50"); // 📱 視覚改善: 結合済みを示す緑色フォント
-      // 📱 改善: テキスト折り返し設定
-      combinedCell.setWrap(true);
-      combinedCell.setHorizontalAlignment("left");
-      combinedCell.setVerticalAlignment("top");
-    } else {
-      combinedCell.setValue("🔗");
-      combinedCell.setNote(
-        "🤖 自動結合プロンプト（編集不要）\n個別プロンプト + 共通プロンプトの結合結果がここに表示されます。"
-      );
-      combinedCell.setBackground("#eeeeee"); // 📱 視覚改善: デフォルトのグレーエリア
-      combinedCell.setFontColor("#757575"); // 📱 視覚改善: 控えめなフォント色
-      // 📱 改善: デフォルト設定
-      combinedCell.setWrap(true);
-      combinedCell.setHorizontalAlignment("left");
-      combinedCell.setVerticalAlignment("top");
-    }
-
-    console.log(`行${row}: 結合プロンプトを更新しました`);
-  } catch (error) {
-    console.error(`行${row}の結合プロンプト更新エラー:`, error);
-  }
-}
-
-/**
- * 共通プロンプト一覧を取得（ユーザー主導版）
- */
-function getCommonPrompts() {
+function getOrCreateVersionSheet() {
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const commonSheet = spreadsheet.getSheetByName("共通プロンプト設定");
+    let versionSheet = spreadsheet.getSheetByName("📋 バージョン記録");
 
-    if (!commonSheet) {
-      console.log("📋 共通プロンプト設定シートが見つかりません。作成します...");
-      createCommonPromptSheet();
-      return getCommonPrompts(); // 再帰呼び出しで取得
-    }
+    if (!versionSheet) {
+      // 新規バージョン記録シートを作成
+      versionSheet = spreadsheet.insertSheet("📋 バージョン記録");
 
-    // 📊 シンプルな2列構造でデータを取得
-    const dataRange = commonSheet.getDataRange();
-    const values = dataRange.getValues();
+      // ヘッダー行を設定
+      const headers = [
+        "バージョン", // A列: バージョン番号
+        "📅 リリース日", // B列: リリース日
+        "🔧 主要機能", // C列: 主要機能・改善
+        "🐛 修正内容", // D列: バグ修正・調整
+        "📊 技術情報", // E列: 技術的詳細
+        "🔗 関連リンク", // F列: GitHub・ドキュメント
+      ];
 
-    if (values.length <= 1) {
-      console.log(
-        "📝 共通プロンプトデータがありません。空のリストを返します。"
+      const headerRange = versionSheet.getRange(1, 1, 1, headers.length);
+      headerRange.setValues([headers]);
+
+      // ヘッダーのスタイル設定
+      headerRange.setBackground("#673ab7");
+      headerRange.setFontColor("white");
+      headerRange.setFontWeight("bold");
+      headerRange.setHorizontalAlignment("center");
+      headerRange.setVerticalAlignment("middle");
+      headerRange.setFontSize(11);
+      headerRange.setBorder(
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        "#5e35b1",
+        SpreadsheetApp.BorderStyle.SOLID
       );
-      return [];
-    }
 
-    // ヘッダー行をスキップしてデータを処理
-    const prompts = [];
-    for (let i = 1; i < values.length; i++) {
-      const row = values[i];
-      const promptName = row[0];
-      const promptContent = row[1];
+      // 列幅の最適化
+      versionSheet.setColumnWidth(1, 100); // バージョン
+      versionSheet.setColumnWidth(2, 120); // リリース日
+      versionSheet.setColumnWidth(3, 300); // 主要機能
+      versionSheet.setColumnWidth(4, 250); // 修正内容
+      versionSheet.setColumnWidth(5, 200); // 技術情報
+      versionSheet.setColumnWidth(6, 200); // 関連リンク
 
-      // 空行や不完全なデータをスキップ
-      if (!promptName || !promptContent) {
-        continue;
-      }
+      // ヘッダー行の高さ
+      versionSheet.setRowHeight(1, 45);
 
-      prompts.push({
-        name: promptName.toString().trim(),
-        content: promptContent.toString().trim(),
+      // プロジェクト概要セクション
+      const projectInfoRow = 3;
+      const projectInfoRange = versionSheet.getRange(
+        projectInfoRow,
+        1,
+        1,
+        headers.length
+      );
+      projectInfoRange.merge();
+      projectInfoRange.setValue(
+        "🚀 スプレッドシート画像生成ツール - 開発履歴・技術情報\n\n" +
+          "🔹 このシートには全てのバージョン履歴と技術情報が記録されています\n" +
+          "🔹 GitHubリポジトリやドキュメントへのリンクも含まれています\n" +
+          "🔹 開発者・メンテナー向けの詳細情報を確認できます"
+      );
+      projectInfoRange.setBackground("#e8eaf6");
+      projectInfoRange.setFontWeight("bold");
+      projectInfoRange.setWrap(true);
+      projectInfoRange.setVerticalAlignment("top");
+      versionSheet.setRowHeight(projectInfoRow, 80);
+
+      // 現在のバージョン情報を追加
+      addVersionRecord({
+        version: "2.0.0",
+        releaseDate: "2025-01-27",
+        majorFeatures:
+          "🎯 プロダクト最終仕上げ - 共通プロンプト設定シート2列構造簡素化・ステータス列テキスト折り返し対応・画像生成ライブラリシート自動記録機能追加",
+        bugFixes:
+          "🔧 初期化エラー修正（clearDataValidations互換性対応）・管理シート自動遷移問題解決・結合プロンプト列幅拡張",
+        technicalInfo:
+          "📊 9列構造テーブル・視覚改善システム・Git Auto Push汎用ツール統合・GPT-Image-1 API対応",
+        links: "https://github.com/daideguchi/spreadsheet-image-generator",
       });
+
+      // 過去のバージョン履歴を追加
+      addVersionRecord({
+        version: "1.9.0",
+        releaseDate: "2025-01-26",
+        majorFeatures:
+          "🎨 視覚改善システム実装 - ユーザー入力エリアと自動生成エリアの色分け・境界線スタイル統一・UX大幅改善",
+        bugFixes:
+          "🔧 Google スプレッドシート50,000文字制限エラー解決・null/undefined安全処理・setValue制限緩和",
+        technicalInfo:
+          "📱 入力エリア（緑・オレンジ・青）・自動生成エリア（グレー）・破線境界線・実線境界線",
+        links: "https://github.com/daideguchi/spreadsheet-image-generator",
+      });
+
+      addVersionRecord({
+        version: "1.8.0",
+        releaseDate: "2025-01-25",
+        majorFeatures:
+          "🚀 Git Auto Push汎用ツール開発・ワンコマンドインストール対応・全プロダクトで使いまわし可能",
+        bugFixes:
+          "🔧 コミット・プッシュ作業の自動化・エラーハンドリング強化・カラー出力対応",
+        technicalInfo:
+          "📦 curl -s https://raw.githubusercontent.com/daideguchi/git-autopush/main/install.sh | bash",
+        links: "https://github.com/daideguchi/git-autopush",
+      });
+
+      addVersionRecord({
+        version: "1.7.0",
+        releaseDate: "2025-01-24",
+        majorFeatures:
+          "🔄 再生成機能・選択削除機能・全選択/解除機能・ダウンロード機能強化",
+        bugFixes:
+          "🔧 選択確認ロジック・統計情報表示・詳細ガイダンス・エラーハンドリング",
+        technicalInfo:
+          "📊 選択数/全画像数表示・3ステップ解決方法・成功/失敗詳細表示",
+        links: "https://github.com/daideguchi/spreadsheet-image-generator",
+      });
+
+      addVersionRecord({
+        version: "1.6.0",
+        releaseDate: "2025-01-23",
+        majorFeatures:
+          "📋 構造化テーブルシステム・9列構造・共通プロンプト管理・結合プロンプト自動生成",
+        bugFixes:
+          "🔧 テーブル初期化・ドロップダウン更新・プロンプト結合ロジック・視覚的改善",
+        technicalInfo:
+          "🎯 A列:No. B列:プロンプト C列:共通プロンプト D列:結合プロンプト E列:画像 F列:比率 G列:日時 H列:ステータス I列:選択",
+        links: "https://github.com/daideguchi/spreadsheet-image-generator",
+      });
+
+      addVersionRecord({
+        version: "1.5.0",
+        releaseDate: "2025-01-22",
+        majorFeatures:
+          "🤖 GPT-Image-1 API対応・最新モデル統合・32,000文字対応・高品質設定",
+        bugFixes:
+          "🔧 プロンプト完全無改変・自動サイズ判定・リトライ機能・エラーハンドリング強化",
+        technicalInfo:
+          "🔥 model: gpt-image-1, quality: high, background: auto, output_format: png",
+        links: "https://platform.openai.com/docs/models/gpt-image-1",
+      });
+
+      addVersionRecord({
+        version: "1.0.0",
+        releaseDate: "2025-01-21",
+        majorFeatures:
+          "🎨 DALL-E画像生成ツール初回リリース・スプレッドシート統合・サイドバーUI",
+        bugFixes: "🔧 基本機能実装・API連携・権限設定・エラーハンドリング",
+        technicalInfo:
+          "📱 Google Apps Script・OpenAI API・DALL-E 3・スプレッドシート統合",
+        links: "https://github.com/daideguchi/spreadsheet-image-generator",
+      });
+
+      console.log("✅ バージョン記録シートを作成しました");
     }
 
-    console.log(`✅ ${prompts.length}個の共通プロンプトを取得しました`);
-    return prompts;
+    return versionSheet;
   } catch (error) {
-    console.error("共通プロンプト取得エラー:", error);
-    return []; // エラー時は空配列を返す
+    console.error("バージョン記録シート作成エラー:", error);
+    throw new Error(
+      `バージョン記録シートの作成に失敗しました: ${error.message}`
+    );
   }
 }
 
 /**
- * C列の共通プロンプトドロップダウンを更新（ユーザー主導版）
+ * バージョン記録を追加
  */
-function updateCommonPromptDropdown() {
+function addVersionRecord(versionData) {
   try {
-    const sheet = SpreadsheetApp.getActiveSheet();
-    const prompts = getCommonPrompts();
+    const versionSheet = getOrCreateVersionSheet();
+    const lastRow = versionSheet.getLastRow();
+    const newRow = lastRow + 1;
 
-    if (prompts.length === 0) {
-      console.log(
-        "📝 共通プロンプトが登録されていません。ドロップダウンは空になります。"
-      );
-      // 空の場合でもドロップダウンを設定（手動入力可能）
-      const range = sheet.getRange("C:C");
-      const rule = SpreadsheetApp.newDataValidation()
-        .requireValueInList(["（共通プロンプトを登録してください）"], true)
-        .setAllowInvalid(true)
-        .setHelpText(
-          "共通プロンプト設定シートにプロンプトを登録すると、ここに表示されます。手動入力も可能です。"
-        )
-        .build();
-      range.setDataValidation(rule);
-      return;
+    // データを行に追加
+    const rowData = [
+      versionData.version || "不明", // A列: バージョン
+      versionData.releaseDate || new Date().toISOString().split("T")[0], // B列: リリース日
+      versionData.majorFeatures || "-", // C列: 主要機能
+      versionData.bugFixes || "-", // D列: 修正内容
+      versionData.technicalInfo || "-", // E列: 技術情報
+      versionData.links || "-", // F列: 関連リンク
+    ];
+
+    const dataRange = versionSheet.getRange(newRow, 1, 1, rowData.length);
+    dataRange.setValues([rowData]);
+
+    // スタイル設定
+    dataRange.setBorder(
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      "#e0e0e0",
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+
+    // 行ごとの色分け（見やすさ向上）
+    const bgColor = newRow % 2 === 0 ? "#f8f9fa" : "#ffffff";
+    dataRange.setBackground(bgColor);
+
+    // 各列の配置設定
+    versionSheet
+      .getRange(newRow, 1)
+      .setHorizontalAlignment("center")
+      .setFontWeight("bold"); // バージョン
+    versionSheet.getRange(newRow, 2).setHorizontalAlignment("center"); // リリース日
+    versionSheet.getRange(newRow, 3).setWrap(true).setVerticalAlignment("top"); // 主要機能
+    versionSheet.getRange(newRow, 4).setWrap(true).setVerticalAlignment("top"); // 修正内容
+    versionSheet.getRange(newRow, 5).setWrap(true).setVerticalAlignment("top"); // 技術情報
+    versionSheet.getRange(newRow, 6).setHorizontalAlignment("center"); // 関連リンク
+
+    // 行の高さを調整
+    versionSheet.setRowHeight(newRow, 120);
+
+    console.log(`✅ バージョン記録追加: ${versionData.version}`);
+    return true;
+  } catch (error) {
+    console.error("バージョン記録追加エラー:", error);
+    return false;
+  }
+}
+
+/**
+ * 開発者向け情報を取得
+ */
+function getDeveloperInfo() {
+  try {
+    const versionSheet = getOrCreateVersionSheet();
+    const lastRow = versionSheet.getLastRow();
+
+    if (lastRow < 2) {
+      return {
+        currentVersion: "不明",
+        totalVersions: 0,
+        lastUpdate: null,
+        githubLink: null,
+      };
     }
 
-    // 📋 シンプルなプロンプト名のリストを作成（空選択肢も追加）
-    const promptNames = ["（なし）", ...prompts.map((p) => p.name)];
+    // 最新バージョン情報を取得
+    const latestVersion = versionSheet.getRange(lastRow, 1).getValue();
+    const latestDate = versionSheet.getRange(lastRow, 2).getValue();
+    const githubLink = versionSheet.getRange(lastRow, 6).getValue();
 
-    // ドロップダウンリストを設定（データ行のみ、2-101行目）
-    const range = sheet.getRange(2, 3, 100, 1);
-    const rule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(promptNames, true)
-      .setAllowInvalid(true) // 手動入力も許可
-      .setHelpText(
-        `${
-          promptNames.length - 1
-        }個の共通プロンプトから選択できます。手動入力も可能です。`
-      )
-      .build();
-
-    range.setDataValidation(rule);
-
-    // 📱 追加: 共通プロンプト列の配置を中央に統一
-    range.setHorizontalAlignment("center");
-    range.setVerticalAlignment("middle");
-
-    console.log(
-      `✅ C列ドロップダウンを更新しました（${promptNames.length}個のプロンプト + 中央配置統一）`
-    );
+    return {
+      currentVersion: latestVersion,
+      totalVersions: lastRow - 1,
+      lastUpdate: latestDate,
+      githubLink: githubLink !== "-" ? githubLink : null,
+    };
   } catch (error) {
-    console.error("ドロップダウン更新エラー:", error);
-    throw new Error(`ドロップダウンの更新に失敗しました: ${error.message}`);
+    console.error("開発者情報取得エラー:", error);
+    return {
+      currentVersion: "エラー",
+      totalVersions: 0,
+      lastUpdate: null,
+      githubLink: null,
+    };
+  }
+}
+
+/**
+ * バージョン記録シートを開く
+ */
+function openVersionSheet() {
+  try {
+    const versionSheet = getOrCreateVersionSheet();
+    SpreadsheetApp.setActiveSheet(versionSheet);
+
+    // 開発者情報を取得して表示
+    const devInfo = getDeveloperInfo();
+
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      "📋 バージョン記録シート",
+      `🚀 スプレッドシート画像生成ツール - 開発履歴\n\n` +
+        `📊 現在のバージョン: ${devInfo.currentVersion}\n` +
+        `📅 最終更新: ${devInfo.lastUpdate}\n` +
+        `📈 総バージョン数: ${devInfo.totalVersions}\n\n` +
+        `🔗 GitHub: ${devInfo.githubLink || "リンクなし"}\n\n` +
+        `💡 このシートには全ての開発履歴と技術情報が記録されています。\n` +
+        `開発者・メンテナー向けの詳細情報を確認できます。`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+
+    console.log("✅ バージョン記録シートを開きました");
+    return "✅ バージョン記録シートを開きました";
+  } catch (error) {
+    console.error("バージョン記録シートを開くエラー:", error);
+    throw new Error(`バージョン記録シートを開けませんでした: ${error.message}`);
   }
 }
