@@ -1612,7 +1612,7 @@ function updateCombinedPrompt(sheet, row) {
     const combinedCell = sheet.getRange(row, 4);
     combinedCell.setValue(combinedPrompt);
 
-    // スタイル設定（自動生成エリア）
+    // スタイル設定（自動生成エリア + 縦幅制限）
     combinedCell.setBackground("#f5f5f5"); // グレー背景
     combinedCell.setFontColor("#616161"); // グレー文字
     combinedCell.setWrap(true);
@@ -1628,7 +1628,16 @@ function updateCombinedPrompt(sheet, row) {
       SpreadsheetApp.BorderStyle.DASHED
     );
 
-    console.log(`行${row}: 結合プロンプトを更新しました`);
+    // 🔧 重要：縦幅制限の実装
+    // 行の高さを固定（80ピクセル）でスクロール表示
+    sheet.setRowHeight(row, 80);
+
+    // セルのテキスト表示設定（縦幅制限でスクロール）
+    combinedCell.setTextStyle(
+      SpreadsheetApp.newTextStyle().setFontSize(10).build()
+    );
+
+    console.log(`行${row}: 結合プロンプトを更新しました（縦幅制限適用）`);
     return combinedPrompt;
   } catch (error) {
     console.error(`行${row}の結合プロンプト更新エラー:`, error);
@@ -2445,7 +2454,7 @@ function createStructuredTable() {
           "🎯 共通プロンプトを選択してください\n💡 新しい共通プロンプトは設定シートで追加可能です。"
         );
 
-        // D列: 結合プロンプト（自動生成エリア）- テキスト折り返し対応
+        // D列: 結合プロンプト（自動生成エリア）- 縦幅制限対応
         const combinedCell = sheet.getRange(row, 4);
         combinedCell.setValue("🔗"); // アイコンのみ表示
         combinedCell.setHorizontalAlignment("left"); // 📱 改善: 左寄せに変更
@@ -2466,7 +2475,7 @@ function createStructuredTable() {
           SpreadsheetApp.BorderStyle.DASHED
         ); // 📱 視覚改善: 破線の境界線
         combinedCell.setNote(
-          "🤖 自動結合プロンプト（編集不要）\n個別プロンプト + 共通プロンプトの結合結果がここに表示されます。"
+          "🤖 自動結合プロンプト（編集不要）\n個別プロンプト + 共通プロンプトの結合結果がここに表示されます。\n💡 長い文章もスクロールで確認できます。"
         );
 
         // E列: 生成画像（自動生成エリア）
@@ -2552,8 +2561,8 @@ function createStructuredTable() {
         ); // 📱 視覚改善: 緑色の境界線
         checkboxCell.setNote("☑️ 選択・操作エリア");
 
-        // 行の高さを固定（UX改善）
-        sheet.setRowHeight(row, 50); // 🔧 固定高さでUX改善
+        // 行の高さを固定（UX改善 + 結合プロンプト縦幅制限）
+        sheet.setRowHeight(row, 80); // 🔧 結合プロンプトのスクロール表示対応で80pxに設定
 
         // 10行ごとに薄い区切り線を追加
         if (i % 10 === 0) {

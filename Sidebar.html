@@ -572,6 +572,9 @@
             <button class="btn btn-secondary btn-small" onclick="showImagePreview()">
               👁️ プレビュー
             </button>
+            <button class="btn btn-secondary btn-small" id="backupBtn" onclick="createBackup()" style="display: none;">
+              💾 バックアップ
+            </button>
           </div>
         </div>
       </div>
@@ -632,6 +635,7 @@
           const setupBtn = document.getElementById('setupBtn');
           const generateBtn = document.getElementById('generateBtn');
           const managementSection = document.getElementById('managementSection');
+          const backupBtn = document.getElementById('backupBtn');
 
           setupBtn.disabled = false;
           setupBtn.classList.remove('disabled');
@@ -648,6 +652,11 @@
           }
 
           managementSection.style.display = hasImages ? 'block' : 'none';
+          
+          // バックアップボタンの表示制御（コンテンツがある時のみ表示）
+          if (backupBtn) {
+            backupBtn.style.display = (hasPrompt || hasImages) ? 'inline-block' : 'none';
+          }
         })
         .withFailureHandler(function(error) {
           console.error('シート状態取得エラー:', error);
@@ -1080,6 +1089,20 @@
           showResult('エラー: ' + error.message, true);
         })
         .deleteAllImagesWithConfirmation();
+    }
+
+    function createBackup() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+          // バックアップ完了後にボタン状態を再チェック
+          checkSheetState();
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .createBackupAndNewTable();
     }
   </script>
 </body>
