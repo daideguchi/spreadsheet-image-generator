@@ -1092,7 +1092,7 @@ function regenerateSelectedImages() {
 
     // チェックされた行のプロンプトを収集
     for (let i = 2; i <= lastRow; i++) {
-      const checkboxCell = sheet.getRange(i, 8); // H列（チェックボックス）
+      const checkboxCell = sheet.getRange(i, 9); // I列（チェックボックス）
       const isChecked = checkboxCell.getValue();
 
       if (isChecked === true) {
@@ -1268,8 +1268,8 @@ function getSheetState() {
           return v && typeof v === "string" && v.trim() !== "";
         });
 
-        // D列に画像が存在するかチェック（新しい8列構造）
-        const imageRange = sheet.getRange(2, 4, maxRows, 1);
+        // E列に画像が存在するかチェック（9列構造）
+        const imageRange = sheet.getRange(2, 5, maxRows, 1);
         const imageFormulas = imageRange.getFormulas();
         hasImages = imageFormulas.some((row) => {
           const formula = row[0];
@@ -2086,11 +2086,11 @@ function deleteSelectedImages() {
 
     // チェックされた行を検索して画像のみ削除
     for (let i = 2; i <= lastRow; i++) {
-      const checkboxCell = sheet.getRange(i, 8); // H列（チェックボックス）
+      const checkboxCell = sheet.getRange(i, 9); // I列（チェックボックス）
       const isChecked = checkboxCell.getValue();
 
       if (isChecked === true) {
-        const imageCell = sheet.getRange(i, 4); // D列（画像列）
+        const imageCell = sheet.getRange(i, 5); // E列（画像列）
         const imageFormula = imageCell.getFormula();
 
         if (imageFormula && imageFormula.includes("=IMAGE(")) {
@@ -2153,7 +2153,7 @@ function deleteAllImages() {
 
     // すべての行をチェックして画像を削除
     for (let i = 2; i <= lastRow; i++) {
-      const imageCell = sheet.getRange(i, 4); // D列（画像列）
+      const imageCell = sheet.getRange(i, 5); // E列（画像列）
       const imageFormula = imageCell.getFormula();
 
       if (imageFormula && imageFormula.includes("=IMAGE(")) {
@@ -2180,7 +2180,7 @@ function deleteAllImages() {
         deleteCount++;
 
         // チェックボックスを解除（選択状態もリセット）
-        const checkboxCell = sheet.getRange(i, 8);
+        const checkboxCell = sheet.getRange(i, 9);
         checkboxCell.setValue(false);
       }
     }
@@ -2393,7 +2393,7 @@ function getSelectedImageCount() {
 
     // チェックされた行を検索
     for (let i = 2; i <= lastRow; i++) {
-      const checkboxCell = sheet.getRange(i, 8); // H列（チェックボックス）
+      const checkboxCell = sheet.getRange(i, 9); // I列（チェックボックス）
       const isChecked = checkboxCell.getValue();
 
       if (isChecked === true) {
@@ -2487,7 +2487,7 @@ function showLatestErrorDebug() {
 
       // 結果配置のテスト
       console.log("🔍 結果配置テスト開始");
-      const result = placeImageResultsInStructuredTable(imageResults);
+      const result = populateStructuredTable(imageResults, [2]);
       console.log("✅ 結果配置成功:", result);
 
       ui.alert(
@@ -2626,11 +2626,11 @@ function getSelectedImageUrls() {
 
     // チェックされた行を検索
     for (let i = 2; i <= lastRow; i++) {
-      const checkboxCell = sheet.getRange(i, 8); // H列（チェックボックス）
+      const checkboxCell = sheet.getRange(i, 9); // I列（チェックボックス）
       const isChecked = checkboxCell.getValue();
 
       if (isChecked === true) {
-        const imageCell = sheet.getRange(i, 4); // D列（画像列）
+        const imageCell = sheet.getRange(i, 5); // E列（画像列）
         const imageFormula = imageCell.getFormula();
 
         if (imageFormula && imageFormula.includes("=IMAGE(")) {
@@ -2674,7 +2674,7 @@ function getAllImagePreviewData() {
     const images = [];
 
     for (let i = 2; i <= lastRow; i++) {
-      const imageCell = sheet.getRange(i, 4); // D列（画像列）
+      const imageCell = sheet.getRange(i, 5); // E列（画像列）
       const imageFormula = imageCell.getFormula();
 
       if (imageFormula && imageFormula.includes("=IMAGE(")) {
