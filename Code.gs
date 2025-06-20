@@ -3910,6 +3910,18 @@ function addToImageLibrary(imageData) {
     const imageCell = librarySheet.getRange(newRow, 3);
     imageCell.setHorizontalAlignment("center");
     imageCell.setVerticalAlignment("middle");
+
+    // 🔥 ライブラリシート書式問題の根本修正
+    console.log(`📐 画像セル書式設定開始: ${imageCell.getA1Notation()}`);
+
+    // 画像表示に適した書式設定
+    imageCell.setWrap(false); // 折り返し無効
+    imageCell.setNumberFormat("@"); // テキスト形式（IMAGE関数用）
+
+    // 画像列の幅と行の高さを画像表示に最適化
+    librarySheet.setColumnWidth(3, 120); // C列：画像表示に十分な幅
+    librarySheet.setRowHeight(newRow, 100); // 画像表示に十分な高さ
+
     console.log(`📷 画像セル準備完了: ${imageCell.getA1Notation()}`);
 
     // 🚀 確実な画像設定処理
@@ -4148,8 +4160,7 @@ function addToImageLibrary(imageData) {
     checkboxCell.setVerticalAlignment("middle");
     checkboxCell.setBackground("#e8f5e8"); // 操作エリアを明るい緑色に
 
-    // 💡 改善要求: 行の高さを結合プロンプト形式に合わせて調整
-    librarySheet.setRowHeight(newRow, 50); // 💡 改善要求: 結合プロンプトと同じ50pxに統一
+    // 🔥 書式問題修正：行の高さは既にcreateEmptyLibrarySheet()で設定済み（100px）
 
     console.log(
       `🎉 ライブラリに記録追加完了: 行${newRow} - 画像コピー${
@@ -4824,12 +4835,23 @@ function createEmptyLibrarySheet() {
     // 💡 改善要求: 列幅の最適化（結合プロンプト形式対応）
     librarySheet.setColumnWidth(1, 60); // No.
     librarySheet.setColumnWidth(2, 200); // プロンプト（💡 改善要求: 結合プロンプトと同じ200px）
-    librarySheet.setColumnWidth(3, 180); // 画像
+    librarySheet.setColumnWidth(3, 120); // 画像（🔥 書式問題修正：画像表示最適化）
     librarySheet.setColumnWidth(4, 70); // 比率
     librarySheet.setColumnWidth(5, 120); // 日時
     librarySheet.setColumnWidth(6, 90); // ステータス
     librarySheet.setColumnWidth(7, 50); // 元行
     librarySheet.setColumnWidth(8, 50); // チェックボックス
+
+    // 🔥 C列（画像列）の書式問題を根本修正
+    const imageColumnRange = librarySheet.getRange(1, 3, 1000, 1); // C列全体
+    imageColumnRange.setNumberFormat("@"); // テキスト形式（IMAGE関数最適化）
+    imageColumnRange.setWrap(false); // 折り返し無効
+    imageColumnRange.setHorizontalAlignment("center");
+    imageColumnRange.setVerticalAlignment("middle");
+    console.log("🔥 C列（画像列）書式設定完了");
+
+    // デフォルト行の高さを画像表示に最適化
+    librarySheet.setRowHeights(4, 997, 100); // 4行目以降を画像表示に適した高さに
 
     // ヘッダー行の高さ
     librarySheet.setRowHeight(1, 45);
