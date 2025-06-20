@@ -827,7 +827,19 @@ function populateStructuredTable(imageResults, promptRows) {
       } else {
         // 成功した画像の処理
         const imageCell = sheet.getRange(row, 4);
-        imageCell.setFormula(`=IMAGE("${result.url}", 1)`);
+        // 画像URLが data URL(base64) 形式の場合、
+        // そのままセルに入れると 50,000 文字制限に抵触する。
+        // Drive に保存して共有リンクに置き換えることで制限を回避。
+        let imageUrlForSheet = result.url;
+        if (imageUrlForSheet && imageUrlForSheet.startsWith("data:image")) {
+          try {
+            imageUrlForSheet = uploadBase64ImageToDrive(imageUrlForSheet);
+            console.log(`📁 Driveに保存した画像URL: ${imageUrlForSheet}`);
+          } catch (driveError) {
+            console.error("🚨 Drive保存失敗:", driveError.message);
+          }
+        }
+        imageCell.setFormula(`=IMAGE("${imageUrlForSheet}", 1)`);
 
         // C列: 画像比率（動的検出）
         const ratioCell = sheet.getRange(row, 5);
@@ -2672,5 +2684,44 @@ function testCellCharacterLimits() {
   } catch (error) {
     console.error("🚨 文字数制限テストでエラー:", error);
     throw new Error(`文字数制限テスト失敗: ${error.message}`);
+  }
+}
+
+/**
+ * 📁 data URL (base64) 形式の画像を Google Drive に保存し、
+ * 共有リンク (https://drive.google.com/uc?id=...) を返す。
+ * 長大な data URL を短い URL に変換して 50,000 文字制限を回避する。
+ */
+function uploadBase64ImageToDrive(dataUrl) {
+  try {
+    const matches = dataUrl.match(/^data:image\/png;base64,(.+)$/);
+    if (!matches || matches.length < 2) {
+      throw new Error("無効な data URL 形式です");
+    }
+
+    const base64Data = matches[1];
+    const blob = Utilities.newBlob(
+      Utilities.base64Decode(base64Data),
+      "image/png",
+      `dalle_${Utilities.getUuid()}.png`
+    );
+
+    // 保存先フォルダを取得（無ければ作成）
+    const folderName = "DALL-E Generated Images";
+    let folder;
+    const folders = DriveApp.getFoldersByName(folderName);
+    folder = folders.hasNext()
+      ? folders.next()
+      : DriveApp.createFolder(folderName);
+
+    const file = folder.createFile(blob);
+
+    // 全員閲覧可に設定（IMAGE 関数用URLは認証不要にする）
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    return `https://drive.google.com/uc?id=${file.getId()}`;
+  } catch (e) {
+    console.error("uploadBase64ImageToDrive エラー:", e);
+    throw e;
   }
 }
