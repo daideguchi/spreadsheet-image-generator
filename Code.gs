@@ -4964,6 +4964,79 @@ function checkForAnyData() {
 }
 
 /**
+ * 🔥 ライブラリ管理改善：入力シートでの混乱を解決するための新機能群
+ */
+
+/**
+ * 現在のシートがライブラリシートかどうかを判定
+ */
+function isCurrentSheetLibrary() {
+  try {
+    const currentSheet = SpreadsheetApp.getActiveSheet();
+    const isLibrary = currentSheet.getName() === "画像生成ライブラリ";
+    console.log(
+      `🔍 現在のシート: ${currentSheet.getName()}, ライブラリシート: ${isLibrary}`
+    );
+    return isLibrary;
+  } catch (error) {
+    console.error("シート判定エラー:", error);
+    return false;
+  }
+}
+
+/**
+ * ライブラリシートに移動
+ */
+function switchToLibrarySheet() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let librarySheet = spreadsheet.getSheetByName("画像生成ライブラリ");
+
+    if (!librarySheet) {
+      // ライブラリシートが存在しない場合は作成
+      librarySheet = createEmptyLibrarySheet();
+      console.log("🆕 ライブラリシートを新規作成しました");
+    }
+
+    // ライブラリシートをアクティブにする
+    spreadsheet.setActiveSheet(librarySheet);
+    console.log("📚 ライブラリシートに移動完了");
+    return true;
+  } catch (error) {
+    console.error("ライブラリシート移動エラー:", error);
+    throw new Error(`ライブラリシートへの移動に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * ライブラリシートに移動してから全選択を実行
+ */
+function switchToLibraryAndToggleSelection() {
+  try {
+    switchToLibrarySheet();
+    return toggleAllLibrarySelection();
+  } catch (error) {
+    console.error("ライブラリ移動＆全選択エラー:", error);
+    throw new Error(`ライブラリ移動＆全選択に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * ライブラリシートに移動してからダウンロードを実行
+ */
+function switchToLibraryAndDownload() {
+  try {
+    switchToLibrarySheet();
+    return downloadSelectedLibraryImages();
+  } catch (error) {
+    console.error("ライブラリ移動＆ダウンロードエラー:", error);
+    throw new Error(
+      `ライブラリ移動＆ダウンロードに失敗しました: ${error.message}`
+    );
+  }
+}
+
+/**
  * シート状態を取得（改良版）
  */
 function getSheetState() {

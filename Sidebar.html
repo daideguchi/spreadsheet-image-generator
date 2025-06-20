@@ -1333,35 +1333,101 @@
         .createBackupAndNewTable();
     }
 
-    // 💡 改善要求: ライブラリ管理機能のJavaScript実装
+    // 🔥 ライブラリ管理機能の改善：入力シートでの混乱を解決
     function toggleAllLibrarySelection() {
-      showLoading();
+      // まず現在のシートがライブラリシートかチェック
       google.script.run
-        .withSuccessHandler(function(result) {
-          showResult(result);
+        .withSuccessHandler(function(isLibrarySheet) {
+          if (!isLibrarySheet) {
+            // 入力シートの場合：ライブラリシートに移動してから実行
+            showResult('📚 ライブラリシートに移動して操作を実行します...', false);
+            google.script.run
+              .withSuccessHandler(function(result) {
+                showResult(result);
+              })
+              .withFailureHandler(function(error) {
+                showResult('エラー: ' + error.message, true);
+              })
+              .switchToLibraryAndToggleSelection();
+          } else {
+            // ライブラリシートの場合：直接実行
+            showLoading();
+            google.script.run
+              .withSuccessHandler(function(result) {
+                showResult(result);
+              })
+              .withFailureHandler(function(error) {
+                showResult('エラー: ' + error.message, true);
+              })
+              .toggleAllLibrarySelection();
+          }
         })
         .withFailureHandler(function(error) {
           showResult('エラー: ' + error.message, true);
         })
-        .toggleAllLibrarySelection();
+        .isCurrentSheetLibrary();
     }
 
     function downloadSelectedLibraryImages() {
-      showLoading();
+      // まず現在のシートがライブラリシートかチェック
       google.script.run
-        .withSuccessHandler(function(result) {
-          showResult(result);
+        .withSuccessHandler(function(isLibrarySheet) {
+          if (!isLibrarySheet) {
+            // 入力シートの場合：ライブラリシートに移動してから実行
+            showResult('📚 ライブラリシートに移動してダウンロードを実行します...', false);
+            google.script.run
+              .withSuccessHandler(function(result) {
+                showResult(result);
+              })
+              .withFailureHandler(function(error) {
+                showResult('エラー: ' + error.message, true);
+              })
+              .switchToLibraryAndDownload();
+          } else {
+            // ライブラリシートの場合：直接実行
+            showLoading();
+            google.script.run
+              .withSuccessHandler(function(result) {
+                showResult(result);
+              })
+              .withFailureHandler(function(error) {
+                showResult('エラー: ' + error.message, true);
+              })
+              .downloadSelectedLibraryImages();
+          }
         })
         .withFailureHandler(function(error) {
           showResult('エラー: ' + error.message, true);
         })
-        .downloadSelectedLibraryImages();
+        .isCurrentSheetLibrary();
     }
 
-    // 💡 改善要求: ライブラリリセット機能（確認モーダル付き）
+    // 🔥 ライブラリリセット機能（入力シート対応改善）
     function resetLibraryWithConfirmation() {
-      // ライブラリリセット確認モーダルを表示
-      showLibraryResetModal();
+      // まず現在のシートがライブラリシートかチェック
+      google.script.run
+        .withSuccessHandler(function(isLibrarySheet) {
+          if (!isLibrarySheet) {
+            // 入力シートの場合：ライブラリシートに移動してから実行
+            showResult('📚 ライブラリシートに移動してリセット操作を実行します...', false);
+            google.script.run
+              .withSuccessHandler(function() {
+                // ライブラリシートに移動後、確認モーダルを表示
+                showLibraryResetModal();
+              })
+              .withFailureHandler(function(error) {
+                showResult('エラー: ' + error.message, true);
+              })
+              .switchToLibrarySheet();
+          } else {
+            // ライブラリシートの場合：直接確認モーダルを表示
+            showLibraryResetModal();
+          }
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .isCurrentSheetLibrary();
     }
     
     // 💡 改善要求: ライブラリリセットの確認モーダル実装
