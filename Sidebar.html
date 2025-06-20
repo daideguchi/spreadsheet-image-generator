@@ -536,8 +536,8 @@
         <!-- 基本操作グループ -->
         <div class="button-section">
           <div class="section-title">📋 基本操作</div>
-          <button class="btn btn-setup" id="setupBtn" onclick="executeBackup()" title="すでに初期化済みです">
-            🔧 表を初期化
+          <button class="btn btn-setup" id="setupBtn" onclick="executeSetupWithBackup()" title="データを安全にバックアップしてから初期化します">
+            🔧 表を初期化（バックアップ付き）
           </button>
           
           <button class="btn" id="generateBtn" onclick="generateFromStructuredTable()" title="プロンプトを入力してください">
@@ -836,18 +836,145 @@
       }, 1500);
     }
 
-    // 💡 改善要求: 表初期化前に確認モーダルを表示
-    function executeBackup() {
-      // モーダル確認ダイアログを表示
-      showInitializationModal();
+    // 💡 緊急修正: 安全なバックアップ付き初期化
+    function executeSetupWithBackup() {
+      // データ確認モーダルを表示
+      showDataProtectionModal();
     }
     
-    // 💡 改善要求: 表初期化の確認モーダル実装
-    function showInitializationModal() {
+    // 💡 緊急修正: データ保護確認モーダル
+    function showDataProtectionModal() {
+      // まずシート状態を確認
+      google.script.run
+        .withSuccessHandler(function(hasData) {
+          if (hasData) {
+            // データがある場合はバックアップ確認
+            showBackupConfirmationModal();
+          } else {
+            // データがない場合は直接初期化
+            proceedWithDirectInitialization();
+          }
+        })
+        .withFailureHandler(function(error) {
+          // エラーの場合は安全側に倒してバックアップ確認
+          showBackupConfirmationModal();
+        })
+        .checkForAnyData();
+    }
+    
+    // 💡 緊急修正: バックアップ確認モーダル
+    function showBackupConfirmationModal() {
       const modal = document.createElement('div');
       modal.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(0,0,0,0.7); z-index: 999999; display: flex;
+        background: rgba(0,0,0,0.8); z-index: 999999; display: flex;
+        align-items: center; justify-content: center;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">💾</div>
+            <h3 style="margin: 0; color: #1976d2; font-size: 20px; font-weight: bold;">データ保護確認</h3>
+          </div>
+          
+          <div style="background: #e8f5e8; border: 2px solid #4caf50; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <div style="color: #2e7d32; font-weight: bold; margin-bottom: 12px;">✅ 既存データが検出されました</div>
+            <div style="color: #388e3c; font-size: 14px; line-height: 1.6;">
+              <strong>安全な初期化方法：</strong><br>
+              1️⃣ <strong>バックアップ付き初期化</strong>（推奨）<br>
+              　　→ 現在のデータをバックアップシートに保存してから初期化<br><br>
+              2️⃣ <strong>直接初期化</strong>（危険）<br>
+              　　→ バックアップなしで即座に初期化<br><br>
+              3️⃣ <strong>キャンセル</strong><br>
+              　　→ データを保持したまま操作をキャンセル
+            </div>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button onclick="executeBackupAndInit()" style="
+              padding: 16px; border: none; background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); 
+              color: white; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(76, 175, 80, 0.4)'" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)'">
+              💾 バックアップ付き初期化（推奨）
+            </button>
+            <button onclick="executeDangerousInit()" style="
+              padding: 12px; border: 2px solid #ff9800; background: white; 
+              color: #f57c00; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='#fff3e0'" onmouseout="this.style.background='white'">
+              ⚠️ 直接初期化（バックアップなし）
+            </button>
+            <button onclick="cancelDataProtection()" style="
+              padding: 12px; border: 2px solid #ccc; background: white; 
+              color: #666; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='white'">
+              ❌ キャンセル
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      document.body.style.overflow = 'hidden';
+      
+      // グローバル関数として定義
+      window.executeBackupAndInit = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.executeBackupAndInit;
+        delete window.executeDangerousInit;
+        delete window.cancelDataProtection;
+        
+        // バックアップ付き初期化を実行
+        proceedWithBackupInitialization();
+      };
+      
+      window.executeDangerousInit = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.executeBackupAndInit;
+        delete window.executeDangerousInit;
+        delete window.cancelDataProtection;
+        
+        // 危険な確認モーダルを表示
+        showDangerousInitModal();
+      };
+      
+      window.cancelDataProtection = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.executeBackupAndInit;
+        delete window.executeDangerousInit;
+        delete window.cancelDataProtection;
+      };
+    }
+    
+    // 💡 緊急修正: バックアップ付き初期化の実行
+    function proceedWithBackupInitialization() {
+      showLoading();
+      updateStepIndicator('step1');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+          updateStepIndicator('step2');
+          checkSheetState();
+        })
+        .withFailureHandler(function(error) {
+          showResult('バックアップエラー: ' + error.message, true);
+        })
+        .createBackupAndNewTable();
+    }
+    
+    // 💡 緊急修正: 危険な直接初期化の確認モーダル
+    function showDangerousInitModal() {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.9); z-index: 999999; display: flex;
         align-items: center; justify-content: center;
       `;
       
@@ -855,79 +982,82 @@
         <div style="background: white; border-radius: 16px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
           <div style="text-align: center; margin-bottom: 24px;">
             <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-            <h3 style="margin: 0; color: #d32f2f; font-size: 20px; font-weight: bold;">重要：データ消失の確認</h3>
+            <h3 style="margin: 0; color: #d32f2f; font-size: 20px; font-weight: bold;">最終確認：データ消失</h3>
           </div>
           
-          <div style="background: #fff3e0; border: 2px solid #ff9800; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <div style="color: #ef6c00; font-weight: bold; margin-bottom: 12px;">🚨 表を初期化すると、現在のシートの全データが失われます！</div>
-            <div style="color: #e65100; font-size: 14px; line-height: 1.6;">
-              <strong>削除される内容：</strong><br>
-              • プロンプト内容<br>
-              • 生成済みの画像<br>
-              • その他の全てのデータ<br><br>
-              <strong style="color: #d32f2f;">⚠️ この操作は取り消せません</strong>
+          <div style="background: #ffebee; border: 2px solid #f44336; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <div style="color: #c62828; font-weight: bold; margin-bottom: 12px;">🚨 バックアップなしで初期化を実行します</div>
+            <div style="color: #d32f2f; font-size: 14px; line-height: 1.6;">
+              <strong>完全に削除される内容：</strong><br>
+              • 全てのプロンプト<br>
+              • 生成済みの全画像<br>
+              • ライブラリのデータ<br>
+              • その他の全データ<br><br>
+              <strong style="color: #b71c1c;">❌ この操作は完全に取り消せません</strong>
             </div>
           </div>
           
           <div style="text-align: center; color: #424242; font-size: 14px; margin-bottom: 24px;">
-            本当にデータを削除して初期化しますか？
+            本当にバックアップなしで初期化を実行しますか？
           </div>
           
           <div style="display: flex; gap: 12px;">
-            <button onclick="cancelInitialization()" style="
-              flex: 1; padding: 14px; border: 2px solid #ccc; background: white; 
-              color: #666; border-radius: 8px; cursor: pointer; font-weight: bold;
+            <button onclick="cancelDangerousInit()" style="
+              flex: 1; padding: 14px; border: 2px solid #4caf50; background: white; 
+              color: #388e3c; border-radius: 8px; cursor: pointer; font-weight: bold;
               transition: all 0.2s;
-            " onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='white'">
-              ❌ キャンセル
+            " onmouseover="this.style.background='#e8f5e8'" onmouseout="this.style.background='white'">
+              💾 戻ってバックアップ
             </button>
-            <button onclick="confirmInitialization()" style="
+            <button onclick="confirmDangerousInit()" style="
               flex: 1; padding: 14px; border: none; background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); 
               color: white; border-radius: 8px; cursor: pointer; font-weight: bold;
               transition: all 0.2s; box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
             " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(244, 67, 54, 0.4)'" 
                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(244, 67, 54, 0.3)'">
-              🔴 削除して初期化
+              🔴 強制実行
             </button>
           </div>
         </div>
       `;
       
       document.body.appendChild(modal);
-      document.body.style.overflow = 'hidden'; // スクロール防止
+      document.body.style.overflow = 'hidden';
       
       // グローバル関数として定義
-      window.cancelInitialization = () => {
+      window.cancelDangerousInit = () => {
         document.body.removeChild(modal);
         document.body.style.overflow = 'auto';
-        delete window.cancelInitialization;
-        delete window.confirmInitialization;
+        delete window.cancelDangerousInit;
+        delete window.confirmDangerousInit;
+        
+        // バックアップ確認モーダルに戻る
+        showBackupConfirmationModal();
       };
       
-      window.confirmInitialization = () => {
+      window.confirmDangerousInit = () => {
         document.body.removeChild(modal);
         document.body.style.overflow = 'auto';
-        delete window.cancelInitialization;
-        delete window.confirmInitialization;
+        delete window.cancelDangerousInit;
+        delete window.confirmDangerousInit;
         
-        // 実際の初期化処理を実行
-        proceedWithInitialization();
+        // 危険な直接初期化を実行
+        proceedWithDirectInitialization();
       };
     }
-    
-    // 💡 改善要求: 確認後の実際の初期化処理
-    function proceedWithInitialization() {
+
+    // 💡 緊急修正: 直接初期化（データなしの場合）
+    function proceedWithDirectInitialization() {
       showLoading();
       updateStepIndicator('step1');
       google.script.run
         .withSuccessHandler(function(result) {
           showResult(result);
           updateStepIndicator('step2');
-          // 初期設定完了後にボタン状態を再チェック
           checkSheetState();
         })
         .withFailureHandler(function(error) {
-          showResult('エラー: ' + error.message, true);
+          showResult('初期化エラー: ' + error.message, true);
         })
         .createStructuredTable();
     }

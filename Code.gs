@@ -2254,79 +2254,88 @@ function clearAllData() {
 }
 
 /**
- * バックアップを作成して新しいテーブルを作成
+ * バックアップを作成して新しいテーブルを作成（改良版）
  */
 function createBackupAndNewTable() {
   try {
     const ui = SpreadsheetApp.getUi();
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const currentSheet = spreadsheet.getActiveSheet();
+    const currentSheetName = currentSheet.getName();
 
-    // データがあるかチェック
+    console.log(`🔧 バックアップ開始: シート「${currentSheetName}」`);
+
+    // データ存在確認
     const hasData = checkForAnyData();
 
     if (!hasData) {
-      ui.alert(
-        "📝 データなし",
-        "バックアップするデータがありません。\n\n" +
-          "🚀 「🔧 初期セットアップ」から新しいテーブルを作成してください。",
-        ui.ButtonSet.OK
-      );
-      return "バックアップするデータがありません";
-    }
-
-    const response = ui.alert(
-      "💾 バックアップ作成",
-      "現在のデータをバックアップして新しいテーブルを作成します。\n\n" +
-        "📋 実行内容：\n" +
-        "1️⃣ 現在のシートを「Backup_日付」として複製\n" +
-        "2️⃣ 現在のシートをクリア\n" +
-        "3️⃣ 新しい構造化テーブルを作成\n\n" +
-        "続行しますか？",
-      ui.ButtonSet.YES_NO
-    );
-
-    if (response === ui.Button.YES) {
-      // バックアップシート名を生成
-      const now = new Date();
-      const timestamp = Utilities.formatDate(
-        now,
-        Session.getScriptTimeZone(),
-        "yyyy-MM-dd_HH-mm"
-      );
-      const backupName = `Backup_${timestamp}`;
-
-      // 現在のシートを複製してバックアップを作成
-      const backupSheet = currentSheet.copyTo(spreadsheet);
-      backupSheet.setName(backupName);
-
-      // 現在のシートをクリア
-      clearAllData();
-
-      // 新しい構造化テーブルを作成
+      console.log("📄 バックアップ対象データなし - 直接初期化実行");
+      // データがない場合は直接初期化
       const result = createStructuredTable();
-
-      ui.alert(
-        "✅ バックアップ完了",
-        `バックアップが正常に作成されました！\n\n` +
-          `💾 バックアップシート: 「${backupName}」\n` +
-          `🆕 現在のシート: 新しい構造化テーブル\n\n` +
-          `🚀 B列にプロンプトを入力して画像生成を開始できます。`,
-        ui.ButtonSet.OK
-      );
-
-      return `✅ バックアップ「${backupName}」を作成し、新しいテーブルを設定しました`;
-    } else {
-      return "バックアップ作成をキャンセルしました";
+      return `✅ 新しい構造化テーブルを作成しました！\n\n📋 準備完了:\n• 100行の構造化テーブル\n• プロンプト入力エリア\n• 画像生成機能\n\n🎨 B列にプロンプトを入力して画像生成を開始できます。`;
     }
-  } catch (error) {
-    console.error("バックアップ作成エラー:", error);
-    SpreadsheetApp.getUi().alert(
-      "エラー",
-      "バックアップの作成に失敗しました: " + error.message,
-      SpreadsheetApp.getUi().ButtonSet.OK
+
+    // バックアップシート名を生成
+    const now = new Date();
+    const timestamp = Utilities.formatDate(
+      now,
+      Session.getScriptTimeZone(),
+      "yyyy-MM-dd_HH-mm-ss"
     );
-    throw error;
+    const backupName = `Backup_${currentSheetName}_${timestamp}`;
+
+    console.log(`💾 バックアップシート作成: ${backupName}`);
+
+    // 現在のシートを複製してバックアップを作成
+    const backupSheet = currentSheet.copyTo(spreadsheet);
+    backupSheet.setName(backupName);
+
+    // バックアップシートを一番右に移動
+    const totalSheets = spreadsheet.getSheets().length;
+    spreadsheet.moveActiveSheet(totalSheets);
+
+    console.log(`✅ バックアップ完了: ${backupName}`);
+
+    // 元のシートに戻る
+    spreadsheet.setActiveSheet(currentSheet);
+
+    // 現在のシートをクリア
+    console.log(`🧹 元シートクリア開始`);
+    clearAllData();
+    console.log(`✅ 元シートクリア完了`);
+
+    // 新しい構造化テーブルを作成
+    console.log(`🔧 新テーブル作成開始`);
+    const result = createStructuredTable();
+    console.log(`✅ 新テーブル作成完了`);
+
+    const successMessage =
+      `✅ バックアップが正常に作成されました！\n\n` +
+      `💾 バックアップシート: 「${backupName}」\n` +
+      `🆕 現在のシート: 「${currentSheetName}」（新しい構造化テーブル）\n\n` +
+      `📋 準備完了:\n` +
+      `• 元データは「${backupName}」に安全に保存\n` +
+      `• 新しい100行構造化テーブル作成済み\n` +
+      `• プロンプト入力エリア設定済み\n\n` +
+      `🚀 B列にプロンプトを入力して画像生成を開始できます。\n\n` +
+      `💡 バックアップは画面下部のシートタブから確認できます。`;
+
+    console.log(`🎉 バックアップ付き初期化完了`);
+    return successMessage;
+  } catch (error) {
+    console.error("🚨 バックアップ作成エラー:", error);
+
+    // エラーメッセージを詳細に
+    const errorMessage =
+      `❌ バックアップの作成に失敗しました\n\n` +
+      `🚨 エラー詳細: ${error.message}\n\n` +
+      `💡 対処方法:\n` +
+      `1️⃣ ページをリロードしてから再試行\n` +
+      `2️⃣ 手動でシートを複製してからツール実行\n` +
+      `3️⃣ それでも解決しない場合は開発者に連絡\n\n` +
+      `⚠️ データを保護するため、初期化を中止しました。`;
+
+    throw new Error(errorMessage);
   }
 }
 
@@ -4853,5 +4862,117 @@ function createEmptyLibrarySheet() {
     throw new Error(
       `空白ライブラリシートの作成に失敗しました: ${error.message}`
     );
+  }
+}
+
+/**
+ * シートにデータが存在するかチェック（緊急修正版）
+ */
+function checkForAnyData() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+
+    console.log(`📊 シート状態チェック: ${lastRow}行 × ${lastCol}列`);
+
+    // 1行目のみ、または空の場合はデータなし
+    if (lastRow <= 1 && lastCol <= 1) {
+      console.log("📄 データなし: 空のシート");
+      return false;
+    }
+
+    // 2行目以降にデータがあるかチェック
+    if (lastRow >= 2) {
+      // B列（プロンプト列）をチェック
+      const promptRange = sheet.getRange(2, 2, Math.min(lastRow - 1, 100), 1);
+      const promptValues = promptRange.getValues();
+
+      for (let i = 0; i < promptValues.length; i++) {
+        const cellValue = promptValues[i][0];
+        if (
+          cellValue &&
+          typeof cellValue === "string" &&
+          cellValue.trim() !== ""
+        ) {
+          console.log(`📝 プロンプトデータ検出: 行${i + 2}`);
+          return true;
+        }
+      }
+
+      // E列（画像列）をチェック
+      const imageRange = sheet.getRange(2, 5, Math.min(lastRow - 1, 100), 1);
+      const imageFormulas = imageRange.getFormulas();
+
+      for (let i = 0; i < imageFormulas.length; i++) {
+        const formula = imageFormulas[i][0];
+        if (formula && formula.includes("=IMAGE(")) {
+          console.log(`🖼️ 画像データ検出: 行${i + 2}`);
+          return true;
+        }
+      }
+    }
+
+    console.log("📄 有効なデータなし");
+    return false;
+  } catch (error) {
+    console.error("データ検出エラー:", error);
+    // エラーの場合は安全側に倒してデータありとする
+    return true;
+  }
+}
+
+/**
+ * シート状態を取得（改良版）
+ */
+function getSheetState() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return { isEmpty: true, hasPrompt: false, hasImages: false };
+    }
+
+    let hasPrompt = false;
+    let hasImages = false;
+
+    // プロンプトチェック（B列）
+    const promptRange = sheet.getRange(2, 2, Math.min(lastRow - 1, 100), 1);
+    const promptValues = promptRange.getValues();
+
+    for (let i = 0; i < promptValues.length; i++) {
+      const cellValue = promptValues[i][0];
+      if (
+        cellValue &&
+        typeof cellValue === "string" &&
+        cellValue.trim() !== ""
+      ) {
+        hasPrompt = true;
+        break;
+      }
+    }
+
+    // 画像チェック（E列）
+    const imageRange = sheet.getRange(2, 5, Math.min(lastRow - 1, 100), 1);
+    const imageFormulas = imageRange.getFormulas();
+
+    for (let i = 0; i < imageFormulas.length; i++) {
+      const formula = imageFormulas[i][0];
+      if (formula && formula.includes("=IMAGE(")) {
+        hasImages = true;
+        break;
+      }
+    }
+
+    const isEmpty = !hasPrompt && !hasImages;
+
+    console.log(
+      `📊 シート状態: empty=${isEmpty}, prompt=${hasPrompt}, images=${hasImages}`
+    );
+    return { isEmpty, hasPrompt, hasImages };
+  } catch (error) {
+    console.error("シート状態取得エラー:", error);
+    return { isEmpty: true, hasPrompt: false, hasImages: false };
   }
 }
