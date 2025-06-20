@@ -569,7 +569,7 @@
         <div class="button-section">
           <div class="section-title">⚙️ その他</div>
           <div class="button-row">
-            <button class="btn btn-secondary btn-small" onclick="checkSheetState()">
+            <button class="btn btn-secondary btn-small" onclick="refreshStatus()">
               ⚡ 更新
             </button>
           </div>
@@ -625,51 +625,51 @@
       }
     });
 
-    function checkSheetState() {
+    function refreshStatus() {
+      showLoading();
       google.script.run
         .withSuccessHandler(function(state) {
-          const { isEmpty, hasPrompt, hasImages } = state;
-          // console.log('シート状態:', { isEmpty, hasPrompt }); // デバッグ用（本番では無効化）
-
-          const setupBtn = document.getElementById('setupBtn');
-          const generateBtn = document.getElementById('generateBtn');
-          const managementSection = document.getElementById('managementSection');
-
-          // 表を初期化ボタンは常にアクティブ
-          setupBtn.disabled = false;
-          setupBtn.classList.remove('disabled');
-          setupBtn.title = '構造化テーブルを作成します';
-
-          // プロンプトがなければ画像生成ボタンを無効化
-          if (!hasPrompt) {
-            generateBtn.disabled = true;
-            generateBtn.classList.add('disabled');
-            generateBtn.title = 'プロンプトを入力してください';
-            // console.log('画像生成ボタンを無効化'); // デバッグ用（本番では無効化）
-          } else {
-            generateBtn.disabled = false;
-            generateBtn.classList.remove('disabled');
-            generateBtn.title = '';
-            // console.log('画像生成ボタンを有効化'); // デバッグ用（本番では無効化）
-          }
-
-          // 画像があれば管理セクションを表示
-          if (hasImages) {
-            managementSection.style.display = 'block';
-          } else {
-            managementSection.style.display = 'none';
-          }
+          hideLoading();
+          // UI更新
+          applySheetState(state);
+          showResult('✅ 状態を更新しました');
         })
         .withFailureHandler(function(error) {
+          hideLoading();
+          showResult('エラー: ' + error.message, true);
+        })
+        .getSheetState();
+    }
+
+    // 既存のロジックを分離して再利用
+    function applySheetState(state) {
+      const { isEmpty, hasPrompt, hasImages } = state;
+      const setupBtn = document.getElementById('setupBtn');
+      const generateBtn = document.getElementById('generateBtn');
+      const managementSection = document.getElementById('managementSection');
+
+      setupBtn.disabled = false;
+      setupBtn.classList.remove('disabled');
+      setupBtn.title = '構造化テーブルを作成します';
+
+      if (!hasPrompt) {
+        generateBtn.disabled = true;
+        generateBtn.classList.add('disabled');
+        generateBtn.title = 'プロンプトを入力してください';
+      } else {
+        generateBtn.disabled = false;
+        generateBtn.classList.remove('disabled');
+        generateBtn.title = '';
+      }
+
+      managementSection.style.display = hasImages ? 'block' : 'none';
+    }
+
+    function checkSheetState() {
+      google.script.run
+        .withSuccessHandler(applySheetState)
+        .withFailureHandler(function(error) {
           console.error('シート状態取得エラー:', error);
-          // エラー時は両方有効化（致命的ではない）
-          const setupBtn = document.getElementById('setupBtn');
-          const generateBtn = document.getElementById('generateBtn');
-          setupBtn.disabled = false;
-          setupBtn.classList.remove('disabled');
-          setupBtn.title = '構造化テーブルを作成します';
-          generateBtn.disabled = false;
-          generateBtn.classList.remove('disabled');
         })
         .getSheetState();
     }

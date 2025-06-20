@@ -1156,6 +1156,7 @@ function downloadSelectedImages() {
     // Google Driveに画像をダウンロード（実際の実装）
     const folderId = createDownloadFolder();
 
+    const linkList = [];
     selectedImages.forEach((imageData) => {
       try {
         const response = UrlFetchApp.fetch(imageData.url);
@@ -1163,7 +1164,15 @@ function downloadSelectedImages() {
         blob.setName(imageData.filename);
 
         const folder = DriveApp.getFolderById(folderId);
-        folder.createFile(blob);
+        const file = folder.createFile(blob);
+
+        // 共有リンクを取得
+        file.setSharing(
+          DriveApp.Access.ANYONE_WITH_LINK,
+          DriveApp.Permission.VIEW
+        );
+        const link = file.getUrl();
+        linkList.push(`• ${imageData.filename}: ${link}`);
 
         downloadCount++;
       } catch (downloadError) {
@@ -1174,7 +1183,12 @@ function downloadSelectedImages() {
       }
     });
 
-    return `✅ ${downloadCount}枚の画像をダウンロードしました！\nGoogle Driveの「DALL-E画像ダウンロード」フォルダを確認してください。`;
+    let message = `✅ ${downloadCount}枚の画像をダウンロードしました！\n`;
+    message += `Google Driveの「DALL-E画像ダウンロード」フォルダを確認してください。`;
+    if (linkList.length > 0) {
+      message += `\n\n🔗 ダウンロードリンク:\n${linkList.join("\n")}`;
+    }
+    return message;
   } catch (error) {
     console.error("画像ダウンロードエラー:", error);
     throw new Error(`画像ダウンロードに失敗しました: ${error.message}`);
