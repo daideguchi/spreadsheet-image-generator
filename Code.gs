@@ -3674,77 +3674,8 @@ function getOrCreateLibrarySheet() {
     let librarySheet = spreadsheet.getSheetByName("画像生成ライブラリ");
 
     if (!librarySheet) {
-      // 新規ライブラリシートを作成
-      librarySheet = spreadsheet.insertSheet("画像生成ライブラリ");
-
-      // ヘッダー行を設定
-      const headers = [
-        "No.", // A列: 通し番号
-        "📝 プロンプト", // B列: 使用プロンプト
-        "🖼️ 画像", // C列: 生成画像
-        "📐 比率", // D列: 画像比率
-        "⏰ 生成日時", // E列: 生成日時
-        "✅ ステータス", // F列: 生成ステータス
-        "🔗 元行", // G列: 元のシート行番号
-        "☑️ 選択", // H列: チェックボックス（💡 改善要求: ダウンロード機能追加）
-      ];
-
-      const headerRange = librarySheet.getRange(1, 1, 1, headers.length);
-      headerRange.setValues([headers]);
-
-      // ヘッダーのスタイル設定
-      headerRange.setBackground("#2196f3");
-      headerRange.setFontColor("white");
-      headerRange.setFontWeight("bold");
-      headerRange.setHorizontalAlignment("center");
-      headerRange.setVerticalAlignment("middle");
-      headerRange.setFontSize(11);
-      headerRange.setBorder(
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        "#1976d2",
-        SpreadsheetApp.BorderStyle.SOLID
-      );
-
-      // 列幅の最適化（💡 改善要求: チェックボックス列追加）
-      librarySheet.setColumnWidth(1, 60); // No.
-      librarySheet.setColumnWidth(2, 250); // プロンプト（💡 改善要求: 幅を少し縮小）
-      librarySheet.setColumnWidth(3, 200); // 画像
-      librarySheet.setColumnWidth(4, 80); // 比率
-      librarySheet.setColumnWidth(5, 130); // 日時
-      librarySheet.setColumnWidth(6, 100); // ステータス
-      librarySheet.setColumnWidth(7, 60); // 元行
-      librarySheet.setColumnWidth(8, 60); // チェックボックス
-
-      // ヘッダー行の高さ
-      librarySheet.setRowHeight(1, 45);
-
-      // 使用説明を追加
-      const instructionRow = 3;
-      const instructionRange = librarySheet.getRange(
-        instructionRow,
-        1,
-        1,
-        headers.length
-      );
-      instructionRange.merge();
-      instructionRange.setValue(
-        "📚 画像生成ライブラリ - 全ての生成記録を自動保存\n\n" +
-          "🔹 画像が生成される度に自動でここに記録されます\n" +
-          "🔹 プロンプト、画像、生成日時などを一覧で確認できます\n" +
-          "🔹 過去の生成履歴を参照して、効果的なプロンプトを再利用できます"
-      );
-      instructionRange.setBackground("#e3f2fd");
-      instructionRange.setFontWeight("bold");
-      instructionRange.setWrap(true);
-      instructionRange.setVerticalAlignment("top");
-      librarySheet.setRowHeight(instructionRow, 80);
-
-      console.log("✅ 画像生成ライブラリシートを作成しました");
+      // 💡 改善要求: 新しい改善されたライブラリシート作成関数を使用
+      librarySheet = createEmptyLibrarySheet();
     }
 
     return librarySheet;
@@ -3801,8 +3732,10 @@ function addToImageLibrary(imageData) {
     librarySheet.getRange(newRow, 1).setHorizontalAlignment("center"); // No.
     const promptCell = librarySheet.getRange(newRow, 2); // プロンプト
     promptCell.setWrap(true).setVerticalAlignment("top");
-    promptCell.setFontSize(8); // 💡 改善要求: プロンプト表示を小さく
+    promptCell.setFontSize(9); // 💡 改善要求: プロンプト表示を小さく（9pxで可読性確保）
     promptCell.setPadding(2, 2, 2, 2); // 💡 改善要求: パディング縮小
+    promptCell.setFontWeight("normal"); // 💡 改善要求: 通常フォント重み
+    promptCell.setFontColor("#424242"); // 💡 改善要求: 濃いグレー文字色
 
     librarySheet.getRange(newRow, 3).setHorizontalAlignment("center"); // 画像
     librarySheet.getRange(newRow, 4).setHorizontalAlignment("center"); // 比率
@@ -4397,5 +4330,134 @@ function createCommonPromptSheetMenu() {
   } catch (error) {
     console.error("共通プロンプト管理シート作成メニューエラー:", error);
     throw new Error(`管理シートの操作に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 💡 改善要求: ライブラリシートのリセット機能
+ */
+function resetImageLibrary() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const existingLibrarySheet =
+      spreadsheet.getSheetByName("画像生成ライブラリ");
+
+    // 既存のライブラリシートが存在する場合は削除
+    if (existingLibrarySheet) {
+      spreadsheet.deleteSheet(existingLibrarySheet);
+      console.log("📚 既存のライブラリシートを削除しました");
+    }
+
+    // 新しい空白のライブラリシートを作成
+    const librarySheet = createEmptyLibrarySheet();
+
+    return "✅ 画像生成ライブラリをリセットしました！\n\n📋 新しい空白のライブラリが作成されました。\n🎨 次回の画像生成から新しいライブラリに記録されます。";
+  } catch (error) {
+    console.error("ライブラリリセットエラー:", error);
+    throw new Error(`ライブラリのリセットに失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 💡 改善要求: 空白のライブラリシートを作成
+ */
+function createEmptyLibrarySheet() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const librarySheet = spreadsheet.insertSheet("画像生成ライブラリ");
+
+    // ヘッダー行を設定（改善されたUI対応）
+    const headers = [
+      "No.", // A列: 通し番号
+      "📝 プロンプト", // B列: 使用プロンプト
+      "🖼️ 画像", // C列: 生成画像
+      "📐 比率", // D列: 画像比率
+      "⏰ 生成日時", // E列: 生成日時
+      "✅ ステータス", // F列: 生成ステータス
+      "🔗 元行", // G列: 元のシート行番号
+      "☑️ 選択", // H列: チェックボックス
+    ];
+
+    const headerRange = librarySheet.getRange(1, 1, 1, headers.length);
+    headerRange.setValues([headers]);
+
+    // ヘッダーのスタイル設定（改善版）
+    headerRange.setBackground("#2196f3");
+    headerRange.setFontColor("white");
+    headerRange.setFontWeight("bold");
+    headerRange.setHorizontalAlignment("center");
+    headerRange.setVerticalAlignment("middle");
+    headerRange.setFontSize(11);
+    headerRange.setBorder(
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      "#1976d2",
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+
+    // 💡 改善要求: 列幅の最適化（プロンプト表示改善対応）
+    librarySheet.setColumnWidth(1, 60); // No.
+    librarySheet.setColumnWidth(2, 200); // プロンプト（💡 さらに縮小）
+    librarySheet.setColumnWidth(3, 180); // 画像（💡 少し縮小）
+    librarySheet.setColumnWidth(4, 70); // 比率
+    librarySheet.setColumnWidth(5, 120); // 日時
+    librarySheet.setColumnWidth(6, 90); // ステータス
+    librarySheet.setColumnWidth(7, 50); // 元行
+    librarySheet.setColumnWidth(8, 50); // チェックボックス
+
+    // ヘッダー行の高さ
+    librarySheet.setRowHeight(1, 45);
+
+    // 空白行（2行目）を追加
+    librarySheet.setRowHeight(2, 10);
+
+    // 💡 改善要求: 使用説明を改善（リセット対応）
+    const instructionRow = 3;
+    const instructionRange = librarySheet.getRange(
+      instructionRow,
+      1,
+      1,
+      headers.length
+    );
+    instructionRange.merge();
+    instructionRange.setValue(
+      "📚 画像生成ライブラリ - 全ての生成記録を自動保存\n\n" +
+        "🔹 画像が生成される度に自動でここに記録されます\n" +
+        "🔹 プロンプト、画像、生成日時などを一覧で確認できます\n" +
+        "🔹 H列のチェックボックスで選択してダウンロード可能\n" +
+        "🔹 サイドバーの「📚 ライブラリ管理」で操作できます"
+    );
+    instructionRange.setBackground("#e8f5e8"); // 💡 改善要求: 明るい緑色に変更
+    instructionRange.setFontWeight("bold");
+    instructionRange.setFontColor("#2e7d32"); // 💡 改善要求: 緑系の文字色
+    instructionRange.setFontSize(10); // 💡 改善要求: フォントサイズを小さく
+    instructionRange.setWrap(true);
+    instructionRange.setVerticalAlignment("top");
+    instructionRange.setBorder(
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      "#4caf50",
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+    librarySheet.setRowHeight(instructionRow, 90);
+
+    // シートタブの色を設定
+    librarySheet.setTabColor("#4caf50");
+
+    console.log("✅ 空白の画像生成ライブラリシートを作成しました");
+    return librarySheet;
+  } catch (error) {
+    console.error("空白ライブラリシート作成エラー:", error);
+    throw new Error(
+      `空白ライブラリシートの作成に失敗しました: ${error.message}`
+    );
   }
 }

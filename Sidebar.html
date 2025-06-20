@@ -576,6 +576,11 @@
               📥 ライブラリDL
             </button>
           </div>
+          <div class="button-row">
+            <button class="btn btn-danger btn-small" onclick="resetLibraryWithConfirmation()">
+              🗑️ ライブラリリセット
+            </button>
+          </div>
         </div>
 
         <!-- その他操作グループ -->
@@ -1221,6 +1226,100 @@
           showResult('エラー: ' + error.message, true);
         })
         .downloadSelectedLibraryImages();
+    }
+
+    // 💡 改善要求: ライブラリリセット機能（確認モーダル付き）
+    function resetLibraryWithConfirmation() {
+      // ライブラリリセット確認モーダルを表示
+      showLibraryResetModal();
+    }
+    
+    // 💡 改善要求: ライブラリリセットの確認モーダル実装
+    function showLibraryResetModal() {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.7); z-index: 999999; display: flex;
+        align-items: center; justify-content: center;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📚</div>
+            <h3 style="margin: 0; color: #d32f2f; font-size: 20px; font-weight: bold;">ライブラリリセットの確認</h3>
+          </div>
+          
+          <div style="background: #fff3e0; border: 2px solid #ff9800; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <div style="color: #ef6c00; font-weight: bold; margin-bottom: 12px;">🚨 ライブラリをリセットすると、全ての生成履歴が失われます！</div>
+            <div style="color: #e65100; font-size: 14px; line-height: 1.6;">
+              <strong>削除される内容：</strong><br>
+              • 過去の全ての画像生成記録<br>
+              • プロンプト履歴<br>
+              • 生成日時情報<br>
+              • その他の全てのライブラリデータ<br><br>
+              <strong style="color: #d32f2f;">⚠️ この操作は取り消せません</strong><br>
+              <strong style="color: #2e7d32;">✅ 新しい空白のライブラリが作成されます</strong>
+            </div>
+          </div>
+          
+          <div style="text-align: center; color: #424242; font-size: 14px; margin-bottom: 24px;">
+            本当にライブラリをリセットしますか？
+          </div>
+          
+          <div style="display: flex; gap: 12px;">
+            <button onclick="cancelLibraryReset()" style="
+              flex: 1; padding: 14px; border: 2px solid #ccc; background: white; 
+              color: #666; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='white'">
+              ❌ キャンセル
+            </button>
+            <button onclick="confirmLibraryReset()" style="
+              flex: 1; padding: 14px; border: none; background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); 
+              color: white; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s; box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(244, 67, 54, 0.4)'" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(244, 67, 54, 0.3)'">
+              🗑️ リセット実行
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      document.body.style.overflow = 'hidden'; // スクロール防止
+      
+      // グローバル関数として定義
+      window.cancelLibraryReset = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.cancelLibraryReset;
+        delete window.confirmLibraryReset;
+      };
+      
+      window.confirmLibraryReset = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.cancelLibraryReset;
+        delete window.confirmLibraryReset;
+        
+        // 実際のリセット処理を実行
+        proceedWithLibraryReset();
+      };
+    }
+    
+    // 💡 改善要求: 確認後の実際のライブラリリセット処理
+    function proceedWithLibraryReset() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .resetImageLibrary();
     }
   </script>
 </body>
