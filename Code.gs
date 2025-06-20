@@ -3908,25 +3908,28 @@ function addToImageLibrary(imageData) {
 
     // 🎯 最重要: 画像セルに確実に画像を設定
     const imageCell = librarySheet.getRange(newRow, 3);
+
+    // 🔥 個別セルの完全リセットと最適化
+    console.log(`🔧 画像セル完全リセット開始: ${imageCell.getA1Notation()}`);
+
+    // セルを完全にクリア
+    imageCell.clearFormat();
+    imageCell.clearContent();
+
+    // 画像表示に特化した書式設定
+    imageCell.setNumberFormat("General"); // 一般形式（IMAGE関数に最適）
+    imageCell.setWrap(false); // 折り返し無効
     imageCell.setHorizontalAlignment("center");
     imageCell.setVerticalAlignment("middle");
+    imageCell.setBackground("#ffffff"); // 背景を明示的に白に設定
 
-    // 🔥 ライブラリシート書式問題の根本修正
-    console.log(`📐 画像セル書式設定開始: ${imageCell.getA1Notation()}`);
+    // 行の高さを画像表示に最適化（個別設定で確実に）
+    librarySheet.setRowHeight(newRow, 120); // 画像表示に十分な高さ
 
-    // 画像表示に適した書式設定
-    imageCell.setWrap(false); // 折り返し無効
-    imageCell.setNumberFormat("@"); // テキスト形式（IMAGE関数用）
+    console.log(`🔧 画像セル完全リセット完了: ${imageCell.getA1Notation()}`);
 
-    // 画像列の幅と行の高さを画像表示に最適化
-    librarySheet.setColumnWidth(3, 120); // C列：画像表示に十分な幅
-    librarySheet.setRowHeight(newRow, 100); // 画像表示に十分な高さ
-
-    console.log(`📷 画像セル準備完了: ${imageCell.getA1Notation()}`);
-
-    // 🚀 確実な画像設定処理
+    // 🚀 確実な画像設定処理 - より直接的なアプローチ
     let imageSuccessfullyCopied = false;
-    let sourceImageCellRef = null; // 📌 元シートの画像セル参照（直接コピー用）
     const imageUrl = imageData.imageUrl || imageData.url;
     console.log(
       `🔗 使用する画像URL: ${
@@ -3934,85 +3937,23 @@ function addToImageLibrary(imageData) {
       }`
     );
 
-    // 🎯 限界突破: 確実なフォーミュラ設定（最優先）
-    if (
-      imageData.sourceFormula &&
-      imageData.sourceFormula.includes("=IMAGE(")
-    ) {
+    // 🔥 画像転記の根本的改善 - 入力シートから直接コピーを最優先
+    console.log(`🚀 入力シートから画像を直接取得開始...`);
+
+    // まず入力シートの画像を直接取得して確実にコピー
+    if (imageData.originalRow && imageData.originalRow !== "-") {
       try {
-        console.log(
-          `🔥 限界突破フォーミュラ設定: ${imageData.sourceFormula.substring(
-            0,
-            100
-          )}...`
-        );
-
-        // 🎯 複数回試行で確実に設定
-        let attempts = 0;
-        const maxAttempts = 3;
-
-        while (attempts < maxAttempts && !imageSuccessfullyCopied) {
-          attempts++;
-          console.log(`🔄 フォーミュラ設定試行 ${attempts}/${maxAttempts}`);
-
-          try {
-            imageCell.setFormula(imageData.sourceFormula);
-
-            // 即座に確認
-            Utilities.sleep(200); // 0.2秒待機
-            const verifyFormula = imageCell.getFormula();
-
-            if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
-              imageSuccessfullyCopied = true;
-              console.log(
-                `✅ フォーミュラ設定成功 (試行${attempts}): ${verifyFormula.substring(
-                  0,
-                  50
-                )}...`
-              );
-              break;
-            } else {
-              console.warn(
-                `⚠️ フォーミュラ設定確認NG (試行${attempts}): ${verifyFormula}`
-              );
-            }
-          } catch (attemptError) {
-            console.warn(
-              `⚠️ フォーミュラ設定試行${attempts}エラー:`,
-              attemptError
-            );
-          }
-        }
-
-        if (!imageSuccessfullyCopied) {
-          console.error(`🚨 ${maxAttempts}回試行してもフォーミュラ設定失敗`);
-        }
-      } catch (formulaError) {
-        console.error("🚨 フォーミュラ設定システムエラー:", formulaError);
-      }
-    }
-
-    // 方法2: 元シートからのコピー（フォールバック）
-    if (
-      !imageSuccessfullyCopied &&
-      imageData.originalRow &&
-      imageData.originalRow !== "-"
-    ) {
-      try {
-        console.log(
-          `🔍 元シートからのコピーを試行: 行${imageData.originalRow}`
-        );
         const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
 
-        // 元シート名が指定されている場合は優先使用
-        let mainSheet = null;
+        // 元シートを特定
+        let sourceSheet = null;
         if (imageData.sourceSheet) {
-          mainSheet = spreadsheet.getSheetByName(imageData.sourceSheet);
-          console.log(`📋 指定された元シート: ${imageData.sourceSheet}`);
+          sourceSheet = spreadsheet.getSheetByName(imageData.sourceSheet);
+          console.log(`📋 指定元シート: ${imageData.sourceSheet}`);
         }
 
-        // 元シートが見つからない場合はアクティブシートから探す
-        if (!mainSheet) {
+        // 元シートが見つからない場合は入力シートを検索
+        if (!sourceSheet) {
           const inputSheets = spreadsheet
             .getSheets()
             .filter(
@@ -4023,129 +3964,114 @@ function addToImageLibrary(imageData) {
             );
 
           if (inputSheets.length > 0) {
-            mainSheet = inputSheets[0]; // 最初の入力シート
-            console.log(`📋 入力シート特定: ${mainSheet.getName()}`);
+            sourceSheet = inputSheets[0];
+            console.log(`📋 入力シート特定: ${sourceSheet.getName()}`);
           }
         }
 
-        if (mainSheet) {
-          const sourceImageCell = mainSheet.getRange(imageData.originalRow, 5); // E列
-          sourceImageCellRef = sourceImageCell; // 直接コピー用に保持
-          const sourceFormula = sourceImageCell.getFormula();
-          console.log(`📷 元シートフォーミュラ: ${sourceFormula}`);
+        if (sourceSheet) {
+          const sourceImageCell = sourceSheet.getRange(
+            imageData.originalRow,
+            5
+          ); // E列
+          console.log(
+            `📷 元画像セル: ${sourceSheet.getName()}!${sourceImageCell.getA1Notation()}`
+          );
 
-          if (sourceFormula && sourceFormula.includes("=IMAGE(")) {
-            imageCell.setFormula(sourceFormula);
+          // 元セルから直接コピー（書式も含めて完全コピー）
+          sourceImageCell.copyTo(
+            imageCell,
+            SpreadsheetApp.CopyPasteType.PASTE_NORMAL,
+            false
+          );
+
+          // コピー直後に確認
+          Utilities.sleep(300); // 少し長めに待機
+          const copiedFormula = imageCell.getFormula();
+
+          if (copiedFormula && copiedFormula.includes("=IMAGE(")) {
             imageSuccessfullyCopied = true;
             console.log(
-              `✅ 元シートからフォーミュラコピー成功: ${sourceFormula}`
+              `✅ 入力シートから画像を直接コピー成功: ${copiedFormula.substring(
+                0,
+                50
+              )}...`
             );
           } else {
-            console.warn(`⚠️ 元シートに有効なIMAGE関数なし: ${sourceFormula}`);
+            console.warn(`⚠️ 直接コピー後の確認NG: ${copiedFormula}`);
           }
-        } else {
-          console.warn(`⚠️ 入力シートが見つかりません`);
         }
-      } catch (copyError) {
-        console.error("🚨 元シートコピーエラー:", copyError);
+      } catch (directCopyError) {
+        console.error("🚨 入力シートから直接コピーエラー:", directCopyError);
       }
     }
 
-    // 方法3: URLからの直接設定（フォールバックその2）
-    if (!imageSuccessfullyCopied) {
-      console.log(
-        `🔄 フォールバック処理開始: URL = ${
-          imageUrl ? imageUrl.substring(0, 50) + "..." : "なし"
-        }`
-      );
-      if (
-        imageUrl &&
-        (imageUrl.startsWith("http") || imageUrl.startsWith("data:"))
-      ) {
-        const imageFormula = `=IMAGE("${imageUrl}")`;
-        imageCell.setFormula(imageFormula);
-        imageSuccessfullyCopied = true;
+    // フォールバック1: sourceFormulaを使用
+    if (
+      !imageSuccessfullyCopied &&
+      imageData.sourceFormula &&
+      imageData.sourceFormula.includes("=IMAGE(")
+    ) {
+      try {
         console.log(
-          `✅ フォールバック成功 - URLから画像設定: ${imageUrl.substring(
+          `🔄 フォールバック1: sourceFormula使用 - ${imageData.sourceFormula.substring(
             0,
-            50
+            100
           )}...`
         );
-        console.log(`📷 設定したフォーミュラ: ${imageFormula}`);
-      } else {
-        imageCell.setValue("❌ 画像URL無効");
-        console.warn(
-          `🚨 画像設定失敗: 元行${imageData.originalRow}, URL: ${imageUrl}`
-        );
-      }
-    }
 
-    // 方法4: 画像セルを直接コピー（最終手段）
-    if (!imageSuccessfullyCopied && sourceImageCellRef) {
-      try {
-        console.log(`📋 画像セルを直接コピー試行`);
-        sourceImageCellRef.copyTo(imageCell, { contentsOnly: false });
-        imageSuccessfullyCopied = true;
-        console.log(`✅ 画像セル直接コピー成功`);
-      } catch (directCopyError) {
-        console.error(`🚨 画像セル直接コピー失敗:`, directCopyError);
-      }
-    }
+        imageCell.setFormula(imageData.sourceFormula);
+        Utilities.sleep(200);
 
-    // 🎯 画像設定完了後の待機時間（確実な反映のため）
-    if (imageSuccessfullyCopied) {
-      Utilities.sleep(500); // 0.5秒待機
-      console.log(`⏰ 画像設定後の待機完了`);
-    }
-
-    // 🎯 限界突破: 最終確認と強制修正
-    try {
-      console.log(`🔍 最終画像セル状態確認開始: ${imageCell.getA1Notation()}`);
-
-      // 複数回確認で確実にチェック
-      let finalCheckAttempts = 0;
-      let finalFormula = "";
-
-      while (finalCheckAttempts < 3) {
-        finalCheckAttempts++;
-        Utilities.sleep(100); // 0.1秒待機
-
-        finalFormula = imageCell.getFormula();
-        console.log(
-          `🔍 確認試行${finalCheckAttempts}: フォーミュラ="${finalFormula}"`
-        );
-
-        if (finalFormula && finalFormula.includes("=IMAGE(")) {
+        const verifyFormula = imageCell.getFormula();
+        if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
+          imageSuccessfullyCopied = true;
           console.log(
-            `✅ 画像セルに正常なIMAGE関数が確認されました (試行${finalCheckAttempts})`
+            `✅ sourceFormula設定成功: ${verifyFormula.substring(0, 50)}...`
           );
-          break;
         }
+      } catch (formulaError) {
+        console.error("🚨 sourceFormula設定エラー:", formulaError);
       }
+    }
 
-      if (!finalFormula || !finalFormula.includes("=IMAGE(")) {
-        console.error(`🚨 最終確認: 画像セルが空または無効です！`);
-        console.error(`🚨 最終フォーミュラ: "${finalFormula}"`);
+    // フォールバック2: URLから直接画像設定
+    if (
+      !imageSuccessfullyCopied &&
+      imageUrl &&
+      (imageUrl.startsWith("http") || imageUrl.startsWith("data:"))
+    ) {
+      try {
+        console.log(
+          `🔄 フォールバック2: URL使用 - ${imageUrl.substring(0, 50)}...`
+        );
 
-        // 🎯 最後の手段: 直接URLから再設定
-        if (
-          imageUrl &&
-          (imageUrl.startsWith("http") || imageUrl.startsWith("data:"))
-        ) {
-          console.log(`🔄 最後の手段: URLから再設定試行`);
-          const emergencyFormula = `=IMAGE("${imageUrl}")`;
-          imageCell.setFormula(emergencyFormula);
-          console.log(`🆘 緊急フォーミュラ設定: ${emergencyFormula}`);
-        } else {
-          // 完全に失敗した場合のエラー表示
-          imageCell.setValue("❌ 画像設定失敗");
-          imageCell.setBackground("#ffebee");
-          imageCell.setFontColor("#d32f2f");
-          console.error(`🚨 完全失敗: エラー表示を設定`);
+        const imageFormula = `=IMAGE("${imageUrl}")`;
+        imageCell.setFormula(imageFormula);
+        Utilities.sleep(200);
+
+        const verifyFormula = imageCell.getFormula();
+        if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
+          imageSuccessfullyCopied = true;
+          console.log(`✅ URL設定成功: ${imageFormula}`);
         }
+      } catch (urlError) {
+        console.error("🚨 URL設定エラー:", urlError);
       }
-    } catch (checkError) {
-      console.error("🚨 最終確認システムエラー:", checkError);
+    }
+
+    // 最終フォールバック: エラー表示
+    if (!imageSuccessfullyCopied) {
+      imageCell.setValue("❌ 画像設定失敗");
+      imageCell.setBackground("#ffebee");
+      imageCell.setFontColor("#d32f2f");
+      console.error(`🚨 全ての画像設定方法が失敗: 行${imageData.originalRow}`);
+    }
+
+    // 🎯 画像設定完了後の短時間待機
+    if (imageSuccessfullyCopied) {
+      Utilities.sleep(300); // 0.3秒待機で確実な反映
+      console.log(`✅ 画像設定完了 - ${imageCell.getA1Notation()}`);
     }
 
     librarySheet.getRange(newRow, 4).setHorizontalAlignment("center"); // 比率
@@ -4842,16 +4768,36 @@ function createEmptyLibrarySheet() {
     librarySheet.setColumnWidth(7, 50); // 元行
     librarySheet.setColumnWidth(8, 50); // チェックボックス
 
-    // 🔥 C列（画像列）の書式問題を根本修正
+    // 🔥 C列（画像列）の書式問題を根本修正 - 強制的な書式整備
     const imageColumnRange = librarySheet.getRange(1, 3, 1000, 1); // C列全体
-    imageColumnRange.setNumberFormat("@"); // テキスト形式（IMAGE関数最適化）
+
+    // 画像列の完全な書式リセット
+    imageColumnRange.clearFormat(); // 既存書式を完全クリア
+    imageColumnRange.clearContent(); // 既存内容も完全クリア
+
+    // 画像表示に最適化された書式を強制設定
+    imageColumnRange.setNumberFormat("General"); // 一般形式（IMAGE関数に最適）
     imageColumnRange.setWrap(false); // 折り返し無効
     imageColumnRange.setHorizontalAlignment("center");
     imageColumnRange.setVerticalAlignment("middle");
-    console.log("🔥 C列（画像列）書式設定完了");
 
-    // デフォルト行の高さを画像表示に最適化
-    librarySheet.setRowHeights(4, 997, 100); // 4行目以降を画像表示に適した高さに
+    // セルの保護と表示設定
+    imageColumnRange.setBackground("#ffffff"); // 背景を明示的に白に設定
+    imageColumnRange.setBorder(
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      "#e0e0e0",
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+
+    console.log("🔥 C列（画像列）強制書式整備完了");
+
+    // デフォルト行の高さを画像表示に最適化 - より大きく設定
+    librarySheet.setRowHeights(4, 997, 120); // 4行目以降を画像表示により適した高さに
 
     // ヘッダー行の高さ
     librarySheet.setRowHeight(1, 45);
