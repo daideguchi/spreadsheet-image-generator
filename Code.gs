@@ -3978,27 +3978,44 @@ function addToImageLibrary(imageData) {
             `📷 元画像セル: ${sourceSheet.getName()}!${sourceImageCell.getA1Notation()}`
           );
 
-          // 元セルから直接コピー（書式も含めて完全コピー）
-          sourceImageCell.copyTo(
-            imageCell,
-            SpreadsheetApp.CopyPasteType.PASTE_NORMAL,
-            false
+          // 🔥 元セルのフォーミュラを取得して直接設定（copyTo使用しない）
+          const sourceFormula = sourceImageCell.getFormula();
+          const sourceValue = sourceImageCell.getValue();
+
+          console.log(
+            `📷 元セル詳細: フォーミュラ="${sourceFormula}", 値="${sourceValue}"`
           );
 
-          // コピー直後に確認
-          Utilities.sleep(300); // 少し長めに待機
-          const copiedFormula = imageCell.getFormula();
+          if (sourceFormula && sourceFormula.includes("=IMAGE(")) {
+            // フォーミュラを直接設定
+            imageCell.setFormula(sourceFormula);
 
-          if (copiedFormula && copiedFormula.includes("=IMAGE(")) {
-            imageSuccessfullyCopied = true;
-            console.log(
-              `✅ 入力シートから画像を直接コピー成功: ${copiedFormula.substring(
-                0,
-                50
-              )}...`
-            );
+            // 特別なサイズ設定でIMAGE関数を最適化
+            const urlMatch = sourceFormula.match(/=IMAGE\("([^"]+)"/);
+            if (urlMatch && urlMatch[1]) {
+              const imageUrl = urlMatch[1];
+              // サイズパラメータ付きで再設定
+              const optimizedFormula = `=IMAGE("${imageUrl}", 1)`;
+              imageCell.setFormula(optimizedFormula);
+              console.log(`🔧 最適化フォーミュラ設定: ${optimizedFormula}`);
+            }
+
+            Utilities.sleep(300);
+            const verifyFormula = imageCell.getFormula();
+
+            if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
+              imageSuccessfullyCopied = true;
+              console.log(
+                `✅ 直接フォーミュラ設定成功: ${verifyFormula.substring(
+                  0,
+                  50
+                )}...`
+              );
+            } else {
+              console.warn(`⚠️ フォーミュラ設定確認失敗: ${verifyFormula}`);
+            }
           } else {
-            console.warn(`⚠️ 直接コピー後の確認NG: ${copiedFormula}`);
+            console.warn(`⚠️ 元セルに有効なIMAGE関数なし: ${sourceFormula}`);
           }
         }
       } catch (directCopyError) {
@@ -4046,9 +4063,16 @@ function addToImageLibrary(imageData) {
           `🔄 フォールバック2: URL使用 - ${imageUrl.substring(0, 50)}...`
         );
 
-        const imageFormula = `=IMAGE("${imageUrl}")`;
+        // サイズパラメータ付きで最適化
+        const imageFormula = `=IMAGE("${imageUrl}", 1)`;
         imageCell.setFormula(imageFormula);
-        Utilities.sleep(200);
+
+        // 追加の書式調整
+        imageCell.setNumberFormat("General");
+        imageCell.setVerticalAlignment("middle");
+        imageCell.setHorizontalAlignment("center");
+
+        Utilities.sleep(300);
 
         const verifyFormula = imageCell.getFormula();
         if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
@@ -4906,6 +4930,127 @@ function checkForAnyData() {
     console.error("データ検出エラー:", error);
     // エラーの場合は安全側に倒してデータありとする
     return true;
+  }
+}
+
+/**
+ * 🔍 ライブラリシート画像表示問題の詳細診断機能
+ */
+function diagnoseLibraryImageIssues() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const librarySheet = spreadsheet.getSheetByName("画像生成ライブラリ");
+
+    if (!librarySheet) {
+      return "❌ ライブラリシートが見つかりません";
+    }
+
+    const lastRow = librarySheet.getLastRow();
+    console.log(`🔍 ライブラリシート診断開始: 最終行 ${lastRow}`);
+
+    const diagnostics = [];
+    diagnostics.push("🔍 ライブラリシート画像表示診断レポート");
+    diagnostics.push("=".repeat(50));
+
+    // 基本情報
+    diagnostics.push(`📊 シート名: ${librarySheet.getName()}`);
+    diagnostics.push(`📊 最終行: ${lastRow}`);
+    diagnostics.push(`📊 最終列: ${librarySheet.getLastColumn()}`);
+
+    // C列（画像列）の詳細分析
+    if (lastRow >= 4) {
+      for (let row = 4; row <= Math.min(lastRow, 8); row++) {
+        // 最大5行分診断
+        const imageCell = librarySheet.getRange(row, 3);
+        const cellA1 = imageCell.getA1Notation();
+
+        diagnostics.push(`\n🔍 行${row} (${cellA1}) の診断:`);
+
+        // セルの基本情報
+        const cellValue = imageCell.getValue();
+        const cellFormula = imageCell.getFormula();
+        const cellNote = imageCell.getNote();
+
+        diagnostics.push(`  📄 値: ${cellValue || "空"}`);
+        diagnostics.push(`  📄 フォーミュラ: ${cellFormula || "なし"}`);
+        diagnostics.push(`  📄 ノート: ${cellNote || "なし"}`);
+
+        // 書式情報
+        const numberFormat = imageCell.getNumberFormat();
+        const background = imageCell.getBackground();
+        const fontColor = imageCell.getFontColor();
+        const wrap = imageCell.getWrap();
+        const hAlign = imageCell.getHorizontalAlignment();
+        const vAlign = imageCell.getVerticalAlignment();
+
+        diagnostics.push(`  🎨 書式: ${numberFormat}`);
+        diagnostics.push(`  🎨 背景色: ${background}`);
+        diagnostics.push(`  🎨 文字色: ${fontColor}`);
+        diagnostics.push(`  🎨 折り返し: ${wrap}`);
+        diagnostics.push(`  🎨 水平配置: ${hAlign}`);
+        diagnostics.push(`  🎨 垂直配置: ${vAlign}`);
+
+        // サイズ情報
+        const rowHeight = librarySheet.getRowHeight(row);
+        const colWidth = librarySheet.getColumnWidth(3);
+
+        diagnostics.push(`  📐 行の高さ: ${rowHeight}px`);
+        diagnostics.push(`  📐 列の幅: ${colWidth}px`);
+
+        // IMAGE関数の詳細分析
+        if (cellFormula && cellFormula.includes("=IMAGE(")) {
+          try {
+            // URLを抽出
+            const urlMatch = cellFormula.match(/=IMAGE\("([^"]+)"/);
+            if (urlMatch && urlMatch[1]) {
+              const imageUrl = urlMatch[1];
+              diagnostics.push(
+                `  🔗 画像URL: ${imageUrl.substring(0, 100)}...`
+              );
+              diagnostics.push(
+                `  🔗 URL形式: ${
+                  imageUrl.startsWith("http")
+                    ? "HTTP"
+                    : imageUrl.startsWith("data:")
+                    ? "DATA"
+                    : "不明"
+                }`
+              );
+            }
+          } catch (urlError) {
+            diagnostics.push(`  ❌ URL解析エラー: ${urlError.message}`);
+          }
+        }
+
+        diagnostics.push(
+          `  ${
+            cellFormula && cellFormula.includes("=IMAGE(") ? "✅" : "❌"
+          } IMAGE関数存在`
+        );
+        diagnostics.push(`  ${cellValue ? "✅" : "❌"} セル値存在`);
+      }
+    }
+
+    // C列全体の設定確認
+    diagnostics.push(`\n🔍 C列全体の設定:`);
+    const columnRange = librarySheet.getRange(1, 3, 10, 1);
+    const columnFormats = columnRange.getNumberFormats();
+    const columnBackgrounds = columnRange.getBackgrounds();
+
+    diagnostics.push(
+      `  📊 書式パターン数: ${new Set(columnFormats.flat()).size}`
+    );
+    diagnostics.push(
+      `  📊 背景色パターン数: ${new Set(columnBackgrounds.flat()).size}`
+    );
+
+    const report = diagnostics.join("\n");
+    console.log(report);
+
+    return report;
+  } catch (error) {
+    console.error("🚨 診断エラー:", error);
+    return `❌ 診断中にエラーが発生しました: ${error.message}`;
   }
 }
 
