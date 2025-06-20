@@ -519,12 +519,16 @@
           <div class="step-number">3</div>
           <div class="step-text">画像生成</div>
         </div>
+        <div class="step" id="step4">
+          <div class="step-number">4</div>
+          <div class="step-text">ライブラリ<br>追加</div>
+        </div>
       </div>
 
       <div class="instructions">
         <div id="instruction-text">
-          <strong>🚀 簡単3ステップ:</strong><br>
-          <strong>1️⃣</strong> 表を初期化 → <strong>2️⃣</strong> プロンプト入力 → <strong>3️⃣</strong> 画像生成
+          <strong>🚀 簡単4ステップ:</strong><br>
+          <strong>1️⃣</strong> 表を初期化 → <strong>2️⃣</strong> プロンプト入力 → <strong>3️⃣</strong> 画像生成 → <strong>4️⃣</strong> ライブラリ追加
         </div>
       </div>
 
@@ -619,7 +623,7 @@
       </div>
       
       <div class="progress-text" id="progressText">準備中...</div>
-      <div class="progress-step" id="progressStep">ステップ 1/5</div>
+      <div class="progress-step" id="progressStep">ステップ 1/6</div>
       
       <div class="progress-warning">
         <span class="progress-warning-icon">⚠️</span>
@@ -700,11 +704,13 @@
     }
 
     function updateStepIndicator(currentStep) {
-      const steps = ['step1', 'step2', 'step3'];
+      const steps = ['step1', 'step2', 'step3', 'step4'];
       steps.forEach(step => {
         document.getElementById(step).classList.remove('active');
       });
-      document.getElementById(currentStep).classList.add('active');
+      if (document.getElementById(currentStep)) {
+        document.getElementById(currentStep).classList.add('active');
+      }
     }
 
     // プログレスバー制御関数
@@ -723,7 +729,7 @@
       // ページスクロールを無効化
       document.body.style.overflow = 'hidden';
       
-      updateProgress(0, '準備中...', 'ステップ 1/5');
+      updateProgress(0, '準備中...', 'ステップ 1/6');
     }
 
     function hideProgressModal() {
@@ -768,10 +774,11 @@
         { inc: 7, text: 'DALL-E APIに接続中...', duration: 800 },
         { inc: 5, text: 'API認証を確認中...', duration: 400 },
         { inc: 10, text: `画像生成リクエスト送信中... (${imageCount}枚)`, duration: 600 },
-        { inc: 50, text: `画像を生成中... (${imageCount}枚)`, duration: Math.max(2000, imageCount * 1500) }, // 最低2秒、画像枚数に応じて調整
+        { inc: 45, text: `画像を生成中... (${imageCount}枚)`, duration: Math.max(2000, imageCount * 1500) }, // 最低2秒、画像枚数に応じて調整
         { inc: 8, text: '生成結果を受信中...', duration: 500 },
         { inc: 7, text: '画像データを処理中...', duration: 600 },
-        { inc: 5, text: 'シートに配置中...', duration: 400 }
+        { inc: 5, text: 'シートに配置中...', duration: 400 },
+        { inc: 5, text: 'ライブラリに追加中...', duration: 800 }
       ];
 
       let progress = 0;
@@ -938,14 +945,19 @@
       
       google.script.run
         .withSuccessHandler(function(result) {
-          // サーバー処理完了後に初めて完了表示
-          updateProgress(100, '✅ 画像生成が完了しました！', '完了');
+          // ライブラリ追加ステップを表示
+          updateStepIndicator('step4');
+          updateProgress(95, '📚 ライブラリに追加中...', 'ステップ 4/4');
+          
           setTimeout(() => {
-            hideProgressModal();
-            showResult(result);
-            // 画像生成完了後にボタン状態を再チェック
-            checkSheetState();
-          }, 1500);
+            updateProgress(100, '✅ 画像生成とライブラリ追加が完了しました！', '完了');
+            setTimeout(() => {
+              hideProgressModal();
+              showResult(result);
+              // 画像生成完了後にボタン状態を再チェック
+              checkSheetState();
+            }, 1000);
+          }, 800);
         })
         .withFailureHandler(function(error) {
           hideProgressModal();
