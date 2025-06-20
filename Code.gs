@@ -1610,13 +1610,34 @@ function updateCombinedPrompt(sheet, row) {
 
     // D列に結合プロンプトを設定
     const combinedCell = sheet.getRange(row, 4);
-    combinedCell.setValue(combinedPrompt);
+
+    // 🔧 重要：縦幅制限ロジック - 省略表示
+    let displayText = combinedPrompt;
+    const maxLength = 100; // 表示文字数制限
+
+    if (combinedPrompt && combinedPrompt.length > maxLength) {
+      // 長い場合は省略表示
+      displayText = combinedPrompt.substring(0, maxLength) + "...";
+    }
+
+    // 省略表示をセルに設定
+    combinedCell.setValue(displayText);
+
+    // 完全なプロンプトをメモ（ツールチップ）に保存
+    if (combinedPrompt && combinedPrompt.length > maxLength) {
+      combinedCell.setNote(
+        `📄 完全な結合プロンプト:\n${combinedPrompt}\n\n💡 このセルをクリックして全文を確認できます。`
+      );
+    } else {
+      combinedCell.setNote("🤖 自動結合プロンプト（編集不要）");
+    }
 
     // スタイル設定（自動生成エリア + 縦幅制限）
     combinedCell.setBackground("#f5f5f5"); // グレー背景
     combinedCell.setFontColor("#616161"); // グレー文字
-    combinedCell.setWrap(true);
-    combinedCell.setVerticalAlignment("top");
+    combinedCell.setWrap(false); // 🔧 重要：折り返しを無効にして縦幅制限
+    combinedCell.setVerticalAlignment("middle"); // 中央揃え
+    combinedCell.setHorizontalAlignment("left"); // 左寄せ
     combinedCell.setBorder(
       true,
       true,
@@ -1628,16 +1649,14 @@ function updateCombinedPrompt(sheet, row) {
       SpreadsheetApp.BorderStyle.DASHED
     );
 
-    // 🔧 重要：縦幅制限の実装
-    // 行の高さを固定（80ピクセル）でスクロール表示
-    sheet.setRowHeight(row, 80);
-
-    // セルのテキスト表示設定（縦幅制限でスクロール）
+    // セルのテキスト表示設定（小さなフォント）
     combinedCell.setTextStyle(
-      SpreadsheetApp.newTextStyle().setFontSize(10).build()
+      SpreadsheetApp.newTextStyle().setFontSize(9).build()
     );
 
-    console.log(`行${row}: 結合プロンプトを更新しました（縦幅制限適用）`);
+    console.log(
+      `行${row}: 結合プロンプトを更新しました（縦幅制限: ${displayText.length}/${combinedPrompt.length}文字）`
+    );
     return combinedPrompt;
   } catch (error) {
     console.error(`行${row}の結合プロンプト更新エラー:`, error);
@@ -1646,18 +1665,36 @@ function updateCombinedPrompt(sheet, row) {
 }
 
 /**
- * 結合プロンプトを取得（D列から）
+ * 結合プロンプトを取得（D列から）- 完全版を返す
  */
 function getCombinedPrompt(sheet, row) {
   try {
-    const combinedPrompt = sheet.getRange(row, 4).getValue(); // D列：結合プロンプト
+    // セルのメモから完全なプロンプトを取得
+    const combinedCell = sheet.getRange(row, 4);
+    const cellNote = combinedCell.getNote();
 
+    // メモに完全版が保存されている場合はそれを使用
+    if (cellNote && cellNote.includes("完全な結合プロンプト:")) {
+      const fullPromptMatch = cellNote.match(
+        /完全な結合プロンプト:\n([\s\S]*?)\n\n💡/
+      );
+      if (fullPromptMatch && fullPromptMatch[1]) {
+        return fullPromptMatch[1].trim();
+      }
+    }
+
+    // メモにない場合は表示されている値を取得
+    const displayedPrompt = combinedCell.getValue();
     if (
-      combinedPrompt &&
-      typeof combinedPrompt === "string" &&
-      combinedPrompt.trim()
+      displayedPrompt &&
+      typeof displayedPrompt === "string" &&
+      displayedPrompt.trim()
     ) {
-      return combinedPrompt.trim();
+      // 省略記号がある場合は再生成
+      if (displayedPrompt.endsWith("...")) {
+        return updateCombinedPrompt(sheet, row);
+      }
+      return displayedPrompt.trim();
     }
 
     // D列が空の場合は自動生成
@@ -2562,7 +2599,7 @@ function createStructuredTable() {
         checkboxCell.setNote("☑️ 選択・操作エリア");
 
         // 行の高さを固定（UX改善 + 結合プロンプト縦幅制限）
-        sheet.setRowHeight(row, 80); // 🔧 結合プロンプトのスクロール表示対応で80pxに設定
+        sheet.setRowHeight(row, 50); // 🔧 結合プロンプト省略表示対応で50pxに戻す
 
         // 10行ごとに薄い区切り線を追加
         if (i % 10 === 0) {
