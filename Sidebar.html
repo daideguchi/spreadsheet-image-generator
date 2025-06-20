@@ -548,8 +548,8 @@
             <button class="btn btn-secondary btn-small" onclick="toggleAllImageSelection()">
               ☑️ 全選択
             </button>
-            <button class="btn btn-small" onclick="downloadSelectedImages()">
-              📥 DL
+            <button class="btn btn-small" onclick="showDownloadOptions()">
+              📥 ダウンロード
             </button>
             <button class="btn btn-small" onclick="regenerateSelectedImages()">
               🔄 再生成
@@ -569,8 +569,8 @@
         <div class="button-section">
           <div class="section-title">⚙️ その他</div>
           <div class="button-row">
-            <button class="btn btn-secondary btn-small" onclick="refreshStatus()">
-              ⚡ 更新
+            <button class="btn btn-secondary btn-small" onclick="showImagePreview()">
+              👁️ プレビュー
             </button>
           </div>
         </div>
@@ -625,49 +625,30 @@
       }
     });
 
-    function refreshStatus() {
-      showLoading();
-      google.script.run
-        .withSuccessHandler(function(state) {
-          hideLoading();
-          // UI更新
-          applySheetState(state);
-          showResult('✅ 状態を更新しました');
-        })
-        .withFailureHandler(function(error) {
-          hideLoading();
-          showResult('エラー: ' + error.message, true);
-        })
-        .getSheetState();
-    }
-
-    // 既存のロジックを分離して再利用
-    function applySheetState(state) {
-      const { isEmpty, hasPrompt, hasImages } = state;
-      const setupBtn = document.getElementById('setupBtn');
-      const generateBtn = document.getElementById('generateBtn');
-      const managementSection = document.getElementById('managementSection');
-
-      setupBtn.disabled = false;
-      setupBtn.classList.remove('disabled');
-      setupBtn.title = '構造化テーブルを作成します';
-
-      if (!hasPrompt) {
-        generateBtn.disabled = true;
-        generateBtn.classList.add('disabled');
-        generateBtn.title = 'プロンプトを入力してください';
-      } else {
-        generateBtn.disabled = false;
-        generateBtn.classList.remove('disabled');
-        generateBtn.title = '';
-      }
-
-      managementSection.style.display = hasImages ? 'block' : 'none';
-    }
-
     function checkSheetState() {
       google.script.run
-        .withSuccessHandler(applySheetState)
+        .withSuccessHandler(function(state) {
+          const { isEmpty, hasPrompt, hasImages } = state;
+          const setupBtn = document.getElementById('setupBtn');
+          const generateBtn = document.getElementById('generateBtn');
+          const managementSection = document.getElementById('managementSection');
+
+          setupBtn.disabled = false;
+          setupBtn.classList.remove('disabled');
+          setupBtn.title = '構造化テーブルを作成します';
+
+          if (!hasPrompt) {
+            generateBtn.disabled = true;
+            generateBtn.classList.add('disabled');
+            generateBtn.title = 'プロンプトを入力してください';
+          } else {
+            generateBtn.disabled = false;
+            generateBtn.classList.remove('disabled');
+            generateBtn.title = '';
+          }
+
+          managementSection.style.display = hasImages ? 'block' : 'none';
+        })
         .withFailureHandler(function(error) {
           console.error('シート状態取得エラー:', error);
         })
@@ -893,16 +874,140 @@
         .toggleAllImageSelection();
     }
 
-    function downloadSelectedImages() {
+    function showDownloadOptions() {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.5); z-index: 999999; display: flex;
+        align-items: center; justify-content: center;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; padding: 24px; max-width: 400px; width: 90%;">
+          <h3 style="margin: 0 0 16px 0; color: #1a73e8; text-align: center;">📥 ダウンロード方法を選択</h3>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <button class="btn btn-secondary" onclick="downloadToDrive(); closeModal();" style="width: 100%;">
+              📁 Google Driveに保存
+              <small style="display: block; font-size: 11px; opacity: 0.8;">リンク付きで管理しやすい</small>
+            </button>
+            <button class="btn btn-create" onclick="downloadToBrowser(); closeModal();" style="width: 100%;">
+              💻 ブラウザでダウンロード
+              <small style="display: block; font-size: 11px; opacity: 0.8;">直接PCに保存</small>
+            </button>
+            <button class="btn" onclick="closeModal();" style="width: 100%; background: #ccc; color: #666;">
+              ❌ キャンセル
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      window.closeModal = () => {
+        document.body.removeChild(modal);
+        delete window.closeModal;
+        delete window.downloadToDrive;
+        delete window.downloadToBrowser;
+      };
+      
+      window.downloadToDrive = () => {
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function(result) {
+            showResult(result);
+          })
+          .withFailureHandler(function(error) {
+            showResult('エラー: ' + error.message, true);
+          })
+          .downloadSelectedImages();
+      };
+      
+      window.downloadToBrowser = () => {
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function(imageUrls) {
+            hideLoading();
+            downloadImagesToBrowser(imageUrls);
+          })
+          .withFailureHandler(function(error) {
+            showResult('エラー: ' + error.message, true);
+          })
+          .getSelectedImageUrls();
+      };
+    }
+    
+    function downloadImagesToBrowser(imageUrls) {
+      if (!imageUrls || imageUrls.length === 0) {
+        showResult('❌ 選択された画像がありません', true);
+        return;
+      }
+      
+      let downloadCount = 0;
+      imageUrls.forEach((imageData, index) => {
+        setTimeout(() => {
+          const link = document.createElement('a');
+          link.href = imageData.url;
+          link.download = imageData.filename;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          downloadCount++;
+          
+          if (downloadCount === imageUrls.length) {
+            showResult(`✅ ${downloadCount}枚の画像をブラウザでダウンロードしました！`);
+          }
+        }, index * 500); // 500ms間隔でダウンロード
+      });
+    }
+    
+    function showImagePreview() {
       showLoading();
       google.script.run
-        .withSuccessHandler(function(result) {
-          showResult(result);
+        .withSuccessHandler(function(previewData) {
+          hideLoading();
+          if (previewData.length === 0) {
+            showResult('❌ 表示する画像がありません', true);
+            return;
+          }
+          
+          const modal = document.createElement('div');
+          modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.9); z-index: 999999; display: flex;
+            align-items: center; justify-content: center; overflow: auto;
+          `;
+          
+          const gallery = previewData.map((img, i) => `
+            <div style="text-align: center; margin: 16px;">
+              <img src="${img.url}" style="max-width: 300px; max-height: 300px; border-radius: 8px;">
+              <p style="color: white; margin: 8px 0; font-size: 12px;">${img.prompt.substring(0, 50)}...</p>
+            </div>
+          `).join('');
+          
+          modal.innerHTML = `
+            <div style="background: white; border-radius: 16px; padding: 24px; max-width: 90vw; max-height: 90vh; overflow: auto;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; color: #1a73e8;">👁️ 画像プレビュー (${previewData.length}枚)</h3>
+                <button onclick="closePreview()" style="background: #ccc; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer;">✕</button>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                ${gallery}
+              </div>
+            </div>
+          `;
+          
+          document.body.appendChild(modal);
+          
+          window.closePreview = () => {
+            document.body.removeChild(modal);
+            delete window.closePreview;
+          };
         })
         .withFailureHandler(function(error) {
           showResult('エラー: ' + error.message, true);
         })
-        .downloadSelectedImages();
+        .getAllImagePreviewData();
     }
 
     function regenerateSelectedImages() {

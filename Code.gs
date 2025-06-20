@@ -2739,3 +2739,94 @@ function uploadBase64ImageToDrive(dataUrl) {
     throw e;
   }
 }
+
+/**
+ * ブラウザダウンロード用：選択された画像のURLとファイル名を取得
+ */
+function getSelectedImageUrls() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return [];
+    }
+
+    const selectedImages = [];
+
+    // チェックされた行を検索
+    for (let i = 2; i <= lastRow; i++) {
+      const checkboxCell = sheet.getRange(i, 8); // H列（チェックボックス）
+      const isChecked = checkboxCell.getValue();
+
+      if (isChecked === true) {
+        const imageCell = sheet.getRange(i, 4); // D列（画像列）
+        const imageFormula = imageCell.getFormula();
+
+        if (imageFormula && imageFormula.includes("=IMAGE(")) {
+          // IMAGE関数からURLを抽出
+          const urlMatch = imageFormula.match(/=IMAGE\("([^"]+)"/);
+          if (urlMatch && urlMatch[1]) {
+            // 完全なプロンプトを取得（省略表示対応）
+            const fullPrompt = getFullPrompt(sheet, i);
+            const prompt = fullPrompt || `画像_${i}`;
+
+            selectedImages.push({
+              url: urlMatch[1],
+              filename: `${prompt
+                .substring(0, 50)
+                .replace(/[^\w\s-]/g, "")}_${i}.png`,
+            });
+          }
+        }
+      }
+    }
+
+    return selectedImages;
+  } catch (error) {
+    console.error("選択画像URL取得エラー:", error);
+    throw new Error(`選択画像URL取得に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * プレビュー用：全画像のURLとプロンプトを取得
+ */
+function getAllImagePreviewData() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return [];
+    }
+
+    const images = [];
+
+    for (let i = 2; i <= lastRow; i++) {
+      const imageCell = sheet.getRange(i, 4); // D列（画像列）
+      const imageFormula = imageCell.getFormula();
+
+      if (imageFormula && imageFormula.includes("=IMAGE(")) {
+        // IMAGE関数からURLを抽出
+        const urlMatch = imageFormula.match(/=IMAGE\("([^"]+)"/);
+        if (urlMatch && urlMatch[1]) {
+          // 完全なプロンプトを取得（省略表示対応）
+          const fullPrompt = getFullPrompt(sheet, i);
+          const prompt = fullPrompt || `画像_${i}`;
+
+          images.push({
+            url: urlMatch[1],
+            prompt: prompt,
+            row: i,
+          });
+        }
+      }
+    }
+
+    return images;
+  } catch (error) {
+    console.error("画像プレビューデータ取得エラー:", error);
+    throw new Error(`画像プレビューデータ取得に失敗しました: ${error.message}`);
+  }
+}
