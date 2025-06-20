@@ -925,9 +925,15 @@
       window.downloadToBrowser = () => {
         showLoading();
         google.script.run
-          .withSuccessHandler(function(imageUrls) {
+          .withSuccessHandler(function(result) {
             hideLoading();
-            downloadImagesToBrowser(imageUrls);
+            if (result.error) {
+              showResult(result.error, true);
+            } else if (result.images && result.images.length > 0) {
+              downloadImagesToBrowser(result.images, result.totalCount);
+            } else {
+              showResult('❌ ダウンロード対象の画像がありません', true);
+            }
           })
           .withFailureHandler(function(error) {
             showResult('エラー: ' + error.message, true);
@@ -936,7 +942,7 @@
       };
     }
     
-    function downloadImagesToBrowser(imageUrls) {
+    function downloadImagesToBrowser(imageUrls, totalCount) {
       if (!imageUrls || imageUrls.length === 0) {
         showResult('❌ 選択された画像がありません', true);
         return;
@@ -955,7 +961,8 @@
           downloadCount++;
           
           if (downloadCount === imageUrls.length) {
-            showResult(`✅ ${downloadCount}枚の画像をブラウザでダウンロードしました！`);
+            const message = `✅ ${downloadCount}枚の画像をブラウザでダウンロードしました！\n\n📊 ダウンロード詳細:\n• 選択された画像: ${imageUrls.length}枚\n• 全画像数: ${totalCount || imageUrls.length}枚\n\n💻 ダウンロードフォルダを確認してください`;
+            showResult(message);
           }
         }, index * 500); // 500ms間隔でダウンロード
       });

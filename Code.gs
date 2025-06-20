@@ -1050,7 +1050,7 @@ function toggleAllImageSelection() {
 }
 
 /**
- * 選択された画像をダウンロード（9列構造対応）
+ * 選択された画像をダウンロード（9列構造対応）- 改良版
  */
 function downloadSelectedImages() {
   try {
@@ -1062,40 +1062,57 @@ function downloadSelectedImages() {
     }
 
     const selectedImages = [];
+    const allImages = [];
     let downloadCount = 0;
 
-    // チェックされた行を検索
+    // 全画像と選択画像を並行して収集
     for (let i = 2; i <= lastRow; i++) {
       const checkboxCell = sheet.getRange(i, 9); // I列（チェックボックス）
       const isChecked = checkboxCell.getValue();
+      const imageCell = sheet.getRange(i, 5); // E列（画像列）
+      const imageFormula = imageCell.getFormula();
 
-      if (isChecked === true) {
-        const imageCell = sheet.getRange(i, 5); // E列（画像列）
-        const imageFormula = imageCell.getFormula();
+      if (imageFormula && imageFormula.includes("=IMAGE(")) {
+        // IMAGE関数からURLを抽出
+        const urlMatch = imageFormula.match(/=IMAGE\("([^"]+)"/);
+        if (urlMatch && urlMatch[1]) {
+          // 完全なプロンプトを取得（省略表示対応）
+          const fullPrompt = getFullPrompt(sheet, i);
+          const prompt = fullPrompt || `画像_${i}`;
 
-        if (imageFormula && imageFormula.includes("=IMAGE(")) {
-          // IMAGE関数からURLを抽出
-          const urlMatch = imageFormula.match(/=IMAGE\("([^"]+)"/);
-          if (urlMatch && urlMatch[1]) {
-            // 完全なプロンプトを取得（省略表示対応）
-            const fullPrompt = getFullPrompt(sheet, i);
-            const prompt = fullPrompt || `画像_${i}`;
+          const imageData = {
+            url: urlMatch[1],
+            filename: `${prompt
+              .substring(0, 50)
+              .replace(/[^\w\s-]/g, "")}_${i}.png`,
+            row: i,
+          };
 
-            selectedImages.push({
-              url: urlMatch[1],
-              filename: `${prompt
-                .substring(0, 50)
-                .replace(/[^\w\s-]/g, "")}_${i}.png`,
-              row: i,
-            });
+          // 全画像リストに追加
+          allImages.push(imageData);
+
+          // チェックされている場合は選択画像リストにも追加
+          if (isChecked === true) {
+            selectedImages.push(imageData);
           }
         }
       }
     }
 
+    // 🔧 選択確認と自動判定ロジック
     if (selectedImages.length === 0) {
-      return "❌ 選択された画像がありません。チェックボックスを選択してください。";
+      if (allImages.length === 0) {
+        return "❌ ダウンロードできる画像がありません。先に画像を生成してください。";
+      } else {
+        // 画像はあるが選択されていない場合の改善提案
+        return `⚠️ 画像が選択されていません\n\n📊 利用可能な画像: ${allImages.length}枚\n\n💡 対処方法:\n1️⃣ チェックボックス（I列）で画像を選択してください\n2️⃣ 「☑️ 全選択」ボタンで全画像を選択\n3️⃣ 再度「📥 ダウンロード」をクリック\n\n🎯 選択した画像のみがダウンロードされます`;
+      }
     }
+
+    // 選択された画像数を明確に表示
+    console.log(
+      `📥 ダウンロード対象: ${selectedImages.length}枚の画像（全${allImages.length}枚中）`
+    );
 
     // Google Driveに画像をダウンロード（実際の実装）
     const folderId = createDownloadFolder();
@@ -1127,10 +1144,21 @@ function downloadSelectedImages() {
       }
     });
 
+    // 📊 詳細な結果メッセージ
     let message = `✅ ${downloadCount}枚の画像をダウンロードしました！\n`;
-    message += `Google Driveの「DALL-E画像ダウンロード」フォルダを確認してください。`;
+    message += `📁 Google Driveの「DALL-E画像ダウンロード」フォルダを確認してください。\n\n`;
+    message += `📊 ダウンロード詳細:\n`;
+    message += `• 選択された画像: ${selectedImages.length}枚\n`;
+    message += `• 成功したダウンロード: ${downloadCount}枚\n`;
+    message += `• 全画像数: ${allImages.length}枚\n`;
+
+    if (downloadCount < selectedImages.length) {
+      const failedCount = selectedImages.length - downloadCount;
+      message += `⚠️ ${failedCount}枚のダウンロードに失敗しました\n`;
+    }
+
     if (linkList.length > 0) {
-      message += `\n\n🔗 ダウンロードリンク:\n${linkList.join("\n")}`;
+      message += `\n🔗 ダウンロードリンク:\n${linkList.join("\n")}`;
     }
     return message;
   } catch (error) {
@@ -1191,7 +1219,21 @@ function regenerateSelectedImages() {
     }
 
     if (selectedPrompts.length === 0) {
-      return "❌ 選択された有効なプロンプトがありません。チェックボックスを選択してください。";
+      // 画像総数をカウント
+      let totalImageCount = 0;
+      for (let i = 2; i <= lastRow; i++) {
+        const imageCell = sheet.getRange(i, 5);
+        const imageFormula = imageCell.getFormula();
+        if (imageFormula && imageFormula.includes("=IMAGE(")) {
+          totalImageCount++;
+        }
+      }
+
+      if (totalImageCount === 0) {
+        return "❌ 再生成できる画像がありません。先に画像を生成してください。";
+      } else {
+        return `⚠️ 画像が選択されていません\n\n📊 利用可能な画像: ${totalImageCount}枚\n\n💡 対処方法:\n1️⃣ チェックボックス（I列）で再生成したい画像を選択\n2️⃣ 「☑️ 全選択」で全画像を選択\n3️⃣ 再度「🔄 再生成」をクリック\n\n🎯 選択した画像のみが再生成されます`;
+      }
     }
 
     console.log(
@@ -1745,41 +1787,112 @@ function clearSheetMenu() {
 }
 
 /**
- * シートのすべてのデータを削除（内部関数）
+ * シートのすべてのデータを削除（内部関数）- 完全クリア版
  */
 function clearAllData() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
 
-    // 1. シート全体をクリア
-    sheet.clear();
+    console.log("🧹 シートの完全クリアを開始します");
 
-    // 2. 画像も含めてすべてのコンテンツを削除
+    // 1. 既存のチェックボックスを強制削除（全範囲をチェック）
+    try {
+      const maxRows = sheet.getMaxRows();
+      const maxCols = sheet.getMaxColumns();
+
+      console.log(`📊 シートサイズ: ${maxRows}行 × ${maxCols}列`);
+
+      // 大きなシートの場合は分割してクリア（メモリ効率向上）
+      const batchSize = 1000;
+      for (let startRow = 1; startRow <= maxRows; startRow += batchSize) {
+        const endRow = Math.min(startRow + batchSize - 1, maxRows);
+        const range = sheet.getRange(
+          startRow,
+          1,
+          endRow - startRow + 1,
+          maxCols
+        );
+
+        // 🔧 強制的に全ての要素を削除
+        range.clear();
+        range.clearContent();
+        range.clearFormat();
+        range.clearNote();
+        range.clearDataValidations();
+
+        console.log(`🧹 ${startRow}-${endRow}行をクリア完了`);
+      }
+    } catch (clearError) {
+      console.error("範囲クリアエラー:", clearError);
+      // バックアップ手法：個別セルクリア
+      sheet.clear();
+    }
+
+    // 2. シート全体の再初期化
     sheet.clearContents();
     sheet.clearFormats();
     sheet.clearNotes();
+    sheet.clearDataValidations();
 
-    // 3. 行と列のサイズをリセット
+    // 3. 🔧 古いチェックボックスや条件付き書式を強制削除
+    try {
+      // 条件付き書式をすべて削除
+      const conditionalFormats = sheet.getConditionalFormatRules();
+      if (conditionalFormats.length > 0) {
+        sheet.clearConditionalFormatRules();
+        console.log(`🎨 ${conditionalFormats.length}個の条件付き書式を削除`);
+      }
+
+      // データ検証ルールをすべて削除
+      const dataValidations = sheet.getDataValidations();
+      if (dataValidations.length > 0) {
+        sheet.clearDataValidations();
+        console.log("📝 データ検証ルールを削除");
+      }
+    } catch (formatError) {
+      console.error("書式削除エラー:", formatError);
+    }
+
+    // 4. 行と列のサイズをリセット
     const maxRows = sheet.getMaxRows();
     const maxCols = sheet.getMaxColumns();
 
-    // デフォルトサイズに戻す
+    // デフォルトサイズに戻す（大きすぎる場合のみ）
     if (maxRows > 1000) {
       sheet.deleteRows(1001, maxRows - 1000);
+      console.log(`📏 行数を${maxRows}から1000に削減`);
     }
     if (maxCols > 26) {
       sheet.deleteColumns(27, maxCols - 26);
+      console.log(`📏 列数を${maxCols}から26に削減`);
     }
 
-    // 4. 行の高さと列の幅をデフォルトに戻す
+    // 5. 行の高さと列の幅をデフォルトに戻す
     sheet.setRowHeights(1, sheet.getMaxRows(), 21);
     sheet.setColumnWidths(1, sheet.getMaxColumns(), 100);
 
-    // 5. フリーズした行・列を解除
+    // 6. フリーズした行・列を解除
     sheet.setFrozenRows(0);
     sheet.setFrozenColumns(0);
 
-    console.log("✅ シートが完全にクリアされました");
+    // 7. 🔧 シート保護を解除（残っている場合）
+    try {
+      const protections = sheet.getProtections(
+        SpreadsheetApp.ProtectionType.SHEET
+      );
+      protections.forEach((protection) => {
+        protection.remove();
+      });
+      if (protections.length > 0) {
+        console.log("🔐 シート保護を解除");
+      }
+    } catch (protectionError) {
+      console.error("保護解除エラー:", protectionError);
+    }
+
+    console.log(
+      "✅ シートが完全にクリアされました（チェックボックス・書式・保護すべて削除）"
+    );
     return true;
   } catch (error) {
     console.error("データクリアエラー:", error);
@@ -2286,17 +2399,22 @@ function deleteSelectedImages() {
     }
 
     const deletedImages = [];
+    const allImages = [];
     let deleteCount = 0;
 
     // チェックされた行を検索して画像のみ削除
     for (let i = 2; i <= lastRow; i++) {
       const checkboxCell = sheet.getRange(i, 9); // I列（チェックボックス）
       const isChecked = checkboxCell.getValue();
+      const imageCell = sheet.getRange(i, 5); // E列（画像列）
+      const imageFormula = imageCell.getFormula();
+
+      // 全画像をカウント
+      if (imageFormula && imageFormula.includes("=IMAGE(")) {
+        allImages.push({ row: i });
+      }
 
       if (isChecked === true) {
-        const imageCell = sheet.getRange(i, 5); // E列（画像列）
-        const imageFormula = imageCell.getFormula();
-
         if (imageFormula && imageFormula.includes("=IMAGE(")) {
           // 画像のみを削除（他のデータは保持）
           imageCell.clear();
@@ -2329,7 +2447,11 @@ function deleteSelectedImages() {
     }
 
     if (deleteCount === 0) {
-      return "❌ 選択された画像がありません。チェックボックスを選択してください。";
+      if (allImages.length === 0) {
+        return "❌ 削除できる画像がありません。先に画像を生成してください。";
+      } else {
+        return `⚠️ 画像が選択されていません\n\n📊 利用可能な画像: ${allImages.length}枚\n\n💡 対処方法:\n1️⃣ チェックボックス（I列）で削除したい画像を選択\n2️⃣ 「☑️ 全選択」で全画像を選択\n3️⃣ 再度「🗑️ 選択削除」をクリック\n\n🎯 選択した画像のみが削除されます`;
+      }
     }
 
     console.log(`${deleteCount}枚の画像を削除:`, deletedImages);
@@ -2815,7 +2937,7 @@ function uploadBase64ImageToDrive(dataUrl) {
 }
 
 /**
- * ブラウザダウンロード用：選択された画像のURLとファイル名を取得
+ * ブラウザダウンロード用：選択された画像のURLとファイル名を取得 - 改良版
  */
 function getSelectedImageUrls() {
   try {
@@ -2823,43 +2945,71 @@ function getSelectedImageUrls() {
     const lastRow = sheet.getLastRow();
 
     if (lastRow < 2) {
-      return [];
+      return { images: [], error: "❌ データがありません" };
     }
 
     const selectedImages = [];
+    const allImages = [];
 
-    // チェックされた行を検索
+    // 全画像と選択画像を並行して収集
     for (let i = 2; i <= lastRow; i++) {
       const checkboxCell = sheet.getRange(i, 9); // I列（チェックボックス）
       const isChecked = checkboxCell.getValue();
+      const imageCell = sheet.getRange(i, 5); // E列（画像列）
+      const imageFormula = imageCell.getFormula();
 
-      if (isChecked === true) {
-        const imageCell = sheet.getRange(i, 5); // E列（画像列）
-        const imageFormula = imageCell.getFormula();
+      if (imageFormula && imageFormula.includes("=IMAGE(")) {
+        // IMAGE関数からURLを抽出
+        const urlMatch = imageFormula.match(/=IMAGE\("([^"]+)"/);
+        if (urlMatch && urlMatch[1]) {
+          // 完全なプロンプトを取得（省略表示対応）
+          const fullPrompt = getFullPrompt(sheet, i);
+          const prompt = fullPrompt || `画像_${i}`;
 
-        if (imageFormula && imageFormula.includes("=IMAGE(")) {
-          // IMAGE関数からURLを抽出
-          const urlMatch = imageFormula.match(/=IMAGE\("([^"]+)"/);
-          if (urlMatch && urlMatch[1]) {
-            // 完全なプロンプトを取得（省略表示対応）
-            const fullPrompt = getFullPrompt(sheet, i);
-            const prompt = fullPrompt || `画像_${i}`;
+          const imageData = {
+            url: urlMatch[1],
+            filename: `${prompt
+              .substring(0, 50)
+              .replace(/[^\w\s-]/g, "")}_${i}.png`,
+          };
 
-            selectedImages.push({
-              url: urlMatch[1],
-              filename: `${prompt
-                .substring(0, 50)
-                .replace(/[^\w\s-]/g, "")}_${i}.png`,
-            });
+          // 全画像リストに追加
+          allImages.push(imageData);
+
+          // チェックされている場合は選択画像リストにも追加
+          if (isChecked === true) {
+            selectedImages.push(imageData);
           }
         }
       }
     }
 
-    return selectedImages;
+    // 🔧 選択確認ロジック
+    if (selectedImages.length === 0) {
+      if (allImages.length === 0) {
+        return {
+          images: [],
+          error:
+            "❌ ダウンロードできる画像がありません。先に画像を生成してください。",
+        };
+      } else {
+        return {
+          images: [],
+          error: `⚠️ 画像が選択されていません\n\n📊 利用可能な画像: ${allImages.length}枚\n\n💡 対処方法:\n1️⃣ チェックボックス（I列）で画像を選択\n2️⃣ 「☑️ 全選択」で全画像を選択\n3️⃣ 再度ダウンロードを実行\n\n🎯 選択した画像のみがダウンロードされます`,
+        };
+      }
+    }
+
+    console.log(
+      `🖥️ ブラウザダウンロード対象: ${selectedImages.length}枚の画像（全${allImages.length}枚中）`
+    );
+    return { images: selectedImages, totalCount: allImages.length };
   } catch (error) {
     console.error("選択画像URL取得エラー:", error);
-    throw new Error(`選択画像URL取得に失敗しました: ${error.message}`);
+    return {
+      images: [],
+      error: `選択画像URL取得に失敗しました: ${error.message}`,
+    };
   }
 }
 
