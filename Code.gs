@@ -1019,11 +1019,15 @@ function populateStructuredTable(imageResults, promptRows) {
     );
 
     // 成功した画像のみを対象にライブラリ記録
-    const successfulResults = imageResults.filter((r) => !r.failed);
-    console.log(`📊 ライブラリ記録対象: ${successfulResults.length}件`);
-    console.log(`📊 選択行詳細: [${selectedRows.join(", ")}]`);
+    const successPairs = imageResults
+      .map((res, idx) => ({ result: res, row: promptRows[idx] }))
+      .filter((pair) => !pair.result.failed);
+    console.log(`📊 ライブラリ記録対象: ${successPairs.length}件`);
+    console.log(
+      `📊 対象行詳細: [${successPairs.map((p) => p.row).join(", ")}]`
+    );
 
-    if (successfulResults.length > 0) {
+    if (successPairs.length > 0) {
       try {
         // ライブラリシートを強制作成
         console.log("🔧 ライブラリシート作成開始...");
@@ -1034,11 +1038,11 @@ function populateStructuredTable(imageResults, promptRows) {
         let librarySuccessCount = 0;
         let libraryFailureCount = 0;
 
-        successfulResults.forEach((result, index) => {
-          const row = selectedRows[index];
+        successPairs.forEach((pair, index) => {
+          const { result, row } = pair;
           console.log(
             `🔥 強制ライブラリ記録開始 [${index + 1}/${
-              successfulResults.length
+              successPairs.length
             }]: 行${row}, 画像URL: ${
               result.imageUrl ? result.imageUrl.substring(0, 50) : "なし"
             }...`
