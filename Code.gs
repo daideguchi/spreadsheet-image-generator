@@ -759,7 +759,7 @@ function populateStructuredTable(imageResults, promptRows) {
       const row = promptRows[index];
 
       if (result.failed) {
-        // 失敗した画像の処理
+        // 失敗した画像の処理（自動生成エリア）
         const imageCell = sheet.getRange(row, 5); // E列：画像
         imageCell.setValue("❌ 生成失敗");
         imageCell.setHorizontalAlignment("center");
@@ -767,9 +767,19 @@ function populateStructuredTable(imageResults, promptRows) {
         imageCell.setFontWeight("bold");
         imageCell.setFontColor("#d32f2f");
         imageCell.setBackground("#ffebee");
+        imageCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#f44336",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: エラー用赤色破線
         // エラーメッセージ
         const maxErrorLength = 5000;
-        let errorMessage = `エラー詳細:\n${result.error}\n\n再生成するには、この行を選択して「🔄 再生成」ボタンをクリックしてください。`;
+        let errorMessage = `❌ 自動生成エラー:\n${result.error}\n\n再生成するには、この行を選択して「🔄 再生成」ボタンをクリックしてください。`;
         if (errorMessage.length > maxErrorLength) {
           errorMessage =
             errorMessage.substring(0, maxErrorLength - 100) +
@@ -777,7 +787,7 @@ function populateStructuredTable(imageResults, promptRows) {
         }
         imageCell.setNote(errorMessage);
 
-        // F列: エラー表示
+        // F列: エラー表示（自動生成エリア）
         const ratioCell = sheet.getRange(row, 6);
         ratioCell.setValue("エラー");
         ratioCell.setHorizontalAlignment("center");
@@ -785,16 +795,37 @@ function populateStructuredTable(imageResults, promptRows) {
         ratioCell.setFontWeight("bold");
         ratioCell.setFontColor("#d32f2f");
         ratioCell.setBackground("#ffebee");
+        ratioCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#f44336",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: エラー用赤色破線
 
-        // G列: 生成日時
+        // G列: 生成日時（自動生成エリア）
         const timeCell = sheet.getRange(row, 7);
         timeCell.setValue(currentTime);
         timeCell.setHorizontalAlignment("center");
         timeCell.setVerticalAlignment("middle");
         timeCell.setFontSize(9);
         timeCell.setBackground("#ffebee");
+        timeCell.setFontColor("#757575"); // 📱 視覚改善: 控えめなフォント色
+        timeCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#f44336",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: エラー用赤色破線
 
-        // H列: ステータス
+        // H列: ステータス（自動生成エリア）
         const statusCell = sheet.getRange(row, 8);
         statusCell.setValue("❌ 生成失敗");
         statusCell.setHorizontalAlignment("center");
@@ -802,6 +833,16 @@ function populateStructuredTable(imageResults, promptRows) {
         statusCell.setFontWeight("bold");
         statusCell.setFontColor("#d32f2f");
         statusCell.setBackground("#ffebee");
+        statusCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#f44336",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: エラー用赤色破線
       } else {
         // 成功した画像の処理
         const imageCell = sheet.getRange(row, 5); // E列：画像
@@ -834,24 +875,56 @@ function populateStructuredTable(imageResults, promptRows) {
         ratioCell.setHorizontalAlignment("center");
         ratioCell.setVerticalAlignment("middle");
         ratioCell.setFontWeight("bold");
-        ratioCell.setBackground("#e8f5e8");
+        ratioCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアのグレー
+        ratioCell.setFontColor("#4caf50"); // 📱 視覚改善: 成功を示す緑色フォント
+        ratioCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#bdbdbd",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: 破線境界線
 
-        // G列: 生成日時
+        // G列: 生成日時（自動生成エリア）
         const timeCell = sheet.getRange(row, 7);
         timeCell.setValue(currentTime);
         timeCell.setHorizontalAlignment("center");
         timeCell.setVerticalAlignment("middle");
         timeCell.setFontSize(9);
-        timeCell.setBackground("#f5f5f5");
+        timeCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアのグレー
+        timeCell.setFontColor("#757575"); // 📱 視覚改善: 控えめなフォント色
+        timeCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#bdbdbd",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: 破線境界線
 
-        // H列: ステータス
+        // H列: ステータス（自動生成エリア）
         const statusCell = sheet.getRange(row, 8);
         statusCell.setValue("✅ GPT-Image-1");
         statusCell.setHorizontalAlignment("center");
         statusCell.setVerticalAlignment("middle");
         statusCell.setFontWeight("bold");
-        statusCell.setFontColor("#2e7d32");
-        statusCell.setBackground("#e8f5e8");
+        statusCell.setFontColor("#4caf50"); // 📱 視覚改善: 成功を示す緑色フォント
+        statusCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアのグレー
+        statusCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#bdbdbd",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: 破線境界線
       }
 
       // プロンプト情報の処理（UX改善版）
@@ -884,6 +957,17 @@ function populateStructuredTable(imageResults, promptRows) {
       checkboxCell.insertCheckboxes();
       checkboxCell.setHorizontalAlignment("center");
       checkboxCell.setVerticalAlignment("middle");
+      checkboxCell.setBackground("#f0f8ff"); // 📱 視覚改善: ユーザー操作エリアを薄い青色に
+      checkboxCell.setBorder(
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        "#4caf50",
+        SpreadsheetApp.BorderStyle.SOLID
+      ); // 📱 視覚改善: 緑色の境界線
 
       // 行の高さを画像に合わせて調整（固定）
       sheet.setRowHeight(row, 180);
@@ -1944,14 +2028,27 @@ function createStructuredTable() {
     const headerRange = sheet.getRange(1, 1, 1, headers.length);
     headerRange.setValues([headers]);
 
-    // ヘッダー行のスタイル設定
-    headerRange.setBackground("#1a73e8");
+    // ヘッダー行の色分けスタイル設定（入力エリアと自動生成エリアを区別）
     headerRange.setFontColor("white");
     headerRange.setFontWeight("bold");
     headerRange.setHorizontalAlignment("center");
     headerRange.setVerticalAlignment("middle");
     headerRange.setFontSize(12);
     sheet.setRowHeight(1, 45);
+
+    // 📱 視覚改善: ヘッダーを機能別に色分け
+    // ユーザー入力エリア（明るい色）
+    sheet.getRange(1, 2).setBackground("#4caf50"); // B列: プロンプト入力（緑）
+    sheet.getRange(1, 3).setBackground("#ff9800"); // C列: 共通プロンプト選択（オレンジ）
+    sheet.getRange(1, 9).setBackground("#4caf50"); // I列: 選択（緑）
+
+    // 自動生成エリア（グレー系）
+    sheet.getRange(1, 1).setBackground("#757575"); // A列: 番号（グレー）
+    sheet.getRange(1, 4).setBackground("#757575"); // D列: 結合プロンプト（グレー）
+    sheet.getRange(1, 5).setBackground("#757575"); // E列: 画像（グレー）
+    sheet.getRange(1, 6).setBackground("#757575"); // F列: 比率（グレー）
+    sheet.getRange(1, 7).setBackground("#757575"); // G列: 日時（グレー）
+    sheet.getRange(1, 8).setBackground("#757575"); // H列: ステータス（グレー）
 
     // 列幅の最適化（9列構造）
     sheet.setColumnWidth(1, 60); // A: No.
@@ -1971,61 +2068,169 @@ function createStructuredTable() {
       const row = i + 1;
 
       try {
-        // A列: 番号
+        // A列: 番号（自動生成エリア）
         const numberCell = sheet.getRange(row, 1);
         numberCell.setValue(i);
         numberCell.setHorizontalAlignment("center");
         numberCell.setFontWeight("bold");
-        numberCell.setBackground("#f8f9fa");
+        numberCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアをグレーアウト
+        numberCell.setFontColor("#666666"); // 📱 視覚改善: フォント色を控えめに
+        numberCell.setNote("🔢 自動連番 - 編集不要");
 
-        // B列: 個別プロンプト入力エリア
+        // B列: 個別プロンプト入力エリア（ユーザー入力エリア）
         const promptCell = sheet.getRange(row, 2);
         promptCell.setWrap(false); // 🔧 UX改善: 縦伸びを防止
         promptCell.setVerticalAlignment("middle");
         promptCell.setFontSize(11);
         promptCell.setPadding(8, 8, 8, 8);
+        promptCell.setBackground("#f8fff0"); // 📱 視覚改善: 入力エリアを明るい緑色に
+        promptCell.setFontColor("#2e7d32"); // 📱 視覚改善: 入力促進の緑色フォント
+        promptCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#4caf50",
+          SpreadsheetApp.BorderStyle.SOLID
+        ); // 📱 視覚改善: 緑色の境界線
         promptCell.setNote(
-          "個別のプロンプトを入力してください。\n💡 長いプロンプトはセルをクリックして全文確認できます。"
+          "✏️ ここにプロンプトを入力してください\n💡 長いプロンプトはセルをクリックして全文確認できます。"
         );
 
-        // C列: 共通プロンプト選択（データ検証付きドロップダウン）
+        // C列: 共通プロンプト選択（ユーザー入力エリア）
         const commonPromptCell = sheet.getRange(row, 3);
         commonPromptCell.setHorizontalAlignment("center");
         commonPromptCell.setVerticalAlignment("middle");
         commonPromptCell.setFontSize(10);
-        commonPromptCell.setBackground("#fff3e0");
+        commonPromptCell.setBackground("#fff8e1"); // 📱 視覚改善: 入力エリアを明るい黄色に
+        commonPromptCell.setFontColor("#f57c00"); // 📱 視覚改善: 選択促進のオレンジ色フォント
+        commonPromptCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#ff9800",
+          SpreadsheetApp.BorderStyle.SOLID
+        ); // 📱 視覚改善: オレンジ色の境界線
         commonPromptCell.setNote(
-          "タブから共通プロンプトを選択できます。\n💡 新しい共通プロンプトは設定シートで追加可能です。"
+          "🎯 共通プロンプトを選択してください\n💡 新しい共通プロンプトは設定シートで追加可能です。"
         );
 
-        // D列: 結合プロンプト（最小表示）
+        // D列: 結合プロンプト（自動生成エリア）
         const combinedCell = sheet.getRange(row, 4);
         combinedCell.setValue("🔗"); // アイコンのみ表示
         combinedCell.setHorizontalAlignment("center");
         combinedCell.setVerticalAlignment("middle");
         combinedCell.setFontSize(16);
-        combinedCell.setBackground("#f0f8ff");
+        combinedCell.setBackground("#eeeeee"); // 📱 視覚改善: 自動生成エリアをグレーアウト
+        combinedCell.setFontColor("#757575"); // 📱 視覚改善: フォント色を控えめに
+        combinedCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#bdbdbd",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: 破線の境界線
         combinedCell.setNote(
-          "個別プロンプト + 共通プロンプトの結合結果がここに表示されます。\n💡 セルをクリックして完全なプロンプトを確認できます。"
+          "🤖 自動結合プロンプト（編集不要）\n個別プロンプト + 共通プロンプトの結合結果がここに表示されます。"
         );
 
-        // I列: チェックボックス
+        // E列: 生成画像（自動生成エリア）
+        const imageCell = sheet.getRange(row, 5);
+        imageCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアをグレーアウト
+        imageCell.setNote("🎨 画像生成エリア（自動）");
+        imageCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#bdbdbd",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: 破線の境界線
+
+        // F列: 画像比率（自動生成エリア）
+        const ratioCell = sheet.getRange(row, 6);
+        ratioCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアをグレーアウト
+        ratioCell.setFontColor("#757575"); // 📱 視覚改善: フォント色を控えめに
+        ratioCell.setNote("📐 画像比率（自動計算）");
+        ratioCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#bdbdbd",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: 破線の境界線
+
+        // G列: 生成日時（自動生成エリア）
+        const timeCell = sheet.getRange(row, 7);
+        timeCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアをグレーアウト
+        timeCell.setFontColor("#757575"); // 📱 視覚改善: フォント色を控えめに
+        timeCell.setNote("⏰ 生成日時（自動記録）");
+        timeCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#bdbdbd",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: 破線の境界線
+
+        // H列: ステータス（自動生成エリア）
+        const statusCell = sheet.getRange(row, 8);
+        statusCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアをグレーアウト
+        statusCell.setFontColor("#757575"); // 📱 視覚改善: フォント色を控えめに
+        statusCell.setNote("✅ ステータス（自動更新）");
+        statusCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#bdbdbd",
+          SpreadsheetApp.BorderStyle.DASHED
+        ); // 📱 視覚改善: 破線の境界線
+
+        // I列: チェックボックス（ユーザー入力エリア）
         const checkboxCell = sheet.getRange(row, 9);
         checkboxCell.insertCheckboxes();
         checkboxCell.setHorizontalAlignment("center");
         checkboxCell.setVerticalAlignment("middle");
+        checkboxCell.setBackground("#e8f5e8"); // 📱 視覚改善: 操作エリアを明るい緑色に
+        checkboxCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#4caf50",
+          SpreadsheetApp.BorderStyle.SOLID
+        ); // 📱 視覚改善: 緑色の境界線
+        checkboxCell.setNote("☑️ 選択・操作エリア");
 
         // 行の高さを固定（UX改善）
         sheet.setRowHeight(row, 50); // 🔧 固定高さでUX改善
 
-        // 境界線を設定
-        const rowRange = sheet.getRange(row, 1, 1, headers.length);
-        rowRange.setBorder(true, true, true, true, true, true);
-
         // 10行ごとに薄い区切り線を追加
         if (i % 10 === 0) {
-          rowRange.setBackground("#f0f0f0");
-          console.log(`${i}行目まで作成完了`);
+          const rowRange = sheet.getRange(row, 1, 1, headers.length);
+          rowRange.setBackground("#e0e0e0"); // 📱 視覚改善: 区切り線をより薄く
+          console.log(`${i}行目まで作成完了 - 視覚改善対応`);
         }
       } catch (rowError) {
         console.error(`行${row}の作成でエラー:`, rowError);
@@ -2044,14 +2249,15 @@ function createStructuredTable() {
       const messageRange = sheet.getRange(messageRow, 1, 1, 9);
       messageRange.merge();
       messageRange.setValue(
-        `✨ 共通プロンプト機能付きテーブルを作成しました！B列に個別プロンプト、C列で共通プロンプトを選択してください。`
+        `✨ 視覚改善版テーブルを作成しました！\n🟢 緑色・オレンジ色エリア = 入力・操作エリア  |  🔘 グレーエリア = 自動生成・読み取り専用`
       );
       messageRange.setBackground("#e8f5e8");
       messageRange.setFontColor("#2e7d32");
       messageRange.setHorizontalAlignment("center");
       messageRange.setFontWeight("bold");
-      messageRange.setFontSize(14);
-      sheet.setRowHeight(messageRow, 40);
+      messageRange.setFontSize(12);
+      messageRange.setWrap(true);
+      sheet.setRowHeight(messageRow, 60);
 
       console.log("完了メッセージを追加しました");
     } catch (messageError) {
@@ -2059,8 +2265,8 @@ function createStructuredTable() {
       // メッセージエラーは無視して続行
     }
 
-    console.log(`✅ 共通プロンプト機能付きテーブルを作成しました`);
-    return "✅ 共通プロンプト機能付きテーブルを作成しました！B列に個別プロンプト、C列で共通プロンプトを選択してください。";
+    console.log(`✅ 視覚改善版テーブルを作成しました（入力エリア色分け対応）`);
+    return "✅ 視覚改善版テーブルを作成しました！🟢緑色・オレンジ色エリアに入力・操作してください。🔘グレーエリアは自動生成されます。";
   } catch (error) {
     console.error("構造化テーブル作成エラー:", error);
     throw new Error(`構造化テーブルの作成に失敗しました: ${error.message}`);
@@ -3056,15 +3262,17 @@ function updateCombinedPrompt(sheet, row) {
 
       combinedCell.setValue(displayText);
       combinedCell.setNote(
-        `完全な結合プロンプト（${combinedPrompt.length}文字）:\n\n${combinedPrompt}`
+        `🤖 自動結合完了！（${combinedPrompt.length}文字）\n\n${combinedPrompt}`
       );
-      combinedCell.setBackground("#e8f5e8"); // 結合済みを示す緑色
+      combinedCell.setBackground("#dcedc8"); // 📱 視覚改善: 結合済みを示す薄い緑色（自動生成エリア内）
+      combinedCell.setFontColor("#4caf50"); // 📱 視覚改善: 結合済みを示す緑色フォント
     } else {
       combinedCell.setValue("🔗");
       combinedCell.setNote(
-        "個別プロンプト + 共通プロンプトの結合結果がここに表示されます。"
+        "🤖 自動結合プロンプト（編集不要）\n個別プロンプト + 共通プロンプトの結合結果がここに表示されます。"
       );
-      combinedCell.setBackground("#f0f8ff"); // デフォルト色
+      combinedCell.setBackground("#eeeeee"); // 📱 視覚改善: デフォルトのグレーエリア
+      combinedCell.setFontColor("#757575"); // 📱 視覚改善: 控えめなフォント色
     }
 
     console.log(`行${row}: 結合プロンプトを更新しました`);
