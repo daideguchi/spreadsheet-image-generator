@@ -1018,6 +1018,10 @@ function populateStructuredTable(imageResults, promptRows) {
       )
     );
 
+    // 🎯 画像設定完了後の待機（確実な画像反映のため）
+    console.log("⏳ 画像反映待機中...");
+    Utilities.sleep(1500); // 1.5秒待機（画像が確実に設定されるまで）
+
     // 🎯 限界突破: 直接E列から画像を確認してライブラリに記録
     try {
       console.log("🔧 ライブラリシート準備開始...");
@@ -1040,7 +1044,7 @@ function populateStructuredTable(imageResults, promptRows) {
         }
 
         try {
-          // 🎯 元シートのE列から直接画像を確認
+          // 🎯 元シートのE列から直接画像を再確認（最新状態）
           const imageCell = sheet.getRange(row, 5);
           const imageFormula = imageCell.getFormula();
 
@@ -1069,7 +1073,7 @@ function populateStructuredTable(imageResults, promptRows) {
               console.warn(`比率取得エラー 行${row}:`, ratioError);
             }
 
-            // ライブラリデータ作成
+            // ライブラリデータ作成（sourceFormulaを最新状態に）
             const libraryData = {
               prompt: promptText,
               imageUrl: result.url || result.imageUrl || "URL不明",
@@ -1077,7 +1081,8 @@ function populateStructuredTable(imageResults, promptRows) {
               status: "✅ GPT-Image-1",
               timestamp: new Date(),
               originalRow: row,
-              sourceFormula: imageFormula, // 🎯 確実に存在するフォーミュラ
+              sourceFormula: imageFormula, // 🎯 最新のフォーミュラを使用
+              sourceSheet: sheet.getName(), // 🎯 元シート名を追加
             };
 
             console.log(`🚀 行${row}のライブラリ記録実行`);
@@ -3986,18 +3991,32 @@ function addToImageLibrary(imageData) {
           `🔍 元シートからのコピーを試行: 行${imageData.originalRow}`
         );
         const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-        const inputSheets = spreadsheet
-          .getSheets()
-          .filter(
-            (s) =>
-              s.getName() !== "画像生成ライブラリ" &&
-              s.getName() !== "共通プロンプト設定"
-          );
 
-        if (inputSheets.length > 0) {
-          const mainSheet = inputSheets[0]; // 最初の入力シート
-          console.log(`📋 入力シート特定: ${mainSheet.getName()}`);
+        // 元シート名が指定されている場合は優先使用
+        let mainSheet = null;
+        if (imageData.sourceSheet) {
+          mainSheet = spreadsheet.getSheetByName(imageData.sourceSheet);
+          console.log(`📋 指定された元シート: ${imageData.sourceSheet}`);
+        }
 
+        // 元シートが見つからない場合はアクティブシートから探す
+        if (!mainSheet) {
+          const inputSheets = spreadsheet
+            .getSheets()
+            .filter(
+              (s) =>
+                s.getName() !== "画像生成ライブラリ" &&
+                s.getName() !== "共通プロンプト設定" &&
+                s.getName() !== "📋 バージョン記録"
+            );
+
+          if (inputSheets.length > 0) {
+            mainSheet = inputSheets[0]; // 最初の入力シート
+            console.log(`📋 入力シート特定: ${mainSheet.getName()}`);
+          }
+        }
+
+        if (mainSheet) {
           const sourceImageCell = mainSheet.getRange(imageData.originalRow, 5); // E列
           sourceImageCellRef = sourceImageCell; // 直接コピー用に保持
           const sourceFormula = sourceImageCell.getFormula();

@@ -519,16 +519,12 @@
           <div class="step-number">3</div>
           <div class="step-text">画像生成</div>
         </div>
-        <div class="step" id="step4">
-          <div class="step-number">4</div>
-          <div class="step-text">ライブラリ<br>追加</div>
-        </div>
       </div>
 
       <div class="instructions">
         <div id="instruction-text">
-          <strong>🚀 簡単4ステップ:</strong><br>
-          <strong>1️⃣</strong> 表を初期化 → <strong>2️⃣</strong> プロンプト入力 → <strong>3️⃣</strong> 画像生成 → <strong>4️⃣</strong> ライブラリ追加
+          <strong>🚀 簡単3ステップ:</strong><br>
+          <strong>1️⃣</strong> 表を初期化 → <strong>2️⃣</strong> プロンプト入力 → <strong>3️⃣</strong> 画像生成
         </div>
       </div>
 
@@ -537,7 +533,7 @@
         <div class="button-section">
           <div class="section-title">📋 基本操作</div>
           <button class="btn btn-setup" id="setupBtn" onclick="executeSetupWithBackup()" title="データを安全にバックアップしてから初期化します">
-            🔧 表を初期化（バックアップ付き）
+            🔧 表を初期化
           </button>
           
           <button class="btn" id="generateBtn" onclick="generateFromStructuredTable()" title="プロンプトを入力してください">
@@ -704,7 +700,7 @@
     }
 
     function updateStepIndicator(currentStep) {
-      const steps = ['step1', 'step2', 'step3', 'step4'];
+      const steps = ['step1', 'step2', 'step3'];
       steps.forEach(step => {
         document.getElementById(step).classList.remove('active');
       });
@@ -770,15 +766,13 @@
     function startProgressWithImageCount(imageCount) {
       // 🔧 **プログレスバー詳細ステップ分割**: 均等で快適な進捗表示
       const steps = [
-        { inc: 10, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 800 },
-        { inc: 10, text: 'DALL-E APIに接続中...', duration: 800 },
-        { inc: 10, text: 'API認証を確認中...', duration: 800 },
-        { inc: 10, text: `画像生成リクエスト送信中... (${imageCount}枚)`, duration: 800 },
-        { inc: 25, text: `画像を生成中... (${imageCount}枚)`, duration: Math.max(1500, imageCount * 800) }, // 均等化
-        { inc: 10, text: '生成結果を受信中...', duration: 800 },
-        { inc: 10, text: '画像データを処理中...', duration: 800 },
-        { inc: 10, text: 'シートに配置中...', duration: 800 },
-        { inc: 5, text: 'ライブラリに追加中...', duration: 800 }
+        { inc: 12, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 800 },
+        { inc: 12, text: 'DALL-E APIに接続中...', duration: 800 },
+        { inc: 12, text: 'API認証を確認中...', duration: 800 },
+        { inc: 12, text: `画像生成リクエスト送信中... (${imageCount}枚)`, duration: 800 },
+        { inc: 28, text: `画像を生成中... (${imageCount}枚)`, duration: Math.max(1500, imageCount * 800) }, // 均等化
+        { inc: 12, text: '生成結果を受信中...', duration: 800 },
+        { inc: 12, text: 'シートに配置中...', duration: 800 }
       ];
 
       let progress = 0;
@@ -1075,19 +1069,13 @@
       
       google.script.run
         .withSuccessHandler(function(result) {
-          // ライブラリ追加ステップを表示
-          updateStepIndicator('step4');
-          updateProgress(95, '📚 ライブラリに追加中...', 'ステップ 4/4');
-          
+          updateProgress(100, '✅ 画像生成が完了しました！', '完了');
           setTimeout(() => {
-            updateProgress(100, '✅ 画像生成とライブラリ追加が完了しました！', '完了');
-            setTimeout(() => {
-              hideProgressModal();
-              showResult(result);
-              // 画像生成完了後にボタン状態を再チェック
-              checkSheetState();
-            }, 1000);
-          }, 800);
+            hideProgressModal();
+            showResult(result);
+            // 画像生成完了後にボタン状態を再チェック
+            checkSheetState();
+          }, 1500);
         })
         .withFailureHandler(function(error) {
           hideProgressModal();
