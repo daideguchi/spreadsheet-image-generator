@@ -1005,38 +1005,79 @@ function populateStructuredTable(imageResults, promptRows) {
       processedCount++;
     });
 
-    // 💡 改善要求: 全ての画像設定完了後にライブラリ記録を実行
-    console.log("🔄 画像設定完了、ライブラリ記録を開始します...");
-    imageResults.forEach((result, index) => {
-      if (!result.failed) {
-        const row = selectedRows[index];
-        try {
-          const finalPrompt = getCombinedPrompt(sheet, row);
-          const aspectRatio = sheet.getRange(row, 6).getValue() || "1024x1024";
+    // 💡 緊急修正: 確実なライブラリ記録実行
+    console.log("🚀 緊急修正: ライブラリ記録を強制実行します...");
 
-          console.log(`📚 ライブラリ記録開始: 行${row}`);
+    // 成功した画像のみを対象にライブラリ記録
+    const successfulResults = imageResults.filter((r) => !r.failed);
+    console.log(`📊 ライブラリ記録対象: ${successfulResults.length}件`);
 
-          const libraryResult = addToImageLibrary({
-            prompt: finalPrompt,
-            imageUrl: result.imageUrl,
-            aspectRatio: aspectRatio,
-            status: "✅ GPT-Image-1",
-            timestamp: new Date(),
-            originalRow: row,
-          });
+    if (successfulResults.length > 0) {
+      try {
+        // ライブラリシートを強制作成
+        const librarySheet = getOrCreateLibrarySheet();
+        console.log(`📚 ライブラリシート準備完了: ${librarySheet.getName()}`);
 
-          if (libraryResult) {
-            console.log(`📚 ライブラリ記録成功: 行${row}`);
-          } else {
-            console.warn(`📚 ライブラリ記録失敗: 行${row}`);
+        successfulResults.forEach((result, index) => {
+          const row = selectedRows[index];
+          console.log(
+            `🔥 強制ライブラリ記録開始: 行${row}, 画像URL: ${
+              result.imageUrl ? result.imageUrl.substring(0, 50) : "なし"
+            }...`
+          );
+
+          try {
+            // プロンプトを確実に取得
+            let finalPrompt = "";
+            try {
+              finalPrompt =
+                getCombinedPrompt(sheet, row) || `画像生成_行${row}`;
+            } catch (promptError) {
+              console.warn(`プロンプト取得エラー 行${row}:`, promptError);
+              finalPrompt = `画像生成_行${row}`;
+            }
+
+            // 比率を確実に取得
+            let aspectRatio = "1024x1024";
+            try {
+              aspectRatio = sheet.getRange(row, 6).getValue() || "1024x1024";
+            } catch (ratioError) {
+              console.warn(`比率取得エラー 行${row}:`, ratioError);
+            }
+
+            console.log(`📝 プロンプト: ${finalPrompt.substring(0, 30)}...`);
+            console.log(`📐 比率: ${aspectRatio}`);
+            console.log(`🔗 元行: ${row}`);
+
+            const libraryData = {
+              prompt: finalPrompt,
+              imageUrl: result.imageUrl,
+              aspectRatio: aspectRatio,
+              status: "✅ GPT-Image-1",
+              timestamp: new Date(),
+              originalRow: row,
+            };
+
+            const libraryResult = addToImageLibrary(libraryData);
+
+            if (libraryResult) {
+              console.log(`✅ ライブラリ記録成功: 行${row}`);
+            } else {
+              console.error(`❌ ライブラリ記録失敗: 行${row}`);
+            }
+          } catch (itemError) {
+            console.error(`🚨 ライブラリ記録エラー 行${row}:`, itemError);
+            console.error(`🚨 エラー詳細:`, itemError.stack);
           }
-        } catch (libraryError) {
-          console.error(`📚 ライブラリ記録エラー 行${row}:`, libraryError);
-          // ライブラリエラーは画像生成を妨げない
-        }
+        });
+      } catch (librarySetupError) {
+        console.error("🚨 ライブラリシート準備エラー:", librarySetupError);
       }
-    });
-    console.log("✅ ライブラリ記録処理完了");
+    } else {
+      console.warn("⚠️ ライブラリ記録対象がありません");
+    }
+
+    console.log("🎯 ライブラリ記録処理完了");
 
     // 成功・失敗の詳細を含む結果メッセージ
     const successCount = imageResults.filter((r) => !r.failed).length;
@@ -3678,18 +3719,30 @@ function createCommonPromptSheet() {
  * ライブラリシートを作成または取得
  */
 function getOrCreateLibrarySheet() {
+  console.log("🔍 ライブラリシート取得開始...");
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    console.log(`📋 スプレッドシート名: ${spreadsheet.getName()}`);
+
     let librarySheet = spreadsheet.getSheetByName("画像生成ライブラリ");
+    console.log(
+      `🔍 既存ライブラリシート: ${
+        librarySheet ? "見つかりました" : "見つかりません"
+      }`
+    );
 
     if (!librarySheet) {
+      console.log("🆕 新しいライブラリシートを作成します...");
       // 💡 改善要求: 新しい改善されたライブラリシート作成関数を使用
       librarySheet = createEmptyLibrarySheet();
+      console.log(`✅ ライブラリシート作成完了: ${librarySheet.getName()}`);
     }
 
+    console.log(`🎯 ライブラリシート準備完了: ${librarySheet.getName()}`);
     return librarySheet;
   } catch (error) {
-    console.error("ライブラリシート作成エラー:", error);
+    console.error("🚨 ライブラリシート作成エラー:", error);
+    console.error("🚨 エラー詳細:", error.stack);
     throw new Error(`ライブラリシートの作成に失敗しました: ${error.message}`);
   }
 }
@@ -3698,13 +3751,19 @@ function getOrCreateLibrarySheet() {
  * ライブラリシートに生成記録を追加（💡 改善要求: 画像確実コピー＆結合プロンプト形式）
  */
 function addToImageLibrary(imageData) {
+  console.log("🔥 addToImageLibrary開始:", imageData);
   try {
+    console.log("📚 ライブラリシート取得中...");
     const librarySheet = getOrCreateLibrarySheet();
+    console.log(`✅ ライブラリシート取得成功: ${librarySheet.getName()}`);
+
     const lastRow = librarySheet.getLastRow();
     const newRow = lastRow + 1;
+    console.log(`📊 新規行番号: ${newRow} (最終行: ${lastRow})`);
 
     // 通し番号を計算（ヘッダー除く）
     const recordNumber = lastRow > 1 ? lastRow - 1 : 1;
+    console.log(`🔢 レコード番号: ${recordNumber}`);
 
     // 💡 改善要求: 元シートから画像を直接コピーペースト
     let sourceImageCell = null;
@@ -3851,13 +3910,16 @@ function addToImageLibrary(imageData) {
     librarySheet.setRowHeight(newRow, 50); // 💡 改善要求: 結合プロンプトと同じ50pxに統一
 
     console.log(
-      `✅ ライブラリに記録追加完了: 行${newRow} - 画像コピー${
+      `🎉 ライブラリに記録追加完了: 行${newRow} - 画像コピー${
         imageSuccessfullyCopied ? "成功" : "フォールバック"
       } - ${promptText.substring(0, 30)}...`
     );
+    console.log("✅ addToImageLibrary正常終了");
     return true;
   } catch (error) {
-    console.error("ライブラリ記録追加エラー:", error);
+    console.error("🚨 ライブラリ記録追加エラー:", error);
+    console.error("🚨 エラー詳細:", error.stack);
+    console.error("🚨 入力データ:", imageData);
     // エラーでも画像生成を止めない
     return false;
   }
