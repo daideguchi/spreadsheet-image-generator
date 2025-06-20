@@ -2529,31 +2529,24 @@ function getCommonPromptOptions() {
     if (commonSheet) {
       const lastRow = commonSheet.getLastRow();
       if (lastRow > 1) {
-        // 🔧 実際のプロンプトデータが入っている行のみを特定
-        // ヘッダー行（1行目）の次から、最初の空行または説明文まで
-        for (let i = 2; i <= lastRow; i++) {
+        // 🔧 プロンプトデータは4行目以降から取得（新構造対応）
+        // 1行目: 説明文, 3行目: ヘッダー, 4行目以降: プロンプトデータ
+        for (let i = 4; i <= lastRow; i++) {
           const cellValue = commonSheet.getRange(i, 1).getValue();
           const cellString = cellValue ? cellValue.toString().trim() : "";
 
-          // プロンプト名として有効かチェック（説明文を除外）
-          if (
-            cellString !== "" &&
-            !cellString.includes("💡") && // 説明文を除外
-            !cellString.includes("📊") && // 統計情報を除外
-            !cellString.includes("使い方") && // 使い方説明を除外
-            !cellString.includes("管理システム") && // システム説明を除外
-            !cellString.includes("\n") && // 複数行テキストを除外
-            cellString.length < 100
-          ) {
-            // 長すぎるテキストを除外
+          // プロンプト名として有効かチェック（空行で終了）
+          if (cellString === "") {
+            // 空行に到達したらデータ終了
+            break;
+          }
 
+          // 有効なプロンプト名をチェック
+          if (cellString.length > 0 && cellString.length < 100) {
             // デフォルト選択肢と重複しないもののみ追加
             if (!options.includes(cellString)) {
               options.push(cellString);
             }
-          } else if (cellString.includes("💡") || cellString.includes("📊")) {
-            // 説明文に到達したら以降は無視
-            break;
           }
         }
       }
@@ -3332,9 +3325,35 @@ function createCommonPromptSheet() {
     // 新しい共通プロンプト設定シートを作成
     const commonSheet = spreadsheet.insertSheet("共通プロンプト設定");
 
-    // 🎨 美しいヘッダー設定（3列構造）
+    // 📝 使用説明を最上部に配置
+    const instructionRange = commonSheet.getRange(1, 1, 1, 3);
+    instructionRange.merge();
+    instructionRange.setValue(
+      "💡 共通プロンプト管理システム\n\n" +
+        "🎯 プロンプト名：プルダウンに表示される名前（分かりやすい日本語）\n" +
+        "📝 プロンプト内容：実際に使用される英語プロンプト\n" +
+        "🏷️ カテゴリ：種類別に整理（写真・アート・スタイル・用途）\n\n" +
+        "💡 追加・編集後は自動でメインシートのプルダウンに反映されます"
+    );
+    instructionRange.setBackground("#e8f5e8");
+    instructionRange.setFontWeight("bold");
+    instructionRange.setWrap(true);
+    instructionRange.setVerticalAlignment("top");
+    instructionRange.setBorder(
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      "#4caf50",
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+    commonSheet.setRowHeight(1, 120);
+
+    // 🎨 美しいヘッダー設定（3行目）
     const headers = ["🎯 プロンプト名", "📝 プロンプト内容", "🏷️ カテゴリ"];
-    const headerRange = commonSheet.getRange(1, 1, 1, headers.length);
+    const headerRange = commonSheet.getRange(3, 1, 1, headers.length);
     headerRange.setValues([headers]);
 
     // ヘッダーのスタイル設定（グラデーション風）
@@ -3359,7 +3378,7 @@ function createCommonPromptSheet() {
     commonSheet.setColumnWidth(1, 180); // プロンプト名列
     commonSheet.setColumnWidth(2, 400); // プロンプト内容列
     commonSheet.setColumnWidth(3, 120); // カテゴリ列
-    commonSheet.setRowHeight(1, 45); // ヘッダー行
+    commonSheet.setRowHeight(3, 45); // ヘッダー行
 
     // 🌟 カテゴリ別の豊富なサンプルデータ
     const sampleData = [
@@ -3447,9 +3466,9 @@ function createCommonPromptSheet() {
       ],
     ];
 
-    // サンプルデータを設定
+    // サンプルデータを4行目から連続配置
     if (sampleData.length > 0) {
-      const dataRange = commonSheet.getRange(2, 1, sampleData.length, 3);
+      const dataRange = commonSheet.getRange(4, 1, sampleData.length, 3);
       dataRange.setValues(sampleData);
 
       // カテゴリ別の色分け
@@ -3461,9 +3480,9 @@ function createCommonPromptSheet() {
       };
 
       // サンプル行のスタイル設定（カテゴリ別色分け）
-      for (let i = 2; i <= sampleData.length + 1; i++) {
+      for (let i = 4; i <= sampleData.length + 3; i++) {
         const rowRange = commonSheet.getRange(i, 1, 1, 3);
-        const category = sampleData[i - 2][2]; // カテゴリ取得
+        const category = sampleData[i - 4][2]; // カテゴリ取得
         const bgColor = categoryColors[category] || "#f8f9fa";
 
         rowRange.setBorder(
@@ -3488,68 +3507,6 @@ function createCommonPromptSheet() {
         commonSheet.getRange(i, 3).setFontSize(10);
       }
     }
-
-    // 📝 美しい使用説明を追加
-    const instructionRow = sampleData.length + 3;
-    const instructionRange = commonSheet.getRange(instructionRow, 1, 1, 3);
-    instructionRange.merge();
-    instructionRange.setValue(
-      "💡 共通プロンプト管理システム（カテゴリ別整理）\n\n" +
-        "🎯 プロンプト名：プルダウンに表示される名前（絵文字付きで見やすく）\n" +
-        "📝 プロンプト内容：実際に使用される英語プロンプト\n" +
-        "🏷️ カテゴリ：種類別に整理（写真・アート・スタイル・用途）\n\n" +
-        "✨ 追加・編集のコツ：\n" +
-        "• プロンプト名は分かりやすい日本語で\n" +
-        "• 絵文字を使って視覚的に区別\n" +
-        "• カテゴリで整理して管理しやすく\n" +
-        "• 保存後、メインシートのプルダウンに自動反映"
-    );
-    instructionRange.setBackground("#e8f5e8");
-    instructionRange.setFontWeight("bold");
-    instructionRange.setWrap(true);
-    instructionRange.setVerticalAlignment("top");
-    instructionRange.setBorder(
-      true,
-      true,
-      true,
-      true,
-      false,
-      false,
-      "#4caf50",
-      SpreadsheetApp.BorderStyle.SOLID
-    );
-    commonSheet.setRowHeight(instructionRow, 140);
-
-    // 📊 統計情報エリア（美しいデザイン）
-    const statsRow = instructionRow + 2;
-    const statsRange = commonSheet.getRange(statsRow, 1, 1, 3);
-    statsRange.merge();
-    statsRange.setValue(
-      `📊 現在の登録数：${
-        sampleData.length
-      }個のプロンプト | 最終更新：${new Date().toLocaleString("ja-JP", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })}`
-    );
-    statsRange.setBackground("#f5f5f5");
-    statsRange.setFontStyle("italic");
-    statsRange.setHorizontalAlignment("center");
-    statsRange.setFontColor("#666666");
-    statsRange.setBorder(
-      true,
-      true,
-      true,
-      true,
-      false,
-      false,
-      "#cccccc",
-      SpreadsheetApp.BorderStyle.SOLID
-    );
-    commonSheet.setRowHeight(statsRow, 35);
 
     // 🎨 シート全体の美化
     commonSheet.setTabColor("#1976d2");
