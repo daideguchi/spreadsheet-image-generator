@@ -1429,14 +1429,14 @@ function onEdit(e) {
 
     // メインシートでの編集のみ処理（共通プロンプト設定シートは除外）
     if (sheet.getName() === "共通プロンプト設定") {
-      // 共通プロンプト設定シートが編集された場合、ドロップダウンを更新
+      // 🔧 修正: 自動遷移を削除してシート滞在を維持
       try {
-        // メインシートのドロップダウンを更新
+        // メインシートを取得（ただし遷移はしない）
         const mainSheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-        const currentSheet = SpreadsheetApp.setActiveSheet(mainSheet);
+        // 🚨 削除: SpreadsheetApp.setActiveSheet(mainSheet); ← これが自動遷移の原因
         updateCommonPromptDropdown();
         console.log(
-          "共通プロンプト設定変更により、ドロップダウンを更新しました"
+          "共通プロンプト設定変更により、ドロップダウンを更新しました（シート滞在）"
         );
       } catch (error) {
         console.error("ドロップダウン更新エラー:", error);
@@ -2389,7 +2389,7 @@ function createStructuredTable() {
       const messageRange = sheet.getRange(messageRow, 1, 1, 9);
       messageRange.merge();
       messageRange.setValue(
-        `✨ 視覚改善版テーブルを作成しました！\n🟢 緑色・オレンジ色エリア = 入力・操作エリア  |  🔘 グレーエリア = 自動生成・読み取り専用`
+        `✨ テーブルを作成しました！\n🟢 緑色・オレンジ色エリア = 入力・操作エリア  |  🔘 グレーエリア = 自動生成・読み取り専用`
       );
       messageRange.setBackground("#e8f5e8");
       messageRange.setFontColor("#2e7d32");
@@ -2405,8 +2405,8 @@ function createStructuredTable() {
       // メッセージエラーは無視して続行
     }
 
-    console.log(`✅ 視覚改善版テーブルを作成しました（入力エリア色分け対応）`);
-    return "✅ 視覚改善版テーブルを作成しました！🟢緑色・オレンジ色エリアに入力・操作してください。🔘グレーエリアは自動生成されます。";
+    console.log(`✅ テーブルを作成しました（入力エリア色分け対応）`);
+    return "✅ テーブルを作成しました！🟢緑色・オレンジ色エリアに入力・操作してください。🔘グレーエリアは自動生成されます。";
   } catch (error) {
     console.error("構造化テーブル作成エラー:", error);
     throw new Error(`構造化テーブルの作成に失敗しました: ${error.message}`);
