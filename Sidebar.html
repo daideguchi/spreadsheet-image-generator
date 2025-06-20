@@ -811,7 +811,87 @@
       }, 1500);
     }
 
+    // 💡 改善要求: 表初期化前に確認モーダルを表示
     function executeBackup() {
+      // モーダル確認ダイアログを表示
+      showInitializationModal();
+    }
+    
+    // 💡 改善要求: 表初期化の確認モーダル実装
+    function showInitializationModal() {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.7); z-index: 999999; display: flex;
+        align-items: center; justify-content: center;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+            <h3 style="margin: 0; color: #d32f2f; font-size: 20px; font-weight: bold;">重要：データ消失の確認</h3>
+          </div>
+          
+          <div style="background: #fff3e0; border: 2px solid #ff9800; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <div style="color: #ef6c00; font-weight: bold; margin-bottom: 12px;">🚨 表を初期化すると、現在のシートの全データが失われます！</div>
+            <div style="color: #e65100; font-size: 14px; line-height: 1.6;">
+              <strong>削除される内容：</strong><br>
+              • プロンプト内容<br>
+              • 生成済みの画像<br>
+              • その他の全てのデータ<br><br>
+              <strong style="color: #d32f2f;">⚠️ この操作は取り消せません</strong>
+            </div>
+          </div>
+          
+          <div style="text-align: center; color: #424242; font-size: 14px; margin-bottom: 24px;">
+            本当にデータを削除して初期化しますか？
+          </div>
+          
+          <div style="display: flex; gap: 12px;">
+            <button onclick="cancelInitialization()" style="
+              flex: 1; padding: 14px; border: 2px solid #ccc; background: white; 
+              color: #666; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='white'">
+              ❌ キャンセル
+            </button>
+            <button onclick="confirmInitialization()" style="
+              flex: 1; padding: 14px; border: none; background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); 
+              color: white; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s; box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(244, 67, 54, 0.4)'" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(244, 67, 54, 0.3)'">
+              🔴 削除して初期化
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      document.body.style.overflow = 'hidden'; // スクロール防止
+      
+      // グローバル関数として定義
+      window.cancelInitialization = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.cancelInitialization;
+        delete window.confirmInitialization;
+      };
+      
+      window.confirmInitialization = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.cancelInitialization;
+        delete window.confirmInitialization;
+        
+        // 実際の初期化処理を実行
+        proceedWithInitialization();
+      };
+    }
+    
+    // 💡 改善要求: 確認後の実際の初期化処理
+    function proceedWithInitialization() {
       showLoading();
       updateStepIndicator('step1');
       google.script.run

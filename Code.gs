@@ -1632,12 +1632,14 @@ function updateCombinedPrompt(sheet, row) {
       combinedCell.setNote("🤖 自動結合プロンプト（編集不要）");
     }
 
-    // スタイル設定（自動生成エリア + 縦幅制限）
+    // 💡 改善要求: 文字はみ出し防止のためのスタイル設定強化
     combinedCell.setBackground("#f5f5f5"); // グレー背景
     combinedCell.setFontColor("#616161"); // グレー文字
-    combinedCell.setWrap(false); // 🔧 重要：折り返しを無効にして縦幅制限
-    combinedCell.setVerticalAlignment("middle"); // 中央揃え
+    combinedCell.setWrap(true); // 💡 改善要求: 折り返しを有効にして文字はみ出しを防止
+    combinedCell.setVerticalAlignment("middle"); // 💡 改善要求: 垂直配置を中央に
     combinedCell.setHorizontalAlignment("left"); // 左寄せ
+    combinedCell.setFontSize(8); // 💡 改善要求: フォントサイズを小さく（はみ出し防止）
+    combinedCell.setPadding(2, 2, 2, 2); // 💡 改善要求: パディング縮小（はみ出し防止）
     combinedCell.setBorder(
       true,
       true,
@@ -2473,7 +2475,7 @@ function createStructuredTable() {
         // C列: 共通プロンプト選択（ユーザー入力エリア）
         const commonPromptCell = sheet.getRange(row, 3);
         commonPromptCell.setHorizontalAlignment("center");
-        commonPromptCell.setVerticalAlignment("middle");
+        commonPromptCell.setVerticalAlignment("middle"); // 💡 改善要求: 垂直配置を中央に変更（既に中央だが明示）
         commonPromptCell.setFontSize(10);
         commonPromptCell.setBackground("#fff8e1"); // 📱 視覚改善: 入力エリアを明るい黄色に
         commonPromptCell.setFontColor("#f57c00"); // 📱 視覚改善: 選択促進のオレンジ色フォント
@@ -2491,14 +2493,14 @@ function createStructuredTable() {
           "🎯 共通プロンプトを選択してください\n💡 新しい共通プロンプトは設定シートで追加可能です。"
         );
 
-        // D列: 結合プロンプト（自動生成エリア）- 縦幅制限対応
+        // D列: 結合プロンプト（自動生成エリア）- 文字はみ出し防止改善
         const combinedCell = sheet.getRange(row, 4);
         combinedCell.setValue("🔗"); // アイコンのみ表示
         combinedCell.setHorizontalAlignment("left"); // 📱 改善: 左寄せに変更
-        combinedCell.setVerticalAlignment("top"); // 📱 改善: 上寄せに変更
-        combinedCell.setWrap(true); // 📱 改善: テキスト折り返しを有効化
-        combinedCell.setFontSize(9); // 📱 改善: フォントサイズを小さく
-        combinedCell.setPadding(4, 4, 4, 4); // 📱 改善: パディング追加
+        combinedCell.setVerticalAlignment("middle"); // 💡 改善要求: 垂直配置を中央に変更（文字はみ出し防止）
+        combinedCell.setWrap(true); // 💡 改善要求: テキスト折り返しを有効化（はみ出し防止）
+        combinedCell.setFontSize(8); // 💡 改善要求: フォントサイズをさらに小さく（はみ出し防止）
+        combinedCell.setPadding(2, 2, 2, 2); // 💡 改善要求: パディングを縮小（はみ出し防止）
         combinedCell.setBackground("#eeeeee"); // 📱 視覚改善: 自動生成エリアをグレーアウト
         combinedCell.setFontColor("#757575"); // 📱 視覚改善: フォント色を控えめに
         combinedCell.setBorder(
