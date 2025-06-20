@@ -889,20 +889,26 @@ function populateStructuredTable(imageResults, promptRows) {
       } else {
         // 短いプロンプトの場合もGPT-Image-1内部処理情報を表示（ユーザープロンプト完全保持）
         if (result.revised_prompt && result.original_prompt) {
+          // 🔧 **根本的修正**: null/undefinedの安全処理
+          const safeOriginalPrompt = (result.original_prompt || "").toString();
+
           // 🔧 original_promptの長さを事前にチェック
-          const safeOriginalPrompt =
-            result.original_prompt && result.original_prompt.length > 30000
-              ? result.original_prompt.substring(0, 30000) +
+          const checkedOriginalPrompt =
+            safeOriginalPrompt && safeOriginalPrompt.length > 30000
+              ? safeOriginalPrompt.substring(0, 30000) +
                 "\n[プロンプトが長すぎるため省略...]"
-              : result.original_prompt;
+              : safeOriginalPrompt;
 
           // 内部処理変更度を計算
-          const originalLength = safeOriginalPrompt.length;
-          const revisedLength = result.revised_prompt.length;
+          const originalLength = checkedOriginalPrompt.length;
+          const revisedLength = (result.revised_prompt || "").length;
           const changeRatio =
-            (Math.abs(revisedLength - originalLength) / originalLength) * 100;
+            originalLength > 0
+              ? (Math.abs(revisedLength - originalLength) / originalLength) *
+                100
+              : 0;
 
-          let comment = `📝 ユーザー入力プロンプト:\n${safeOriginalPrompt}`;
+          let comment = `📝 ユーザー入力プロンプト:\n${checkedOriginalPrompt}`;
 
           // ユーザープロンプトは絶対に省略しない
 
@@ -912,11 +918,14 @@ function populateStructuredTable(imageResults, promptRows) {
           const currentLength = comment.length;
           const maxRevisedLength = Math.min(2500, 10000 - currentLength - 1000);
 
-          if (result.revised_prompt.length > maxRevisedLength) {
-            comment += result.revised_prompt.substring(0, maxRevisedLength);
+          if ((result.revised_prompt || "").length > maxRevisedLength) {
+            comment += (result.revised_prompt || "").substring(
+              0,
+              maxRevisedLength
+            );
             comment += `\n[内部処理版省略...]`;
           } else {
-            comment += result.revised_prompt;
+            comment += result.revised_prompt || "";
           }
 
           // 統計情報を簡潔化
@@ -937,10 +946,11 @@ function populateStructuredTable(imageResults, promptRows) {
 
           // 🔧 **技術的解決策**: セル値の50,000文字制限を確実に回避
           const headerText = `【完全版】\n\n📝 ユーザー入力プロンプト:\n`;
-          const maxUserPromptLength = 49500 - headerText.length; // 500文字の安全マージン
+          const maxSafeLength = 45000; // さらに安全マージンを拡大
+          const maxUserPromptLength = maxSafeLength - headerText.length - 1000; // 1000文字の巨大安全マージン
 
-          // 🔧 result.original_promptの安全性チェック
-          let userPromptForCell = result.original_prompt || "";
+          // 🔧 original_promptの安全性チェック（null/undefined対応）
+          let userPromptForCell = safeOriginalPrompt;
           let isPromptTruncated = false;
 
           if (userPromptForCell.length > maxUserPromptLength) {
@@ -956,27 +966,43 @@ function populateStructuredTable(imageResults, promptRows) {
             userPromptPart += `\n\n⚠️ プロンプトが長すぎるため表示を制限しています。完全版はセルコメントで確認できます。`;
           }
 
-          // 🔧 最終安全チェック：絶対に49,500文字を超えない
-          if (userPromptPart.length > 49500) {
+          // 🔧 絶対安全チェック：45,000文字を絶対に超えない
+          if (userPromptPart.length > maxSafeLength) {
             userPromptPart =
-              userPromptPart.substring(0, 49400) + "\n[文字数制限...]";
+              userPromptPart.substring(0, maxSafeLength - 200) +
+              "\n[安全制限により省略...]";
           }
 
           // セル値に安全な長さで配置
           fullPromptCell.setValue(userPromptPart);
+          fullPromptCell.setWrap(true);
+          fullPromptCell.setVerticalAlignment("top");
+          fullPromptCell.setFontSize(10);
+          fullPromptCell.setBackground("#f8f9fa");
+          fullPromptCell.setBorder(
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            "#e0e0e0",
+            SpreadsheetApp.BorderStyle.SOLID
+          );
 
           // 🔧 **セルコメント統合**: 複数のsetNote()呼び出しを1つに統合して50,000文字制限を回避
           const combinedComment = createSafeComment(
-            result.original_prompt,
+            safeOriginalPrompt,
             result.revised_prompt
           );
           fullPromptCell.setNote(combinedComment);
 
           // 🔧 **技術的解決策**: B列セルコメントもデータ分離で制限回避
           // ユーザープロンプトのみをセルコメントに配置（内部処理版は既にC列コメントに分離済み）
-          const userOnlyComment = `📝 ユーザー入力プロンプト:\n${(
-            result.original_prompt || ""
-          ).substring(0, 20000)}\n\n💡 内部処理版はC列のコメントで確認できます`;
+          const userOnlyComment = `📝 ユーザー入力プロンプト:\n${safeOriginalPrompt.substring(
+            0,
+            20000
+          )}\n\n💡 内部処理版はC列のコメントで確認できます`;
           promptCell.setNote(userOnlyComment);
         }
       }
