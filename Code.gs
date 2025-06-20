@@ -24,6 +24,8 @@ function onOpen() {
     .addItem("📱 サイドバーを開く", "showSidebar")
     .addItem("🔧 表を初期化", "initialSetup")
     .addSeparator()
+    .addItem("🎯 共通プロンプト管理シートを作成", "createCommonPromptSheetMenu")
+    .addSeparator()
     .addItem("💾 バックアップ作成", "createBackupAndNewTable")
     .addItem("🧹 シートを完全クリア", "clearSheetMenu")
     .addSeparator()
@@ -66,15 +68,20 @@ function initialSetup() {
     const sheet = SpreadsheetApp.getActiveSheet();
     const ui = SpreadsheetApp.getUi();
 
-    // 🔧 必ず確認アラートを表示
+    // 🔧 データ消失警告付きの確認アラート
     const confirmResponse = ui.alert(
-      "🔧 表の初期化確認",
-      "📝 表を初期化しますか？\n\n" +
-        "⚠️ この操作により：\n" +
-        "• 現在のシート内容が変更されます\n" +
-        "• 100行の構造化テーブルが作成されます\n" +
-        "• 共通プロンプトのプルダウンが設定されます\n\n" +
-        "💡 初期化を実行しますか？",
+      "⚠️ 重要：データ消失の確認",
+      "🚨 表を初期化すると、現在のシートの全データが失われます！\n\n" +
+        "⚠️ 削除される内容：\n" +
+        "• プロンプト内容\n" +
+        "• 生成済みの画像\n" +
+        "• その他の全てのデータ\n\n" +
+        "📝 作成される新しいテーブル：\n" +
+        "• 100行の構造化テーブル\n" +
+        "• 共通プロンプトのプルダウン\n" +
+        "• 画像生成機能\n\n" +
+        "🔴 本当にデータを削除して初期化しますか？\n" +
+        "（この操作は取り消せません）",
       ui.ButtonSet.YES_NO
     );
 
@@ -4030,5 +4037,90 @@ function openVersionSheet() {
   } catch (error) {
     console.error("バージョン記録シートを開くエラー:", error);
     throw new Error(`バージョン記録シートを開けませんでした: ${error.message}`);
+  }
+}
+
+/**
+ * 共通プロンプト管理シート作成メニュー（ユーザー向け）
+ */
+function createCommonPromptSheetMenu() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+
+    // 既存チェック
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const existingSheet = spreadsheet.getSheetByName("共通プロンプト設定");
+
+    if (existingSheet) {
+      // 既存シートがある場合の選択肢
+      const response = ui.alert(
+        "🎯 共通プロンプト管理シート",
+        "📋 共通プロンプト設定シートは既に存在しています。\n\n" +
+          "✅ このシートでプロンプトを管理できます：\n" +
+          "• プロンプト名とプロンプト内容を追加\n" +
+          "• カテゴリ別に整理\n" +
+          "• 入力シートのプルダウンに自動反映\n\n" +
+          "🔄 シートをリセットして新しく作り直しますか？\n" +
+          "（はい = リセット、いいえ = 既存シートを開く）",
+        ui.ButtonSet.YES_NO
+      );
+
+      if (response === ui.Button.YES) {
+        // リセットして新規作成
+        spreadsheet.deleteSheet(existingSheet);
+        const newSheet = createCommonPromptSheet();
+        SpreadsheetApp.setActiveSheet(newSheet);
+
+        ui.alert(
+          "✅ 管理シート作成完了",
+          "🎯 共通プロンプト管理シートを新規作成しました！\n\n" +
+            "📋 使い方：\n" +
+            "1️⃣ 4行目以降にプロンプトを追加\n" +
+            "2️⃣ A列：プロンプト名、B列：プロンプト内容\n" +
+            "3️⃣ C列：カテゴリ（オプション）\n" +
+            "4️⃣ 入力シートのC列プルダウンに自動反映\n\n" +
+            "💡 既にサンプルデータが入っています。\n" +
+            "編集して独自のプロンプトを追加してください！",
+          ui.ButtonSet.OK
+        );
+      } else {
+        // 既存シートを開く
+        SpreadsheetApp.setActiveSheet(existingSheet);
+
+        ui.alert(
+          "📋 管理シートを開きました",
+          "🎯 共通プロンプト管理シートを開きました。\n\n" +
+            "📋 プロンプトの追加方法：\n" +
+            "1️⃣ 4行目以降の空行を選択\n" +
+            "2️⃣ A列にプロンプト名を入力\n" +
+            "3️⃣ B列にプロンプト内容を入力\n" +
+            "4️⃣ C列にカテゴリを入力（任意）\n\n" +
+            "🔄 変更は入力シートのプルダウンに自動反映されます！",
+          ui.ButtonSet.OK
+        );
+      }
+    } else {
+      // 新規作成の場合
+      const sheet = createCommonPromptSheet();
+      SpreadsheetApp.setActiveSheet(sheet);
+
+      ui.alert(
+        "✅ 管理シート作成完了",
+        "🎯 共通プロンプト管理シートを作成しました！\n\n" +
+          "📋 使い方：\n" +
+          "1️⃣ 4行目以降にプロンプトを追加\n" +
+          "2️⃣ A列：プロンプト名、B列：プロンプト内容\n" +
+          "3️⃣ C列：カテゴリ（オプション）\n" +
+          "4️⃣ 入力シートのC列プルダウンに自動反映\n\n" +
+          "💡 既にサンプルデータが入っています。\n" +
+          "編集して独自のプロンプトを追加してください！",
+        ui.ButtonSet.OK
+      );
+    }
+
+    return "✅ 共通プロンプト管理シートの操作完了";
+  } catch (error) {
+    console.error("共通プロンプト管理シート作成メニューエラー:", error);
+    throw new Error(`管理シートの操作に失敗しました: ${error.message}`);
   }
 }
