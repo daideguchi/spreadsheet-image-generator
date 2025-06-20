@@ -2513,7 +2513,7 @@ function setupCommonPromptValidation() {
 }
 
 /**
- * 共通プロンプトの選択肢を取得（管理シート + デフォルト）
+ * 共通プロンプトの選択肢を取得（プロンプト名のみ厳密抽出）
  */
 function getCommonPromptOptions() {
   try {
@@ -2529,25 +2529,37 @@ function getCommonPromptOptions() {
     if (commonSheet) {
       const lastRow = commonSheet.getLastRow();
       if (lastRow > 1) {
-        // A列（プロンプト名）からデータを取得（2行目以降）
-        const promptNames = commonSheet
-          .getRange(2, 1, lastRow - 1, 1)
-          .getValues();
+        // 🔧 実際のプロンプトデータが入っている行のみを特定
+        // ヘッダー行（1行目）の次から、最初の空行または説明文まで
+        for (let i = 2; i <= lastRow; i++) {
+          const cellValue = commonSheet.getRange(i, 1).getValue();
+          const cellString = cellValue ? cellValue.toString().trim() : "";
 
-        for (let row of promptNames) {
-          const promptName = row[0];
-          if (promptName && promptName.toString().trim() !== "") {
-            const name = promptName.toString().trim();
+          // プロンプト名として有効かチェック（説明文を除外）
+          if (
+            cellString !== "" &&
+            !cellString.includes("💡") && // 説明文を除外
+            !cellString.includes("📊") && // 統計情報を除外
+            !cellString.includes("使い方") && // 使い方説明を除外
+            !cellString.includes("管理システム") && // システム説明を除外
+            !cellString.includes("\n") && // 複数行テキストを除外
+            cellString.length < 100
+          ) {
+            // 長すぎるテキストを除外
+
             // デフォルト選択肢と重複しないもののみ追加
-            if (!options.includes(name)) {
-              options.push(name);
+            if (!options.includes(cellString)) {
+              options.push(cellString);
             }
+          } else if (cellString.includes("💡") || cellString.includes("📊")) {
+            // 説明文に到達したら以降は無視
+            break;
           }
         }
       }
     }
 
-    console.log("共通プロンプト選択肢を取得:", options);
+    console.log("共通プロンプト選択肢を取得（フィルタリング済み）:", options);
     return options;
   } catch (error) {
     console.error("共通プロンプト選択肢取得エラー:", error);
@@ -3305,7 +3317,7 @@ function getAllImagePreviewData() {
 }
 
 /**
- * 共通プロンプト設定シートを作成（ユーザー主導版）
+ * 共通プロンプト設定シートを作成（美しいデザイン版）
  */
 function createCommonPromptSheet() {
   try {
@@ -3320,17 +3332,18 @@ function createCommonPromptSheet() {
     // 新しい共通プロンプト設定シートを作成
     const commonSheet = spreadsheet.insertSheet("共通プロンプト設定");
 
-    // 📋 シンプルなヘッダー設定（2列構造に簡素化）
-    const headers = ["プロンプト名", "プロンプト内容"];
+    // 🎨 美しいヘッダー設定（3列構造）
+    const headers = ["🎯 プロンプト名", "📝 プロンプト内容", "🏷️ カテゴリ"];
     const headerRange = commonSheet.getRange(1, 1, 1, headers.length);
     headerRange.setValues([headers]);
 
-    // ヘッダーのスタイル設定
-    headerRange.setBackground("#4285f4");
+    // ヘッダーのスタイル設定（グラデーション風）
+    headerRange.setBackground("#1976d2");
     headerRange.setFontColor("white");
     headerRange.setFontWeight("bold");
     headerRange.setHorizontalAlignment("center");
     headerRange.setVerticalAlignment("middle");
+    headerRange.setFontSize(12);
     headerRange.setBorder(
       true,
       true,
@@ -3338,30 +3351,121 @@ function createCommonPromptSheet() {
       true,
       true,
       true,
-      "#1a73e8",
+      "#0d47a1",
       SpreadsheetApp.BorderStyle.SOLID
     );
 
-    // 列幅の調整
-    commonSheet.setColumnWidth(1, 200); // プロンプト名列
+    // 列幅の最適化
+    commonSheet.setColumnWidth(1, 180); // プロンプト名列
     commonSheet.setColumnWidth(2, 400); // プロンプト内容列
-    commonSheet.setRowHeight(1, 40); // ヘッダー行
+    commonSheet.setColumnWidth(3, 120); // カテゴリ列
+    commonSheet.setRowHeight(1, 45); // ヘッダー行
 
-    // 🔧 サンプルデータ（最小限）
+    // 🌟 カテゴリ別の豊富なサンプルデータ
     const sampleData = [
-      ["高品質写真", "high quality, professional photography, 8k resolution"],
-      ["アニメ風", "anime style, manga art, japanese animation"],
-      ["リアル写真", "photorealistic, detailed, natural lighting"],
+      // 📸 写真・リアル系
+      [
+        "📸 高品質写真",
+        "high quality, professional photography, 8k resolution, detailed",
+        "写真",
+      ],
+      [
+        "📸 リアル写真",
+        "photorealistic, detailed, natural lighting, sharp focus",
+        "写真",
+      ],
+      [
+        "📸 ポートレート",
+        "professional portrait, studio lighting, high resolution",
+        "写真",
+      ],
+      [
+        "📸 風景写真",
+        "landscape photography, golden hour, dramatic sky, wide angle",
+        "写真",
+      ],
+
+      // 🎨 アート・イラスト系
+      [
+        "🎨 アニメ風",
+        "anime style, manga art, japanese animation, cel shading",
+        "アート",
+      ],
+      [
+        "🎨 水彩画風",
+        "watercolor painting, soft colors, artistic brush strokes",
+        "アート",
+      ],
+      [
+        "🎨 油絵風",
+        "oil painting, classical art style, rich colors, textured",
+        "アート",
+      ],
+      [
+        "🎨 デジタルアート",
+        "digital art, concept art, vibrant colors, detailed illustration",
+        "アート",
+      ],
+
+      // 🌈 スタイル系
+      [
+        "🌈 ミニマル",
+        "minimalist, clean design, simple composition, negative space",
+        "スタイル",
+      ],
+      [
+        "🌈 レトロ",
+        "retro style, vintage aesthetic, nostalgic atmosphere",
+        "スタイル",
+      ],
+      [
+        "🌈 未来的",
+        "futuristic, sci-fi, neon lights, cyberpunk aesthetic",
+        "スタイル",
+      ],
+      [
+        "🌈 ファンタジー",
+        "fantasy art, magical atmosphere, ethereal lighting",
+        "スタイル",
+      ],
+
+      // 🎯 用途別
+      [
+        "🎯 アイコン用",
+        "icon design, simple, clear, 512x512, white background",
+        "用途",
+      ],
+      [
+        "🎯 バナー用",
+        "banner design, eye-catching, marketing material",
+        "用途",
+      ],
+      [
+        "🎯 プレゼン用",
+        "presentation slide, professional, clean layout",
+        "用途",
+      ],
     ];
 
     // サンプルデータを設定
     if (sampleData.length > 0) {
-      const dataRange = commonSheet.getRange(2, 1, sampleData.length, 2);
+      const dataRange = commonSheet.getRange(2, 1, sampleData.length, 3);
       dataRange.setValues(sampleData);
 
-      // サンプル行のスタイル設定
+      // カテゴリ別の色分け
+      const categoryColors = {
+        写真: "#e8f5e8", // 薄い緑
+        アート: "#fff3e0", // 薄いオレンジ
+        スタイル: "#f3e5f5", // 薄い紫
+        用途: "#e3f2fd", // 薄い青
+      };
+
+      // サンプル行のスタイル設定（カテゴリ別色分け）
       for (let i = 2; i <= sampleData.length + 1; i++) {
-        const rowRange = commonSheet.getRange(i, 1, 1, 2);
+        const rowRange = commonSheet.getRange(i, 1, 1, 3);
+        const category = sampleData[i - 2][2]; // カテゴリ取得
+        const bgColor = categoryColors[category] || "#f8f9fa";
+
         rowRange.setBorder(
           true,
           true,
@@ -3372,44 +3476,86 @@ function createCommonPromptSheet() {
           "#d0d0d0",
           SpreadsheetApp.BorderStyle.SOLID
         );
-        rowRange.setBackground("#f8f9fa"); // 薄いグレー
+        rowRange.setBackground(bgColor);
+
+        // プロンプト名のスタイル
+        commonSheet.getRange(i, 1).setFontWeight("bold");
+        commonSheet.getRange(i, 1).setFontColor("#1976d2");
+
+        // カテゴリのスタイル
+        commonSheet.getRange(i, 3).setHorizontalAlignment("center");
+        commonSheet.getRange(i, 3).setFontWeight("bold");
+        commonSheet.getRange(i, 3).setFontSize(10);
       }
     }
 
-    // 📝 使用説明を追加（2列構造対応）
+    // 📝 美しい使用説明を追加
     const instructionRow = sampleData.length + 3;
-    const instructionRange = commonSheet.getRange(instructionRow, 1, 1, 2);
+    const instructionRange = commonSheet.getRange(instructionRow, 1, 1, 3);
     instructionRange.merge();
     instructionRange.setValue(
-      "💡 共通プロンプト管理システム（2列構造）\n\n" +
-        "🔹 よく使うプロンプトをここに登録してください\n" +
-        "🔹 プロンプト名：覚えやすい名前（例：高品質写真、アニメ風）\n" +
-        "🔹 プロンプト内容：実際に使用されるプロンプト（日本語・英語問わず）\n" +
-        "🔹 登録後、メインシートのC列ドロップダウンに自動で反映されます\n" +
-        "🔹 2列のシンプル構造で管理が簡単です"
+      "💡 共通プロンプト管理システム（カテゴリ別整理）\n\n" +
+        "🎯 プロンプト名：プルダウンに表示される名前（絵文字付きで見やすく）\n" +
+        "📝 プロンプト内容：実際に使用される英語プロンプト\n" +
+        "🏷️ カテゴリ：種類別に整理（写真・アート・スタイル・用途）\n\n" +
+        "✨ 追加・編集のコツ：\n" +
+        "• プロンプト名は分かりやすい日本語で\n" +
+        "• 絵文字を使って視覚的に区別\n" +
+        "• カテゴリで整理して管理しやすく\n" +
+        "• 保存後、メインシートのプルダウンに自動反映"
     );
-    instructionRange.setBackground("#e3f2fd");
+    instructionRange.setBackground("#e8f5e8");
     instructionRange.setFontWeight("bold");
     instructionRange.setWrap(true);
     instructionRange.setVerticalAlignment("top");
-    commonSheet.setRowHeight(instructionRow, 120);
+    instructionRange.setBorder(
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      "#4caf50",
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+    commonSheet.setRowHeight(instructionRow, 140);
 
-    // 📊 統計情報エリア（動的更新）
+    // 📊 統計情報エリア（美しいデザイン）
     const statsRow = instructionRow + 2;
-    const statsRange = commonSheet.getRange(statsRow, 1, 1, 2);
+    const statsRange = commonSheet.getRange(statsRow, 1, 1, 3);
     statsRange.merge();
     statsRange.setValue(
       `📊 現在の登録数：${
         sampleData.length
-      }個のプロンプト | 最終更新：${new Date().toLocaleString("ja-JP")}`
+      }個のプロンプト | 最終更新：${new Date().toLocaleString("ja-JP", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`
     );
-    statsRange.setBackground("#e8f5e8");
+    statsRange.setBackground("#f5f5f5");
     statsRange.setFontStyle("italic");
     statsRange.setHorizontalAlignment("center");
-    commonSheet.setRowHeight(statsRow, 30);
+    statsRange.setFontColor("#666666");
+    statsRange.setBorder(
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      "#cccccc",
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+    commonSheet.setRowHeight(statsRow, 35);
+
+    // 🎨 シート全体の美化
+    commonSheet.setTabColor("#1976d2");
 
     console.log(
-      `✅ ユーザー主導の共通プロンプト設定シートを作成しました（サンプル${sampleData.length}個）`
+      `✅ 美しい共通プロンプト設定シートを作成しました（サンプル${sampleData.length}個）`
     );
     return true;
   } catch (error) {
