@@ -3326,13 +3326,12 @@ function createCommonPromptSheet() {
     const commonSheet = spreadsheet.insertSheet("共通プロンプト設定");
 
     // 📝 使用説明を最上部に配置
-    const instructionRange = commonSheet.getRange(1, 1, 1, 3);
+    const instructionRange = commonSheet.getRange(1, 1, 1, 2);
     instructionRange.merge();
     instructionRange.setValue(
       "💡 共通プロンプト管理（補助機能）\n\n" +
         "🎯 プロンプト名：プルダウンに表示される名前\n" +
-        "📝 プロンプト内容：実際に使用される英語プロンプト\n" +
-        "🏷️ カテゴリ：種類別に整理\n\n" +
+        "📝 プロンプト内容：実際に使用される英語プロンプト\n\n" +
         "⚠️ メインはB列の個別プロンプト入力です。\n" +
         "共通プロンプトは補助的に使用してください。"
     );
@@ -3350,14 +3349,14 @@ function createCommonPromptSheet() {
       "#4caf50",
       SpreadsheetApp.BorderStyle.SOLID
     );
-    commonSheet.setRowHeight(1, 120);
+    commonSheet.setRowHeight(1, 100);
 
-    // 🎨 美しいヘッダー設定（3行目）
-    const headers = ["🎯 プロンプト名", "📝 プロンプト内容", "🏷️ カテゴリ"];
+    // 🎨 シンプルなヘッダー設定（3行目）
+    const headers = ["プロンプト名", "プロンプト内容"];
     const headerRange = commonSheet.getRange(3, 1, 1, headers.length);
     headerRange.setValues([headers]);
 
-    // ヘッダーのスタイル設定（グラデーション風）
+    // ヘッダーのスタイル設定
     headerRange.setBackground("#1976d2");
     headerRange.setFontColor("white");
     headerRange.setFontWeight("bold");
@@ -3376,36 +3375,25 @@ function createCommonPromptSheet() {
     );
 
     // 列幅の最適化
-    commonSheet.setColumnWidth(1, 180); // プロンプト名列
-    commonSheet.setColumnWidth(2, 400); // プロンプト内容列
-    commonSheet.setColumnWidth(3, 120); // カテゴリ列
+    commonSheet.setColumnWidth(1, 200); // プロンプト名列
+    commonSheet.setColumnWidth(2, 500); // プロンプト内容列
     commonSheet.setRowHeight(3, 45); // ヘッダー行
 
-    // 🌟 基本的なサンプルデータ（ユーザーが参考にできる程度）
+    // 🌟 基本的なサンプルデータ
     const sampleData = [
-      ["高品質写真", "high quality, professional photography", "写真"],
-      ["アニメ風", "anime style", "アート"],
-      ["風景", "landscape, nature", "写真"],
+      ["高品質写真", "high quality, professional photography"],
+      ["アニメ風", "anime style"],
+      ["風景", "landscape, nature"],
     ];
 
     // サンプルデータを4行目から連続配置
     if (sampleData.length > 0) {
-      const dataRange = commonSheet.getRange(4, 1, sampleData.length, 3);
+      const dataRange = commonSheet.getRange(4, 1, sampleData.length, 2);
       dataRange.setValues(sampleData);
 
-      // カテゴリ別の色分け
-      const categoryColors = {
-        写真: "#e8f5e8", // 薄い緑
-        アート: "#fff3e0", // 薄いオレンジ
-        スタイル: "#f3e5f5", // 薄い紫
-        用途: "#e3f2fd", // 薄い青
-      };
-
-      // サンプル行のスタイル設定（カテゴリ別色分け）
+      // サンプル行のスタイル設定
       for (let i = 4; i <= sampleData.length + 3; i++) {
-        const rowRange = commonSheet.getRange(i, 1, 1, 3);
-        const category = sampleData[i - 4][2]; // カテゴリ取得
-        const bgColor = categoryColors[category] || "#f8f9fa";
+        const rowRange = commonSheet.getRange(i, 1, 1, 2);
 
         rowRange.setBorder(
           true,
@@ -3417,26 +3405,53 @@ function createCommonPromptSheet() {
           "#d0d0d0",
           SpreadsheetApp.BorderStyle.SOLID
         );
-        rowRange.setBackground(bgColor);
+        rowRange.setBackground("#f8f9fa");
 
         // プロンプト名のスタイル
         commonSheet.getRange(i, 1).setFontWeight("bold");
         commonSheet.getRange(i, 1).setFontColor("#1976d2");
 
-        // カテゴリのスタイル
-        commonSheet.getRange(i, 3).setHorizontalAlignment("center");
-        commonSheet.getRange(i, 3).setFontWeight("bold");
-        commonSheet.getRange(i, 3).setFontSize(10);
+        // プロンプト内容のスタイル
+        commonSheet.getRange(i, 2).setWrap(true);
+        commonSheet.getRange(i, 2).setVerticalAlignment("top");
       }
+    }
+
+    // ✏️ ユーザー入力用の空行を10行準備
+    const userInputStartRow = sampleData.length + 4;
+    for (let i = userInputStartRow; i < userInputStartRow + 10; i++) {
+      const rowRange = commonSheet.getRange(i, 1, 1, 2);
+
+      // 入力しやすいスタイル
+      rowRange.setBorder(
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        "#d0d0d0",
+        SpreadsheetApp.BorderStyle.SOLID
+      );
+      rowRange.setBackground("#ffffff");
+
+      // プロンプト内容セルのスタイル
+      commonSheet.getRange(i, 2).setWrap(true);
+      commonSheet.getRange(i, 2).setVerticalAlignment("top");
+
+      // 行の高さを入力しやすく
+      commonSheet.setRowHeight(i, 35);
     }
 
     // 🎨 シート全体の美化
     commonSheet.setTabColor("#1976d2");
 
     console.log(
-      `✅ 美しい共通プロンプト設定シートを作成しました（サンプル${sampleData.length}個）`
+      `✅ ユーザー入力対応の共通プロンプト設定シートを作成しました（サンプル${sampleData.length}個 + 入力用10行）`
     );
-    return true;
+
+    // 🔧 重要：シートオブジェクトを返す
+    return commonSheet;
   } catch (error) {
     console.error("共通プロンプトシート作成エラー:", error);
     throw new Error(
@@ -3973,7 +3988,6 @@ function createCommonPromptSheetMenu() {
         "📋 共通プロンプト設定シートは既に存在しています。\n\n" +
           "✅ このシートでプロンプトを管理できます：\n" +
           "• プロンプト名とプロンプト内容を追加\n" +
-          "• カテゴリ別に整理\n" +
           "• 入力シートのプルダウンに自動反映\n\n" +
           "🔄 シートをリセットして新しく作り直しますか？\n" +
           "（はい = リセット、いいえ = 既存シートを開く）",
@@ -3992,10 +4006,9 @@ function createCommonPromptSheetMenu() {
             "📋 使い方：\n" +
             "1️⃣ 4行目以降にプロンプトを追加\n" +
             "2️⃣ A列：プロンプト名、B列：プロンプト内容\n" +
-            "3️⃣ C列：カテゴリ（オプション）\n" +
-            "4️⃣ 入力シートのC列プルダウンに自動反映\n\n" +
-            "💡 既にサンプルデータが入っています。\n" +
-            "編集して独自のプロンプトを追加してください！",
+            "3️⃣ 入力シートのC列プルダウンに自動反映\n\n" +
+            "💡 既にサンプルデータと入力用の空行が準備されています。\n" +
+            "自由に編集して独自のプロンプトを追加してください！",
           ui.ButtonSet.OK
         );
       } else {
@@ -4006,10 +4019,9 @@ function createCommonPromptSheetMenu() {
           "📋 管理シートを開きました",
           "🎯 共通プロンプト管理シートを開きました。\n\n" +
             "📋 プロンプトの追加方法：\n" +
-            "1️⃣ 4行目以降の空行を選択\n" +
+            "1️⃣ 空行を選択（入力用の行が準備されています）\n" +
             "2️⃣ A列にプロンプト名を入力\n" +
-            "3️⃣ B列にプロンプト内容を入力\n" +
-            "4️⃣ C列にカテゴリを入力（任意）\n\n" +
+            "3️⃣ B列にプロンプト内容を入力\n\n" +
             "🔄 変更は入力シートのプルダウンに自動反映されます！",
           ui.ButtonSet.OK
         );
@@ -4023,12 +4035,11 @@ function createCommonPromptSheetMenu() {
         "✅ 管理シート作成完了",
         "🎯 共通プロンプト管理シートを作成しました！\n\n" +
           "📋 使い方：\n" +
-          "1️⃣ 4行目以降にプロンプトを追加\n" +
+          "1️⃣ 空行にプロンプトを追加（入力用の行が準備済み）\n" +
           "2️⃣ A列：プロンプト名、B列：プロンプト内容\n" +
-          "3️⃣ C列：カテゴリ（オプション）\n" +
-          "4️⃣ 入力シートのC列プルダウンに自動反映\n\n" +
-          "💡 既にサンプルデータが入っています。\n" +
-          "編集して独自のプロンプトを追加してください！",
+          "3️⃣ 入力シートのC列プルダウンに自動反映\n\n" +
+          "💡 既にサンプルデータと入力用の空行が準備されています。\n" +
+          "自由に編集して独自のプロンプトを追加してください！",
         ui.ButtonSet.OK
       );
     }
