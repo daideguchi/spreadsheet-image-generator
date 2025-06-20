@@ -3932,6 +3932,7 @@ function addToImageLibrary(imageData) {
 
     // 🚀 確実な画像設定処理
     let imageSuccessfullyCopied = false;
+    let sourceImageCellRef = null; // 📌 元シートの画像セル参照（直接コピー用）
     const imageUrl = imageData.imageUrl || imageData.url;
     console.log(
       `🔗 使用する画像URL: ${
@@ -3994,6 +3995,7 @@ function addToImageLibrary(imageData) {
           console.log(`📋 入力シート特定: ${mainSheet.getName()}`);
 
           const sourceImageCell = mainSheet.getRange(imageData.originalRow, 5); // E列
+          sourceImageCellRef = sourceImageCell; // 直接コピー用に保持
           const sourceFormula = sourceImageCell.getFormula();
           console.log(`📷 元シートフォーミュラ: ${sourceFormula}`);
 
@@ -4014,7 +4016,7 @@ function addToImageLibrary(imageData) {
       }
     }
 
-    // 方法3: URLからの直接設定（最終フォールバック）
+    // 方法3: URLからの直接設定（フォールバックその2）
     if (!imageSuccessfullyCopied) {
       console.log(
         `🔄 フォールバック処理開始: URL = ${
@@ -4040,6 +4042,18 @@ function addToImageLibrary(imageData) {
         console.warn(
           `🚨 画像設定失敗: 元行${imageData.originalRow}, URL: ${imageUrl}`
         );
+      }
+    }
+
+    // 方法4: 画像セルを直接コピー（最終手段）
+    if (!imageSuccessfullyCopied && sourceImageCellRef) {
+      try {
+        console.log(`📋 画像セルを直接コピー試行`);
+        sourceImageCellRef.copyTo(imageCell, { contentsOnly: false });
+        imageSuccessfullyCopied = true;
+        console.log(`✅ 画像セル直接コピー成功`);
+      } catch (directCopyError) {
+        console.error(`🚨 画像セル直接コピー失敗:`, directCopyError);
       }
     }
 
