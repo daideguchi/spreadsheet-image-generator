@@ -3916,19 +3916,24 @@ function addToImageLibrary(imageData) {
     imageCell.clearFormat();
     imageCell.clearContent();
 
-    // 画像表示に特化した書式設定
-    imageCell.setNumberFormat("General"); // 一般形式（IMAGE関数に最適）
-    imageCell.setWrap(false); // 折り返し無効
+    // 🔥 診断結果に基づく書式設定修正
+    imageCell.setNumberFormat("@"); // テキスト形式（General→@に変更）
+    imageCell.setWrap(false);
     imageCell.setHorizontalAlignment("center");
     imageCell.setVerticalAlignment("middle");
-    imageCell.setBackground("#ffffff"); // 背景を明示的に白に設定
+    imageCell.setBackground("#ffffff");
 
-    // 行の高さを画像表示に最適化（個別設定で確実に）
-    librarySheet.setRowHeight(newRow, 120); // 画像表示に十分な高さ
+    // セル設定後の確認
+    Utilities.sleep(100);
+    const currentFormat = imageCell.getNumberFormat();
+    console.log(`📊 設定後書式確認: ${currentFormat}`);
+
+    // 行の高さを画像表示に最適化
+    librarySheet.setRowHeight(newRow, 120);
 
     console.log(`🔧 画像セル完全リセット完了: ${imageCell.getA1Notation()}`);
 
-    // 🚀 確実な画像設定処理 - より直接的なアプローチ
+    // 🚀 確実な画像設定処理 - 診断結果に基づく改善
     let imageSuccessfullyCopied = false;
     const imageUrl = imageData.imageUrl || imageData.url;
     console.log(
@@ -3987,32 +3992,61 @@ function addToImageLibrary(imageData) {
           );
 
           if (sourceFormula && sourceFormula.includes("=IMAGE(")) {
-            // フォーミュラを直接設定
-            imageCell.setFormula(sourceFormula);
+            console.log(`🔥 元シートフォーミュラ取得成功: ${sourceFormula}`);
 
-            // 特別なサイズ設定でIMAGE関数を最適化
-            const urlMatch = sourceFormula.match(/=IMAGE\("([^"]+)"/);
-            if (urlMatch && urlMatch[1]) {
-              const imageUrl = urlMatch[1];
-              // サイズパラメータ付きで再設定
-              const optimizedFormula = `=IMAGE("${imageUrl}", 1)`;
-              imageCell.setFormula(optimizedFormula);
-              console.log(`🔧 最適化フォーミュラ設定: ${optimizedFormula}`);
+            // 🔥 複数回試行で確実な設定
+            let setAttempts = 0;
+            let setSuccess = false;
+
+            while (setAttempts < 3 && !setSuccess) {
+              setAttempts++;
+              console.log(`🔄 フォーミュラ設定試行 ${setAttempts}/3`);
+
+              try {
+                // 特別なサイズ設定でIMAGE関数を最適化
+                const urlMatch = sourceFormula.match(/=IMAGE\("([^"]+)"/);
+                if (urlMatch && urlMatch[1]) {
+                  const imageUrl = urlMatch[1];
+                  const optimizedFormula = `=IMAGE("${imageUrl}", 1)`;
+
+                  // 書式を再確認して設定
+                  imageCell.setNumberFormat("@");
+                  imageCell.setFormula(optimizedFormula);
+
+                  console.log(
+                    `🔧 最適化フォーミュラ設定試行${setAttempts}: ${optimizedFormula}`
+                  );
+
+                  Utilities.sleep(200);
+                  const verifyFormula = imageCell.getFormula();
+
+                  if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
+                    setSuccess = true;
+                    imageSuccessfullyCopied = true;
+                    console.log(
+                      `✅ フォーミュラ設定成功(試行${setAttempts}): ${verifyFormula.substring(
+                        0,
+                        50
+                      )}...`
+                    );
+                  } else {
+                    console.warn(
+                      `⚠️ 試行${setAttempts}失敗: 設定=${optimizedFormula}, 確認=${verifyFormula}`
+                    );
+                  }
+                }
+              } catch (setError) {
+                console.error(
+                  `🚨 フォーミュラ設定試行${setAttempts}エラー:`,
+                  setError
+                );
+              }
             }
 
-            Utilities.sleep(300);
-            const verifyFormula = imageCell.getFormula();
-
-            if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
-              imageSuccessfullyCopied = true;
-              console.log(
-                `✅ 直接フォーミュラ設定成功: ${verifyFormula.substring(
-                  0,
-                  50
-                )}...`
+            if (!setSuccess) {
+              console.error(
+                `🚨 ${setAttempts}回試行してもフォーミュラ設定失敗`
               );
-            } else {
-              console.warn(`⚠️ フォーミュラ設定確認失敗: ${verifyFormula}`);
             }
           } else {
             console.warn(`⚠️ 元セルに有効なIMAGE関数なし: ${sourceFormula}`);
@@ -4023,32 +4057,45 @@ function addToImageLibrary(imageData) {
       }
     }
 
-    // フォールバック1: sourceFormulaを使用
+    // フォールバック1: sourceFormulaを使用（複数回試行）
     if (
       !imageSuccessfullyCopied &&
       imageData.sourceFormula &&
       imageData.sourceFormula.includes("=IMAGE(")
     ) {
-      try {
-        console.log(
-          `🔄 フォールバック1: sourceFormula使用 - ${imageData.sourceFormula.substring(
-            0,
-            100
-          )}...`
-        );
+      console.log(
+        `🔄 フォールバック1開始: sourceFormula使用 - ${imageData.sourceFormula.substring(
+          0,
+          100
+        )}...`
+      );
 
-        imageCell.setFormula(imageData.sourceFormula);
-        Utilities.sleep(200);
+      for (let i = 1; i <= 3; i++) {
+        try {
+          console.log(`🔄 フォールバック1試行 ${i}/3`);
 
-        const verifyFormula = imageCell.getFormula();
-        if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
-          imageSuccessfullyCopied = true;
-          console.log(
-            `✅ sourceFormula設定成功: ${verifyFormula.substring(0, 50)}...`
-          );
+          // 書式を再設定
+          imageCell.setNumberFormat("@");
+          imageCell.setFormula(imageData.sourceFormula);
+
+          Utilities.sleep(200);
+          const verifyFormula = imageCell.getFormula();
+
+          if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
+            imageSuccessfullyCopied = true;
+            console.log(
+              `✅ フォールバック1成功(試行${i}): ${verifyFormula.substring(
+                0,
+                50
+              )}...`
+            );
+            break;
+          } else {
+            console.warn(`⚠️ フォールバック1試行${i}失敗: ${verifyFormula}`);
+          }
+        } catch (formulaError) {
+          console.error(`🚨 フォールバック1試行${i}エラー:`, formulaError);
         }
-      } catch (formulaError) {
-        console.error("🚨 sourceFormula設定エラー:", formulaError);
       }
     }
 
