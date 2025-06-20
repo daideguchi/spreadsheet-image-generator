@@ -915,6 +915,23 @@ function populateStructuredTable(imageResults, promptRows) {
         statusCell.setFontWeight("bold");
         statusCell.setFontColor("#4caf50"); // 📱 視覚改善: 成功を示す緑色フォント
         statusCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアのグレー
+
+        // 🆕 ライブラリシートに生成記録を追加
+        try {
+          const finalPrompt = getCombinedPrompt(sheet, row);
+          const aspectRatio = sheet.getRange(row, 6).getValue() || "1024x1024";
+          addToImageLibrary({
+            prompt: finalPrompt,
+            imageUrl: result.imageUrl,
+            aspectRatio: aspectRatio,
+            status: "✅ GPT-Image-1",
+            timestamp: new Date(),
+            originalRow: row,
+          });
+        } catch (libraryError) {
+          console.error("ライブラリ記録エラー:", libraryError);
+          // ライブラリエラーは画像生成を妨げない
+        }
         statusCell.setBorder(
           true,
           true,
@@ -2329,11 +2346,13 @@ function createStructuredTable() {
           SpreadsheetApp.BorderStyle.DASHED
         ); // 📱 視覚改善: 破線の境界線
 
-        // H列: ステータス（自動生成エリア）
+        // H列: ステータス（自動生成エリア）- テキスト折り返し対応
         const statusCell = sheet.getRange(row, 8);
         statusCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアをグレーアウト
         statusCell.setFontColor("#757575"); // 📱 視覚改善: フォント色を控えめに
-        statusCell.setNote("✅ ステータス（自動更新）");
+        statusCell.setWrap(true); // 🔧 テキスト折り返しを有効化
+        statusCell.setVerticalAlignment("top"); // 上寄せで読みやすく
+        statusCell.setNote("✅ ステータス（自動更新・折り返し対応）");
         statusCell.setBorder(
           true,
           true,
@@ -3098,7 +3117,7 @@ function createCommonPromptSheet() {
     // 新しい共通プロンプト設定シートを作成
     const commonSheet = spreadsheet.insertSheet("共通プロンプト設定");
 
-    // 📋 シンプルなヘッダー設定（2列構造）
+    // 📋 シンプルなヘッダー設定（2列構造に簡素化）
     const headers = ["プロンプト名", "プロンプト内容"];
     const headerRange = commonSheet.getRange(1, 1, 1, headers.length);
     headerRange.setValues([headers]);
@@ -3154,17 +3173,17 @@ function createCommonPromptSheet() {
       }
     }
 
-    // 📝 使用説明を追加
+    // 📝 使用説明を追加（2列構造対応）
     const instructionRow = sampleData.length + 3;
     const instructionRange = commonSheet.getRange(instructionRow, 1, 1, 2);
     instructionRange.merge();
     instructionRange.setValue(
-      "💡 共通プロンプト管理システムの使い方\n\n" +
+      "💡 共通プロンプト管理システム（2列構造）\n\n" +
         "🔹 よく使うプロンプトをここに登録してください\n" +
         "🔹 プロンプト名：覚えやすい名前（例：高品質写真、アニメ風）\n" +
         "🔹 プロンプト内容：実際に使用されるプロンプト（日本語・英語問わず）\n" +
         "🔹 登録後、メインシートのC列ドロップダウンに自動で反映されます\n" +
-        "🔹 サンプルは参考程度です。自由に編集・削除してください"
+        "🔹 2列のシンプル構造で管理が簡単です"
     );
     instructionRange.setBackground("#e3f2fd");
     instructionRange.setFontWeight("bold");
@@ -3195,6 +3214,233 @@ function createCommonPromptSheet() {
     throw new Error(
       `共通プロンプトシートの作成に失敗しました: ${error.message}`
     );
+  }
+}
+
+/**
+ * 🆕 画像生成ライブラリシート管理
+ */
+
+/**
+ * ライブラリシートを作成または取得
+ */
+function getOrCreateLibrarySheet() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let librarySheet = spreadsheet.getSheetByName("画像生成ライブラリ");
+
+    if (!librarySheet) {
+      // 新規ライブラリシートを作成
+      librarySheet = spreadsheet.insertSheet("画像生成ライブラリ");
+
+      // ヘッダー行を設定
+      const headers = [
+        "No.", // A列: 通し番号
+        "📝 プロンプト", // B列: 使用プロンプト
+        "🖼️ 画像", // C列: 生成画像
+        "📐 比率", // D列: 画像比率
+        "⏰ 生成日時", // E列: 生成日時
+        "✅ ステータス", // F列: 生成ステータス
+        "🔗 元行", // G列: 元のシート行番号
+      ];
+
+      const headerRange = librarySheet.getRange(1, 1, 1, headers.length);
+      headerRange.setValues([headers]);
+
+      // ヘッダーのスタイル設定
+      headerRange.setBackground("#2196f3");
+      headerRange.setFontColor("white");
+      headerRange.setFontWeight("bold");
+      headerRange.setHorizontalAlignment("center");
+      headerRange.setVerticalAlignment("middle");
+      headerRange.setFontSize(11);
+      headerRange.setBorder(
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        "#1976d2",
+        SpreadsheetApp.BorderStyle.SOLID
+      );
+
+      // 列幅の最適化
+      librarySheet.setColumnWidth(1, 60); // No.
+      librarySheet.setColumnWidth(2, 300); // プロンプト
+      librarySheet.setColumnWidth(3, 200); // 画像
+      librarySheet.setColumnWidth(4, 100); // 比率
+      librarySheet.setColumnWidth(5, 150); // 日時
+      librarySheet.setColumnWidth(6, 120); // ステータス
+      librarySheet.setColumnWidth(7, 80); // 元行
+
+      // ヘッダー行の高さ
+      librarySheet.setRowHeight(1, 45);
+
+      // 使用説明を追加
+      const instructionRow = 3;
+      const instructionRange = librarySheet.getRange(
+        instructionRow,
+        1,
+        1,
+        headers.length
+      );
+      instructionRange.merge();
+      instructionRange.setValue(
+        "📚 画像生成ライブラリ - 全ての生成記録を自動保存\n\n" +
+          "🔹 画像が生成される度に自動でここに記録されます\n" +
+          "🔹 プロンプト、画像、生成日時などを一覧で確認できます\n" +
+          "🔹 過去の生成履歴を参照して、効果的なプロンプトを再利用できます"
+      );
+      instructionRange.setBackground("#e3f2fd");
+      instructionRange.setFontWeight("bold");
+      instructionRange.setWrap(true);
+      instructionRange.setVerticalAlignment("top");
+      librarySheet.setRowHeight(instructionRow, 80);
+
+      console.log("✅ 画像生成ライブラリシートを作成しました");
+    }
+
+    return librarySheet;
+  } catch (error) {
+    console.error("ライブラリシート作成エラー:", error);
+    throw new Error(`ライブラリシートの作成に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * ライブラリシートに生成記録を追加
+ */
+function addToImageLibrary(imageData) {
+  try {
+    const librarySheet = getOrCreateLibrarySheet();
+    const lastRow = librarySheet.getLastRow();
+    const newRow = lastRow + 1;
+
+    // 通し番号を計算（ヘッダー除く）
+    const recordNumber = lastRow > 1 ? lastRow - 1 : 1;
+
+    // データを行に追加
+    const rowData = [
+      recordNumber, // A列: No.
+      imageData.prompt || "プロンプト不明", // B列: プロンプト
+      `=IMAGE("${imageData.imageUrl}")`, // C列: 画像（IMAGE関数）
+      imageData.aspectRatio || "1024x1024", // D列: 比率
+      imageData.timestamp.toLocaleString("ja-JP"), // E列: 日時
+      imageData.status || "✅ 生成完了", // F列: ステータス
+      imageData.originalRow || "-", // G列: 元行
+    ];
+
+    const dataRange = librarySheet.getRange(newRow, 1, 1, rowData.length);
+    dataRange.setValues([rowData]);
+
+    // スタイル設定
+    dataRange.setBorder(
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      "#e0e0e0",
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+
+    // 行ごとの色分け（見やすさ向上）
+    const bgColor = newRow % 2 === 0 ? "#f8f9fa" : "#ffffff";
+    dataRange.setBackground(bgColor);
+
+    // 各列の配置設定
+    librarySheet.getRange(newRow, 1).setHorizontalAlignment("center"); // No.
+    librarySheet.getRange(newRow, 2).setWrap(true).setVerticalAlignment("top"); // プロンプト
+    librarySheet.getRange(newRow, 3).setHorizontalAlignment("center"); // 画像
+    librarySheet.getRange(newRow, 4).setHorizontalAlignment("center"); // 比率
+    librarySheet.getRange(newRow, 5).setHorizontalAlignment("center"); // 日時
+    librarySheet.getRange(newRow, 6).setHorizontalAlignment("center"); // ステータス
+    librarySheet.getRange(newRow, 7).setHorizontalAlignment("center"); // 元行
+
+    // 行の高さを画像に合わせて調整
+    librarySheet.setRowHeight(newRow, 120);
+
+    console.log(
+      `✅ ライブラリに記録追加: 行${newRow} - ${imageData.prompt?.substring(
+        0,
+        30
+      )}...`
+    );
+    return true;
+  } catch (error) {
+    console.error("ライブラリ記録追加エラー:", error);
+    // エラーでも画像生成を止めない
+    return false;
+  }
+}
+
+/**
+ * ライブラリの統計情報を取得
+ */
+function getLibraryStats() {
+  try {
+    const librarySheet = getOrCreateLibrarySheet();
+    const lastRow = librarySheet.getLastRow();
+
+    if (lastRow < 2) {
+      return {
+        totalImages: 0,
+        lastGenerated: null,
+        popularPrompts: [],
+      };
+    }
+
+    // 統計データを収集
+    const data = librarySheet.getRange(2, 1, lastRow - 1, 7).getValues();
+    const totalImages = data.length;
+    const lastGenerated = data[data.length - 1][4]; // 最新の生成日時
+
+    // プロンプトの使用頻度を分析
+    const promptCount = {};
+    data.forEach((row) => {
+      const prompt = row[1]?.toString().substring(0, 50);
+      promptCount[prompt] = (promptCount[prompt] || 0) + 1;
+    });
+
+    const popularPrompts = Object.entries(promptCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([prompt, count]) => ({ prompt, count }));
+
+    return {
+      totalImages,
+      lastGenerated,
+      popularPrompts,
+    };
+  } catch (error) {
+    console.error("ライブラリ統計取得エラー:", error);
+    return { totalImages: 0, lastGenerated: null, popularPrompts: [] };
+  }
+}
+
+/**
+ * 結合プロンプトを取得する関数
+ */
+function getCombinedPrompt(sheet, row) {
+  try {
+    const combinedCell = sheet.getRange(row, 4); // D列: 結合プロンプト
+    const combinedValue = combinedCell.getValue();
+
+    if (combinedValue && combinedValue.toString().trim() !== "") {
+      // 結合プロンプトが既に存在する場合
+      return combinedValue.toString().replace("🔗 ", "").trim();
+    }
+
+    // 結合プロンプトが存在しない場合は個別プロンプトを返す
+    const individualPrompt = sheet.getRange(row, 2).getValue(); // B列: 個別プロンプト
+    return individualPrompt
+      ? individualPrompt.toString().trim()
+      : "プロンプト不明";
+  } catch (error) {
+    console.error("結合プロンプト取得エラー:", error);
+    return "プロンプト取得エラー";
   }
 }
 
