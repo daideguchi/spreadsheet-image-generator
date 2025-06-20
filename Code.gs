@@ -1818,7 +1818,15 @@ function clearAllData() {
         range.clearContent();
         range.clearFormat();
         range.clearNote();
-        range.clearDataValidations();
+
+        // データ検証クリア（存在する場合のみ）
+        try {
+          if (typeof range.clearDataValidations === "function") {
+            range.clearDataValidations();
+          }
+        } catch (validationError) {
+          // 旧版APIでは無視
+        }
 
         console.log(`🧹 ${startRow}-${endRow}行をクリア完了`);
       }
@@ -1832,7 +1840,15 @@ function clearAllData() {
     sheet.clearContents();
     sheet.clearFormats();
     sheet.clearNotes();
-    sheet.clearDataValidations();
+
+    // データ検証クリア（存在する場合のみ）
+    try {
+      if (typeof sheet.clearDataValidations === "function") {
+        sheet.clearDataValidations();
+      }
+    } catch (validationError) {
+      console.log("⚠️ データ検証クリアをスキップ（旧版API）");
+    }
 
     // 3. 🔧 古いチェックボックスや条件付き書式を強制削除
     try {
@@ -1843,11 +1859,20 @@ function clearAllData() {
         console.log(`🎨 ${conditionalFormats.length}個の条件付き書式を削除`);
       }
 
-      // データ検証ルールをすべて削除
-      const dataValidations = sheet.getDataValidations();
-      if (dataValidations.length > 0) {
-        sheet.clearDataValidations();
-        console.log("📝 データ検証ルールを削除");
+      // データ検証ルールをすべて削除（新版APIのみ）
+      try {
+        if (
+          typeof sheet.getDataValidations === "function" &&
+          typeof sheet.clearDataValidations === "function"
+        ) {
+          const dataValidations = sheet.getDataValidations();
+          if (dataValidations.length > 0) {
+            sheet.clearDataValidations();
+            console.log("📝 データ検証ルールを削除");
+          }
+        }
+      } catch (validationError) {
+        console.log("⚠️ データ検証クリアをスキップ（旧版API）");
       }
     } catch (formatError) {
       console.error("書式削除エラー:", formatError);
@@ -2163,11 +2188,11 @@ function createStructuredTable() {
     sheet.getRange(1, 7).setBackground("#757575"); // G列: 日時（グレー）
     sheet.getRange(1, 8).setBackground("#757575"); // H列: ステータス（グレー）
 
-    // 列幅の最適化（9列構造）
+    // 列幅の最適化（9列構造）- 結合プロンプト列を拡張
     sheet.setColumnWidth(1, 60); // A: No.
     sheet.setColumnWidth(2, 250); // B: 個別プロンプト
     sheet.setColumnWidth(3, 150); // C: 共通プロンプト選択
-    sheet.setColumnWidth(4, 80); // D: 結合プロンプト（最小化）
+    sheet.setColumnWidth(4, 200); // D: 結合プロンプト（拡張：80→200）
     sheet.setColumnWidth(5, 220); // E: 画像
     sheet.setColumnWidth(6, 100); // F: 比率
     sheet.setColumnWidth(7, 140); // G: 日時
@@ -2233,12 +2258,14 @@ function createStructuredTable() {
           "🎯 共通プロンプトを選択してください\n💡 新しい共通プロンプトは設定シートで追加可能です。"
         );
 
-        // D列: 結合プロンプト（自動生成エリア）
+        // D列: 結合プロンプト（自動生成エリア）- テキスト折り返し対応
         const combinedCell = sheet.getRange(row, 4);
         combinedCell.setValue("🔗"); // アイコンのみ表示
-        combinedCell.setHorizontalAlignment("center");
-        combinedCell.setVerticalAlignment("middle");
-        combinedCell.setFontSize(16);
+        combinedCell.setHorizontalAlignment("left"); // 📱 改善: 左寄せに変更
+        combinedCell.setVerticalAlignment("top"); // 📱 改善: 上寄せに変更
+        combinedCell.setWrap(true); // 📱 改善: テキスト折り返しを有効化
+        combinedCell.setFontSize(9); // 📱 改善: フォントサイズを小さく
+        combinedCell.setPadding(4, 4, 4, 4); // 📱 改善: パディング追加
         combinedCell.setBackground("#eeeeee"); // 📱 視覚改善: 自動生成エリアをグレーアウト
         combinedCell.setFontColor("#757575"); // 📱 視覚改善: フォント色を控えめに
         combinedCell.setBorder(
@@ -3401,12 +3428,13 @@ function updateCombinedPrompt(sheet, row) {
     const combinedPrompt = combinePrompts(individualPrompt, commonPromptName);
 
     if (combinedPrompt && combinedPrompt.trim() !== "") {
-      // 結合プロンプトが長い場合は省略表示
+      // 📱 改善: 結合プロンプトの表示を最適化（折り返し対応）
       let displayText = "🔗";
       if (combinedPrompt.length > 0) {
+        // 60文字まで表示（折り返し対応）
         displayText =
-          combinedPrompt.length > 30
-            ? `🔗 ${combinedPrompt.substring(0, 27)}...`
+          combinedPrompt.length > 60
+            ? `🔗 ${combinedPrompt.substring(0, 57)}...`
             : `🔗 ${combinedPrompt}`;
       }
 
@@ -3416,6 +3444,10 @@ function updateCombinedPrompt(sheet, row) {
       );
       combinedCell.setBackground("#dcedc8"); // 📱 視覚改善: 結合済みを示す薄い緑色（自動生成エリア内）
       combinedCell.setFontColor("#4caf50"); // 📱 視覚改善: 結合済みを示す緑色フォント
+      // 📱 改善: テキスト折り返し設定
+      combinedCell.setWrap(true);
+      combinedCell.setHorizontalAlignment("left");
+      combinedCell.setVerticalAlignment("top");
     } else {
       combinedCell.setValue("🔗");
       combinedCell.setNote(
@@ -3423,6 +3455,10 @@ function updateCombinedPrompt(sheet, row) {
       );
       combinedCell.setBackground("#eeeeee"); // 📱 視覚改善: デフォルトのグレーエリア
       combinedCell.setFontColor("#757575"); // 📱 視覚改善: 控えめなフォント色
+      // 📱 改善: デフォルト設定
+      combinedCell.setWrap(true);
+      combinedCell.setHorizontalAlignment("left");
+      combinedCell.setVerticalAlignment("top");
     }
 
     console.log(`行${row}: 結合プロンプトを更新しました`);
