@@ -1080,6 +1080,26 @@ function populateStructuredTable(imageResults, promptRows) {
               }`
             );
 
+            // 🎯 元シートから画像フォーミュラを取得
+            let sourceImageFormula = null;
+            try {
+              const currentSheet = SpreadsheetApp.getActiveSheet();
+              const sourceCell = currentSheet.getRange(row, 5); // E列
+              sourceImageFormula = sourceCell.getFormula();
+              console.log(
+                `🔍 元シート画像フォーミュラ取得 (行${row}): ${
+                  sourceImageFormula
+                    ? sourceImageFormula.substring(0, 100) + "..."
+                    : "なし"
+                }`
+              );
+            } catch (formulaError) {
+              console.warn(
+                `⚠️ 元シート画像フォーミュラ取得エラー (行${row}):`,
+                formulaError
+              );
+            }
+
             const libraryData = {
               prompt: finalPrompt,
               imageUrl: result.url,
@@ -1087,6 +1107,7 @@ function populateStructuredTable(imageResults, promptRows) {
               status: "✅ GPT-Image-1",
               timestamp: new Date(),
               originalRow: row,
+              sourceFormula: sourceImageFormula, // 🎯 フォーミュラも渡す
             };
 
             console.log(`🚀 ライブラリ記録実行中...`);
@@ -3837,41 +3858,6 @@ function addToImageLibrary(imageData) {
     const recordNumber = lastRow > 1 ? lastRow - 1 : 1;
     console.log(`🔢 レコード番号: ${recordNumber}`);
 
-    // 💡 改善要求: 元シートから画像を直接コピーペースト
-    let sourceImageCell = null;
-    let imageSuccessfullyCopied = false;
-
-    if (imageData.originalRow && imageData.originalRow !== "-") {
-      try {
-        // 確実に入力シートを取得（最初のシートまたは現在アクティブなシート）
-        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-        const mainSheet =
-          spreadsheet
-            .getSheets()
-            .find((s) => s.getName() !== "画像生成ライブラリ") ||
-          spreadsheet.getSheets()[0];
-        sourceImageCell = mainSheet.getRange(imageData.originalRow, 5); // E列から画像取得
-        const sourceFormula = sourceImageCell.getFormula();
-
-        if (sourceFormula && sourceFormula.includes("=IMAGE(")) {
-          console.log(
-            `📷 元シートから画像直接コピー準備: 行${imageData.originalRow} → ライブラリ行${newRow}`
-          );
-          console.log(`📷 元シート名: ${mainSheet.getName()}`);
-          console.log(
-            `📷 元シート画像フォーミュラ: ${sourceFormula.substring(0, 100)}...`
-          );
-        } else {
-          console.warn(
-            `⚠️ 元シート行${imageData.originalRow}に画像が見つかりません`
-          );
-          console.warn(`⚠️ 元シートフォーミュラ: ${sourceFormula}`);
-        }
-      } catch (copyError) {
-        console.error("元シートからの画像コピー準備エラー:", copyError);
-      }
-    }
-
     // 💡 改善要求: プロンプト表示を結合プロンプト形式に変更
     const promptText = imageData.prompt || "プロンプト不明";
     const displayPrompt =
@@ -3888,8 +3874,11 @@ function addToImageLibrary(imageData) {
       false, // H列: チェックボックス（💡 改善要求: ダウンロード機能のため）
     ];
 
+    console.log(`📝 ライブラリ行データ準備完了:`, JSON.stringify(rowData));
+
     const dataRange = librarySheet.getRange(newRow, 1, 1, rowData.length);
     dataRange.setValues([rowData]);
+    console.log(`✅ 基本データ書き込み完了: 行${newRow}`);
 
     // スタイル設定
     dataRange.setBorder(
@@ -3935,64 +3924,149 @@ function addToImageLibrary(imageData) {
       `📄 完全なプロンプト:\n${promptText}\n\n💡 このセルをクリックして全文を確認できます。`
     );
 
-    // 💡 改善要求: 画像セルに直接コピーペースト配置
+    // 🎯 最重要: 画像セルに確実に画像を設定
     const imageCell = librarySheet.getRange(newRow, 3);
     imageCell.setHorizontalAlignment("center");
     imageCell.setVerticalAlignment("middle");
+    console.log(`📷 画像セル準備完了: ${imageCell.getA1Notation()}`);
 
-    // 💡 改善要求: 元シートからcopyToメソッドで直接コピー
-    if (sourceImageCell) {
+    // 🚀 確実な画像設定処理
+    let imageSuccessfullyCopied = false;
+    const imageUrl = imageData.imageUrl || imageData.url;
+    console.log(
+      `🔗 使用する画像URL: ${
+        imageUrl ? imageUrl.substring(0, 100) + "..." : "なし"
+      }`
+    );
+
+    // 方法1: 渡されたソースフォーミュラを使用（最優先）
+    if (
+      imageData.sourceFormula &&
+      imageData.sourceFormula.includes("=IMAGE(")
+    ) {
       try {
-        const sourceFormula = sourceImageCell.getFormula();
-        if (sourceFormula && sourceFormula.includes("=IMAGE(")) {
-          // IMAGE関数を直接コピー
-          imageCell.setFormula(sourceFormula);
-          imageSuccessfullyCopied = true;
+        console.log(
+          `🎯 渡されたフォーミュラを直接使用: ${imageData.sourceFormula.substring(
+            0,
+            100
+          )}...`
+        );
+        imageCell.setFormula(imageData.sourceFormula);
+        imageSuccessfullyCopied = true;
+        console.log(`✅ 渡されたフォーミュラ設定成功`);
+
+        // 🎯 設定直後の確認
+        const verifyFormula = imageCell.getFormula();
+        if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
           console.log(
-            `✅ 元シートから画像フォーミュラを直接コピー成功: 行${imageData.originalRow} → ライブラリ行${newRow}`
+            `✅ フォーミュラ設定確認OK: ${verifyFormula.substring(0, 50)}...`
           );
-          console.log(`✅ コピーしたフォーミュラ: ${sourceFormula}`);
         } else {
-          console.warn(
-            `⚠️ 元シートに有効なIMAGE関数がありません: ${sourceFormula}`
-          );
-          imageSuccessfullyCopied = false;
+          console.warn(`⚠️ フォーミュラ設定確認NG: ${verifyFormula}`);
+          imageSuccessfullyCopied = false; // 再設定を試行
         }
-      } catch (copyError) {
-        console.error("画像直接コピーエラー:", copyError);
-        imageSuccessfullyCopied = false;
+      } catch (formulaError) {
+        console.error("🚨 渡されたフォーミュラ設定エラー:", formulaError);
       }
     }
 
-    // 💡 改善要求: コピー失敗時のフォールバック処理
+    // 方法2: 元シートからのコピー（フォールバック）
+    if (
+      !imageSuccessfullyCopied &&
+      imageData.originalRow &&
+      imageData.originalRow !== "-"
+    ) {
+      try {
+        console.log(
+          `🔍 元シートからのコピーを試行: 行${imageData.originalRow}`
+        );
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const inputSheets = spreadsheet
+          .getSheets()
+          .filter(
+            (s) =>
+              s.getName() !== "画像生成ライブラリ" &&
+              s.getName() !== "共通プロンプト設定"
+          );
+
+        if (inputSheets.length > 0) {
+          const mainSheet = inputSheets[0]; // 最初の入力シート
+          console.log(`📋 入力シート特定: ${mainSheet.getName()}`);
+
+          const sourceImageCell = mainSheet.getRange(imageData.originalRow, 5); // E列
+          const sourceFormula = sourceImageCell.getFormula();
+          console.log(`📷 元シートフォーミュラ: ${sourceFormula}`);
+
+          if (sourceFormula && sourceFormula.includes("=IMAGE(")) {
+            imageCell.setFormula(sourceFormula);
+            imageSuccessfullyCopied = true;
+            console.log(
+              `✅ 元シートからフォーミュラコピー成功: ${sourceFormula}`
+            );
+          } else {
+            console.warn(`⚠️ 元シートに有効なIMAGE関数なし: ${sourceFormula}`);
+          }
+        } else {
+          console.warn(`⚠️ 入力シートが見つかりません`);
+        }
+      } catch (copyError) {
+        console.error("🚨 元シートコピーエラー:", copyError);
+      }
+    }
+
+    // 方法3: URLからの直接設定（最終フォールバック）
     if (!imageSuccessfullyCopied) {
-      const fallbackUrl = imageData.imageUrl || imageData.url;
       console.log(
         `🔄 フォールバック処理開始: URL = ${
-          fallbackUrl ? fallbackUrl.substring(0, 50) + "..." : "なし"
+          imageUrl ? imageUrl.substring(0, 50) + "..." : "なし"
         }`
       );
       if (
-        fallbackUrl &&
-        (fallbackUrl.startsWith("http") || fallbackUrl.startsWith("data:"))
+        imageUrl &&
+        (imageUrl.startsWith("http") || imageUrl.startsWith("data:"))
       ) {
-        // フォールバック: 直接URLから画像挿入
-        const imageFormula = `=IMAGE("${fallbackUrl}")`;
+        const imageFormula = `=IMAGE("${imageUrl}")`;
         imageCell.setFormula(imageFormula);
-        imageSuccessfullyCopied = true; // フォールバック成功
+        imageSuccessfullyCopied = true;
         console.log(
-          `📷 フォールバック - URLから画像挿入: ${fallbackUrl.substring(
+          `✅ フォールバック成功 - URLから画像設定: ${imageUrl.substring(
             0,
             50
           )}...`
         );
         console.log(`📷 設定したフォーミュラ: ${imageFormula}`);
       } else {
-        imageCell.setValue("❌ 画像コピー失敗");
+        imageCell.setValue("❌ 画像URL無効");
         console.warn(
-          `⚠️ 画像のコピー配置に失敗: 元行${imageData.originalRow}, URL: ${fallbackUrl}`
+          `🚨 画像設定失敗: 元行${imageData.originalRow}, URL: ${imageUrl}`
         );
       }
+    }
+
+    // 🎯 画像設定完了後の待機時間（確実な反映のため）
+    if (imageSuccessfullyCopied) {
+      Utilities.sleep(500); // 0.5秒待機
+      console.log(`⏰ 画像設定後の待機完了`);
+    }
+
+    // 最終確認: 画像セルの状態をチェック
+    try {
+      const finalFormula = imageCell.getFormula();
+      const finalValue = imageCell.getValue();
+      console.log(
+        `🔍 最終画像セル状態: フォーミュラ="${finalFormula}", 値="${finalValue}"`
+      );
+
+      if (!finalFormula && !finalValue) {
+        console.error(`🚨 画像セルが空です！強制的にエラー表示を設定します`);
+        imageCell.setValue("❌ 画像設定失敗");
+        imageCell.setBackground("#ffebee");
+        imageCell.setFontColor("#d32f2f");
+      } else if (finalFormula && finalFormula.includes("=IMAGE(")) {
+        console.log(`✅ 画像セルに正常なIMAGE関数が設定されています`);
+      }
+    } catch (checkError) {
+      console.error("🚨 画像セル状態確認エラー:", checkError);
     }
 
     librarySheet.getRange(newRow, 4).setHorizontalAlignment("center"); // 比率
