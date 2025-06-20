@@ -61,14 +61,13 @@ function onOpen() {
 }
 
 /**
- * 初期セットアップ（プロンプト入力エリアを作成）- 確認アラート付き
+ * 初期セットアップ（プロンプト入力エリアを作成）- 確実な確認アラート付き
  */
 function initialSetup() {
   try {
-    const sheet = SpreadsheetApp.getActiveSheet();
     const ui = SpreadsheetApp.getUi();
 
-    // 🔧 データ消失警告付きの確認アラート
+    // 🚨 必ず表示される確認アラート（シンプル設計）
     const confirmResponse = ui.alert(
       "⚠️ 重要：データ消失の確認",
       "🚨 表を初期化すると、現在のシートの全データが失われます！\n\n" +
@@ -76,56 +75,59 @@ function initialSetup() {
         "• プロンプト内容\n" +
         "• 生成済みの画像\n" +
         "• その他の全てのデータ\n\n" +
-        "📝 作成される新しいテーブル：\n" +
-        "• 100行の構造化テーブル\n" +
-        "• 共通プロンプトのプルダウン\n" +
-        "• 画像生成機能\n\n" +
         "🔴 本当にデータを削除して初期化しますか？\n" +
         "（この操作は取り消せません）",
       ui.ButtonSet.YES_NO
     );
 
+    // キャンセルの場合は即座に終了
     if (confirmResponse !== ui.Button.YES) {
+      ui.alert(
+        "❌ 初期化キャンセル",
+        "表の初期化をキャンセルしました。\nデータは変更されていません。",
+        ui.ButtonSet.OK
+      );
       return "❌ 初期化をキャンセルしました";
     }
 
-    // シートにデータがあるかチェック
-    const hasData = checkForAnyData();
+    // 🔧 確認後は即座に初期化実行（複雑な分岐なし）
+    ui.alert(
+      "🔧 初期化実行中",
+      "表の初期化を開始します...\n少々お待ちください。",
+      ui.ButtonSet.OK
+    );
 
-    let setupOption;
+    // シンプルに初期化実行
+    const result = createStructuredTable();
 
-    if (hasData) {
-      // データがある場合：シンプルな選択
-      const response = ui.alert(
-        "⚠️ 既存データが検出されました",
-        "🔄 バックアップを取って新規作成しますか？\n\n" +
-          "✅ はい → 既存データを別シートに保存してから新規作成\n" +
-          "❌ いいえ → データを削除して新規作成",
-        ui.ButtonSet.YES_NO
-      );
+    // 成功メッセージ
+    ui.alert(
+      "✅ 初期化完了",
+      "表の初期化が完了しました！\n\n" +
+        "📋 作成された内容：\n" +
+        "• 100行の構造化テーブル\n" +
+        "• 共通プロンプトのプルダウン\n" +
+        "• 画像生成機能\n\n" +
+        "🎨 サイドバーから画像生成を開始できます！",
+      ui.ButtonSet.OK
+    );
 
-      if (response === ui.Button.YES) {
-        setupOption = "backup"; // バックアップを取って新規作成
-      } else {
-        setupOption = "clear"; // 完全クリアして新規作成
-      }
-    } else {
-      // 空のシートの場合も常に実行
-      setupOption = "new";
-    }
-
-    // セットアップ実行
-    return executeSetup(setupOption);
+    return result;
   } catch (error) {
     console.error("表初期化エラー:", error);
 
-    // エラーが発生しても初期化を実行（常に機能させる）
-    try {
-      return createStructuredTable();
-    } catch (fallbackError) {
-      console.error("フォールバック初期化エラー:", fallbackError);
-      throw new Error(`表の初期化に失敗しました: ${error.message}`);
-    }
+    // エラーの場合もユーザーに明確に伝える
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      "❌ 初期化エラー",
+      `表の初期化中にエラーが発生しました：\n${error.message}\n\n` +
+        "💡 対処方法：\n" +
+        "1. ページをリロードしてから再実行\n" +
+        "2. それでも解決しない場合は開発者にお問い合わせください",
+      ui.ButtonSet.OK
+    );
+
+    throw new Error(`表の初期化に失敗しました: ${error.message}`);
   }
 }
 
@@ -2525,46 +2527,37 @@ function setupCommonPromptValidation() {
 function getCommonPromptOptions() {
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    let options = [];
 
-    // デフォルトの選択肢（常に含める）
-    const defaultOptions = ["なし", "高品質写真", "アニメ風"];
-    options = options.concat(defaultOptions);
+    // デフォルトの選択肢（最小限）
+    const options = ["なし"];
 
     // 共通プロンプト設定シートから追加の選択肢を取得
     const commonSheet = spreadsheet.getSheetByName("共通プロンプト設定");
     if (commonSheet) {
       const lastRow = commonSheet.getLastRow();
-      if (lastRow > 1) {
-        // 🔧 プロンプトデータは4行目以降から取得（新構造対応）
-        // 1行目: 説明文, 3行目: ヘッダー, 4行目以降: プロンプトデータ
-        for (let i = 4; i <= lastRow; i++) {
-          const cellValue = commonSheet.getRange(i, 1).getValue();
-          const cellString = cellValue ? cellValue.toString().trim() : "";
 
-          // プロンプト名として有効かチェック（空行で終了）
-          if (cellString === "") {
-            // 空行に到達したらデータ終了
-            break;
-          }
+      // 4行目以降からプロンプト名を取得
+      for (let i = 4; i <= lastRow; i++) {
+        const promptName = commonSheet.getRange(i, 1).getValue();
 
-          // 有効なプロンプト名をチェック
-          if (cellString.length > 0 && cellString.length < 100) {
-            // デフォルト選択肢と重複しないもののみ追加
-            if (!options.includes(cellString)) {
-              options.push(cellString);
-            }
+        // 有効な文字列かチェック
+        if (promptName && typeof promptName === "string") {
+          const cleanName = promptName.toString().trim();
+
+          // 空でなく、重複していない場合のみ追加
+          if (cleanName && !options.includes(cleanName)) {
+            options.push(cleanName);
           }
         }
       }
     }
 
-    console.log("共通プロンプト選択肢を取得（フィルタリング済み）:", options);
+    console.log("✅ 共通プロンプト選択肢:", options);
     return options;
   } catch (error) {
-    console.error("共通プロンプト選択肢取得エラー:", error);
+    console.error("❌ 共通プロンプト選択肢取得エラー:", error);
     // エラーの場合はデフォルト選択肢のみ返す
-    return ["なし", "高品質写真", "アニメ風"];
+    return ["なし"];
   }
 }
 
@@ -3336,11 +3329,12 @@ function createCommonPromptSheet() {
     const instructionRange = commonSheet.getRange(1, 1, 1, 3);
     instructionRange.merge();
     instructionRange.setValue(
-      "💡 共通プロンプト管理システム\n\n" +
-        "🎯 プロンプト名：プルダウンに表示される名前（分かりやすい日本語）\n" +
+      "💡 共通プロンプト管理（補助機能）\n\n" +
+        "🎯 プロンプト名：プルダウンに表示される名前\n" +
         "📝 プロンプト内容：実際に使用される英語プロンプト\n" +
-        "🏷️ カテゴリ：種類別に整理（写真・アート・スタイル・用途）\n\n" +
-        "💡 追加・編集後は自動でメインシートのプルダウンに反映されます"
+        "🏷️ カテゴリ：種類別に整理\n\n" +
+        "⚠️ メインはB列の個別プロンプト入力です。\n" +
+        "共通プロンプトは補助的に使用してください。"
     );
     instructionRange.setBackground("#e8f5e8");
     instructionRange.setFontWeight("bold");
@@ -3387,90 +3381,11 @@ function createCommonPromptSheet() {
     commonSheet.setColumnWidth(3, 120); // カテゴリ列
     commonSheet.setRowHeight(3, 45); // ヘッダー行
 
-    // 🌟 カテゴリ別の豊富なサンプルデータ
+    // 🌟 基本的なサンプルデータ（ユーザーが参考にできる程度）
     const sampleData = [
-      // 📸 写真・リアル系
-      [
-        "📸 高品質写真",
-        "high quality, professional photography, 8k resolution, detailed",
-        "写真",
-      ],
-      [
-        "📸 リアル写真",
-        "photorealistic, detailed, natural lighting, sharp focus",
-        "写真",
-      ],
-      [
-        "📸 ポートレート",
-        "professional portrait, studio lighting, high resolution",
-        "写真",
-      ],
-      [
-        "📸 風景写真",
-        "landscape photography, golden hour, dramatic sky, wide angle",
-        "写真",
-      ],
-
-      // 🎨 アート・イラスト系
-      [
-        "🎨 アニメ風",
-        "anime style, manga art, japanese animation, cel shading",
-        "アート",
-      ],
-      [
-        "🎨 水彩画風",
-        "watercolor painting, soft colors, artistic brush strokes",
-        "アート",
-      ],
-      [
-        "🎨 油絵風",
-        "oil painting, classical art style, rich colors, textured",
-        "アート",
-      ],
-      [
-        "🎨 デジタルアート",
-        "digital art, concept art, vibrant colors, detailed illustration",
-        "アート",
-      ],
-
-      // 🌈 スタイル系
-      [
-        "🌈 ミニマル",
-        "minimalist, clean design, simple composition, negative space",
-        "スタイル",
-      ],
-      [
-        "🌈 レトロ",
-        "retro style, vintage aesthetic, nostalgic atmosphere",
-        "スタイル",
-      ],
-      [
-        "🌈 未来的",
-        "futuristic, sci-fi, neon lights, cyberpunk aesthetic",
-        "スタイル",
-      ],
-      [
-        "🌈 ファンタジー",
-        "fantasy art, magical atmosphere, ethereal lighting",
-        "スタイル",
-      ],
-
-      // 🎯 用途別
-      [
-        "🎯 アイコン用",
-        "icon design, simple, clear, 512x512, white background",
-        "用途",
-      ],
-      [
-        "🎯 バナー用",
-        "banner design, eye-catching, marketing material",
-        "用途",
-      ],
-      [
-        "🎯 プレゼン用",
-        "presentation slide, professional, clean layout",
-        "用途",
-      ],
+      ["高品質写真", "high quality, professional photography", "写真"],
+      ["アニメ風", "anime style", "アート"],
+      ["風景", "landscape, nature", "写真"],
     ];
 
     // サンプルデータを4行目から連続配置
