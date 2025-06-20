@@ -2360,7 +2360,7 @@ function getImageGenerationCount() {
 
       if (prompt && typeof prompt === "string" && prompt.trim() !== "") {
         // 既存データ保護：既に画像が生成されている行はスキップ
-        const existingImageCell = sheet.getRange(actualRow, 4); // D列（画像列）
+        const existingImageCell = sheet.getRange(actualRow, 5); // E列（画像列）
         const existingImage = existingImageCell.getFormula();
 
         if (!existingImage || !existingImage.includes("=IMAGE(")) {
