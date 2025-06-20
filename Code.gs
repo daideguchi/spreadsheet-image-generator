@@ -1305,7 +1305,10 @@ function onEdit(e) {
     if (sheet.getName() === "共通プロンプト設定") {
       // 共通プロンプト設定シートが編集された場合、ドロップダウンを更新
       try {
-        setupCommonPromptValidation();
+        // メインシートのドロップダウンを更新
+        const mainSheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+        const currentSheet = SpreadsheetApp.setActiveSheet(mainSheet);
+        updateCommonPromptDropdown();
         console.log(
           "共通プロンプト設定変更により、ドロップダウンを更新しました"
         );
@@ -2032,10 +2035,7 @@ function createStructuredTable() {
 
     console.log("100行のテーブル作成完了");
 
-    // 共通プロンプト設定シートを作成
-    createCommonPromptSheet();
-
-    // データ検証（ドロップダウン）を設定
+    // 共通プロンプト機能を初期設定
     setupCommonPromptValidation();
 
     // 完了メッセージを下部に追加
@@ -2059,9 +2059,7 @@ function createStructuredTable() {
       // メッセージエラーは無視して続行
     }
 
-    console.log(
-      `✅ 改善された共通プロンプト設定シートを作成しました（${defaultPrompts.length}個のプロンプト）`
-    );
+    console.log(`✅ 共通プロンプト機能付きテーブルを作成しました`);
     return "✅ 共通プロンプト機能付きテーブルを作成しました！B列に個別プロンプト、C列で共通プロンプトを選択してください。";
   } catch (error) {
     console.error("構造化テーブル作成エラー:", error);
@@ -2935,56 +2933,32 @@ function getCommonPromptStats() {
 }
 
 /**
- * 共通プロンプトのデータ検証（ドロップダウン）を設定
+ * 共通プロンプト機能の初期設定（テーブル作成時用）
  */
 function setupCommonPromptValidation() {
   try {
-    const sheet = SpreadsheetApp.getActiveSheet();
+    console.log("共通プロンプト機能を初期設定中...");
+
+    // 共通プロンプト設定シートが存在することを確認
     const commonSheet =
       SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
         "共通プロンプト設定"
       );
-
     if (!commonSheet) {
-      console.error("共通プロンプト設定シートが見つかりません");
-      return;
+      console.log("共通プロンプト設定シートを作成します...");
+      createCommonPromptSheet();
     }
 
-    // 共通プロンプトのリストを取得
-    const lastRow = commonSheet.getLastRow();
-    if (lastRow < 2) {
-      console.log("共通プロンプトデータがありません");
-      return;
-    }
+    // ドロップダウンを設定
+    updateCommonPromptDropdown();
 
-    // プロンプト名の列（B列）からドロップダウン用のデータを取得
-    const promptNames = commonSheet
-      .getRange(2, 2, lastRow - 1, 1)
-      .getValues()
-      .flat();
-
-    // 空の選択肢を追加
-    const dropdownValues = ["（なし）", ...promptNames];
-
-    // C列（共通プロンプト選択列）にデータ検証を設定
-    const validationRange = sheet.getRange(2, 3, 100, 1); // 100行分
-    const rule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(dropdownValues, true)
-      .setAllowInvalid(false)
-      .setHelpText(
-        "共通プロンプトを選択してください。新しいプロンプトは「共通プロンプト設定」シートで追加できます。"
-      )
-      .build();
-
-    validationRange.setDataValidation(rule);
-
-    console.log(
-      `共通プロンプトのドロップダウンを設定しました（${dropdownValues.length}個の選択肢）`
-    );
+    console.log("✅ 共通プロンプト機能の初期設定が完了しました");
     return true;
   } catch (error) {
-    console.error("データ検証設定エラー:", error);
-    throw new Error(`データ検証の設定に失敗しました: ${error.message}`);
+    console.error("共通プロンプト初期設定エラー:", error);
+    throw new Error(
+      `共通プロンプト機能の初期設定に失敗しました: ${error.message}`
+    );
   }
 }
 
@@ -3175,16 +3149,18 @@ function updateCommonPromptDropdown() {
       return;
     }
 
-    // 📋 シンプルなプロンプト名のリストを作成
-    const promptNames = prompts.map((p) => p.name);
+    // 📋 シンプルなプロンプト名のリストを作成（空選択肢も追加）
+    const promptNames = ["（なし）", ...prompts.map((p) => p.name)];
 
-    // ドロップダウンリストを設定
-    const range = sheet.getRange("C:C");
+    // ドロップダウンリストを設定（データ行のみ、2-101行目）
+    const range = sheet.getRange(2, 3, 100, 1);
     const rule = SpreadsheetApp.newDataValidation()
       .requireValueInList(promptNames, true)
       .setAllowInvalid(true) // 手動入力も許可
       .setHelpText(
-        `${promptNames.length}個の共通プロンプトから選択できます。手動入力も可能です。`
+        `${
+          promptNames.length - 1
+        }個の共通プロンプトから選択できます。手動入力も可能です。`
       )
       .build();
 
