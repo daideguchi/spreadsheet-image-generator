@@ -874,25 +874,7 @@ function populateStructuredTable(imageResults, promptRows) {
       if (currentPrompt && currentPrompt.length > 150) {
         // 150文字以上の場合のみ省略表示
         const truncatedPrompt = currentPrompt.substring(0, 147) + "...";
-
-        // 🚨 **デバッグ**: B列省略表示処理のチェック
-        console.log("🔍 B列省略表示処理:");
-        console.log("- currentPrompt length:", currentPrompt.length);
-        console.log("- currentPrompt type:", typeof currentPrompt);
-        console.log("- truncatedPrompt length:", truncatedPrompt.length);
-        console.log(
-          "- truncatedPrompt preview:",
-          truncatedPrompt.substring(0, 50) + "..."
-        );
-
-        try {
-          promptCell.setValue(truncatedPrompt);
-          console.log("✅ B列省略表示成功");
-        } catch (bColumnSetValueError) {
-          console.error("🚨 B列setValue失敗:", bColumnSetValueError.message);
-          console.error("- 失敗したtruncatedPrompt長:", truncatedPrompt.length);
-          throw new Error(`B列セル値設定失敗: ${bColumnSetValueError.message}`);
-        }
+        promptCell.setValue(truncatedPrompt);
 
         // セルの表示設定を調整
         promptCell.setWrap(false);
@@ -971,37 +953,12 @@ function populateStructuredTable(imageResults, promptRows) {
           let userPromptForCell = safeOriginalPrompt;
           let isPromptTruncated = false;
 
-          // 🚨 **デバッグ**: 詳細ログ出力で問題を特定
-          console.log("🔍 デバッグ - setValue前の状態:");
-          console.log(
-            "- result.original_prompt type:",
-            typeof result.original_prompt
-          );
-          console.log(
-            "- result.original_prompt value:",
-            result.original_prompt
-              ? result.original_prompt.substring(0, 200) + "..."
-              : "null/undefined"
-          );
-          console.log(
-            "- safeOriginalPrompt length:",
-            safeOriginalPrompt.length
-          );
-          console.log("- headerText length:", headerText.length);
-          console.log("- maxSafeLength:", maxSafeLength);
-          console.log("- maxUserPromptLength:", maxUserPromptLength);
-
           if (userPromptForCell.length > maxUserPromptLength) {
             userPromptForCell = userPromptForCell.substring(
               0,
               maxUserPromptLength
             );
             isPromptTruncated = true;
-            console.log(
-              "⚠️ プロンプトを切り詰めました: ",
-              userPromptForCell.length,
-              "文字"
-            );
           }
 
           let userPromptPart = headerText + userPromptForCell;
@@ -1014,78 +971,31 @@ function populateStructuredTable(imageResults, promptRows) {
             userPromptPart =
               userPromptPart.substring(0, maxSafeLength - 200) +
               "\n[安全制限により省略...]";
-            console.log("🚨 緊急切り詰め実行: ", userPromptPart.length, "文字");
           }
 
-          // 🚨 **デバッグ**: setValue前の最終チェック
-          console.log("🔍 setValue前の最終値:");
-          console.log("- userPromptPart length:", userPromptPart.length);
-          console.log(
-            "- userPromptPart preview:",
-            userPromptPart.substring(0, 100) + "..."
+          // セル値に安全な長さで配置
+          fullPromptCell.setValue(userPromptPart);
+          fullPromptCell.setWrap(true);
+          fullPromptCell.setVerticalAlignment("top");
+          fullPromptCell.setFontSize(10);
+          fullPromptCell.setBackground("#f8f9fa");
+          fullPromptCell.setBorder(
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            "#e0e0e0",
+            SpreadsheetApp.BorderStyle.SOLID
           );
-
-          try {
-            // セル値に安全な長さで配置
-            fullPromptCell.setValue(userPromptPart);
-            console.log("✅ setValue成功: C列セル値設定完了");
-          } catch (setValueError) {
-            console.error("🚨 setValue失敗:", setValueError.message);
-            console.error("- 失敗した値の長さ:", userPromptPart.length);
-            console.error("- 失敗した値のタイプ:", typeof userPromptPart);
-            throw new Error(
-              `C列セル値設定失敗: ${setValueError.message} (長さ: ${userPromptPart.length}文字)`
-            );
-          }
-
-          // 🚨 **デバッグ**: C列書式設定
-          console.log("🔍 C列書式設定開始");
-          try {
-            fullPromptCell.setWrap(true);
-            fullPromptCell.setVerticalAlignment("top");
-            fullPromptCell.setFontSize(10);
-            fullPromptCell.setBackground("#f8f9fa");
-            fullPromptCell.setBorder(
-              true,
-              true,
-              true,
-              true,
-              true,
-              true,
-              "#e0e0e0",
-              SpreadsheetApp.BorderStyle.SOLID
-            );
-            console.log("✅ C列書式設定成功");
-          } catch (formatError) {
-            console.error("🚨 C列書式設定失敗:", formatError.message);
-            // 書式設定の失敗は処理を停止させない（警告のみ）
-            console.warn("⚠️ C列書式設定をスキップして続行");
-          }
 
           // 🔧 **セルコメント統合**: 複数のsetNote()呼び出しを1つに統合して50,000文字制限を回避
           const combinedComment = createSafeComment(
             safeOriginalPrompt,
             result.revised_prompt
           );
-
-          // 🚨 **デバッグ**: setNote前のチェック
-          console.log("🔍 setNote前の状態:");
-          console.log("- combinedComment length:", combinedComment.length);
-          console.log(
-            "- combinedComment preview:",
-            combinedComment.substring(0, 100) + "..."
-          );
-
-          try {
-            fullPromptCell.setNote(combinedComment);
-            console.log("✅ setNote成功: C列コメント設定完了");
-          } catch (setNoteError) {
-            console.error("🚨 C列setNote失敗:", setNoteError.message);
-            console.error("- 失敗したコメント長:", combinedComment.length);
-            throw new Error(
-              `C列コメント設定失敗: ${setNoteError.message} (長さ: ${combinedComment.length}文字)`
-            );
-          }
+          fullPromptCell.setNote(combinedComment);
 
           // 🔧 **技術的解決策**: B列セルコメントもデータ分離で制限回避
           // ユーザープロンプトのみをセルコメントに配置（内部処理版は既にC列コメントに分離済み）
@@ -1093,25 +1003,7 @@ function populateStructuredTable(imageResults, promptRows) {
             0,
             20000
           )}\n\n💡 内部処理版はC列のコメントで確認できます`;
-
-          // 🚨 **デバッグ**: B列setNote前のチェック
-          console.log("🔍 B列setNote前の状態:");
-          console.log("- userOnlyComment length:", userOnlyComment.length);
-          console.log(
-            "- userOnlyComment preview:",
-            userOnlyComment.substring(0, 100) + "..."
-          );
-
-          try {
-            promptCell.setNote(userOnlyComment);
-            console.log("✅ B列setNote成功: プロンプトセルコメント設定完了");
-          } catch (bColumnSetNoteError) {
-            console.error("🚨 B列setNote失敗:", bColumnSetNoteError.message);
-            console.error("- 失敗したB列コメント長:", userOnlyComment.length);
-            throw new Error(
-              `B列コメント設定失敗: ${bColumnSetNoteError.message} (長さ: ${userOnlyComment.length}文字)`
-            );
-          }
+          promptCell.setNote(userOnlyComment);
         }
       }
 
@@ -2675,4 +2567,110 @@ function createSafeComment(originalPrompt, revisedPrompt) {
   }
 
   return combinedComment;
+}
+
+/**
+ * 🔍 デバッグ: 最新のエラーログを直接表示する関数
+ * スプレッドシートから直接実行してエラー詳細を確認
+ */
+function showLatestErrorDebug() {
+  try {
+    // 最後に画像生成を実行して、デバッグ情報を収集
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const ui = SpreadsheetApp.getUi();
+
+    // テスト用の短いプロンプトで画像生成を実行
+    const testPrompts = ["a simple red apple"];
+
+    console.log("🔍 デバッグテスト開始");
+    console.log("- テストプロンプト:", testPrompts[0]);
+
+    try {
+      const imageResults = generateImages(testPrompts);
+      console.log("✅ 画像生成成功:", imageResults);
+
+      // 結果配置のテスト
+      console.log("🔍 結果配置テスト開始");
+      const result = placeImageResultsInStructuredTable(imageResults);
+      console.log("✅ 結果配置成功:", result);
+
+      ui.alert(
+        "✅ デバッグテスト完了",
+        "エラーは発生しませんでした。別のプロンプトで試してください。",
+        ui.ButtonSet.OK
+      );
+    } catch (error) {
+      console.error("🚨 デバッグテストでエラー発生:", error);
+      console.error("- エラーメッセージ:", error.message);
+      console.error("- エラースタック:", error.stack);
+
+      // エラー情報をユーザーに表示
+      ui.alert(
+        "🚨 エラー詳細",
+        `エラーメッセージ: ${error.message}\n\n` +
+          `エラータイプ: ${error.name}\n\n` +
+          `詳細はコンソールログを確認してください。`,
+        ui.ButtonSet.OK
+      );
+
+      throw error;
+    }
+  } catch (error) {
+    console.error("🚨 デバッグ関数でエラー:", error);
+    throw new Error(`デバッグ実行失敗: ${error.message}`);
+  }
+}
+
+/**
+ * 🔍 デバッグ: セル文字数制限をテストする関数
+ */
+function testCellCharacterLimits() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const ui = SpreadsheetApp.getUi();
+
+    console.log("🔍 セル文字数制限テスト開始");
+
+    // 様々な文字数のテストデータを作成
+    const testData = [
+      { length: 1000, name: "1K文字" },
+      { length: 10000, name: "10K文字" },
+      { length: 25000, name: "25K文字" },
+      { length: 45000, name: "45K文字" },
+      { length: 49000, name: "49K文字" },
+      { length: 50000, name: "50K文字" },
+    ];
+
+    let results = [];
+
+    testData.forEach((test, index) => {
+      const testString = "a".repeat(test.length);
+      const testCell = sheet.getRange(1, 10 + index); // J列以降を使用
+
+      try {
+        console.log(`📝 ${test.name}テスト中...`);
+        testCell.setValue(testString);
+        console.log(`✅ ${test.name}: 成功`);
+        results.push(`✅ ${test.name}: 成功`);
+
+        // テストセルをクリア
+        testCell.setValue("");
+      } catch (error) {
+        console.error(`❌ ${test.name}: 失敗 - ${error.message}`);
+        results.push(`❌ ${test.name}: 失敗 - ${error.message}`);
+      }
+    });
+
+    // 結果をユーザーに表示
+    ui.alert(
+      "🔍 セル文字数制限テスト結果",
+      results.join("\n"),
+      ui.ButtonSet.OK
+    );
+
+    return results;
+  } catch (error) {
+    console.error("🚨 文字数制限テストでエラー:", error);
+    throw new Error(`文字数制限テスト失敗: ${error.message}`);
+  }
 }
