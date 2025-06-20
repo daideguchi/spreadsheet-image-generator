@@ -2702,371 +2702,111 @@ function getAllImagePreviewData() {
 }
 
 /**
- * 共通プロンプト設定シートを作成（改善版）
+ * 共通プロンプト設定シートを作成（ユーザー主導版）
  */
 function createCommonPromptSheet() {
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
 
-    // 既存の共通プロンプトシートを削除（更新時）
+    // 既存の共通プロンプト設定シートを削除（あれば）
     const existingSheet = spreadsheet.getSheetByName("共通プロンプト設定");
     if (existingSheet) {
       spreadsheet.deleteSheet(existingSheet);
     }
 
-    // 新しい共通プロンプトシートを作成
+    // 新しい共通プロンプト設定シートを作成
     const commonSheet = spreadsheet.insertSheet("共通プロンプト設定");
 
-    // ヘッダー設定
-    const headers = [
-      "カテゴリ",
-      "プロンプト名",
-      "プロンプト内容",
-      "説明",
-      "使用頻度",
-    ];
+    // 📋 シンプルなヘッダー設定（2列構造）
+    const headers = ["プロンプト名", "プロンプト内容"];
     const headerRange = commonSheet.getRange(1, 1, 1, headers.length);
     headerRange.setValues([headers]);
-    headerRange.setBackground("#4a90e2");
+
+    // ヘッダーのスタイル設定
+    headerRange.setBackground("#4285f4");
     headerRange.setFontColor("white");
     headerRange.setFontWeight("bold");
     headerRange.setHorizontalAlignment("center");
     headerRange.setVerticalAlignment("middle");
+    headerRange.setBorder(
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      "#1a73e8",
+      SpreadsheetApp.BorderStyle.SOLID
+    );
 
-    // 列幅設定（改善版）
-    commonSheet.setColumnWidth(1, 130); // カテゴリ
-    commonSheet.setColumnWidth(2, 180); // プロンプト名
-    commonSheet.setColumnWidth(3, 450); // プロンプト内容
-    commonSheet.setColumnWidth(4, 220); // 説明
-    commonSheet.setColumnWidth(5, 100); // 使用頻度
+    // 列幅の調整
+    commonSheet.setColumnWidth(1, 200); // プロンプト名列
+    commonSheet.setColumnWidth(2, 400); // プロンプト内容列
+    commonSheet.setRowHeight(1, 40); // ヘッダー行
 
-    // 🔥 大幅に拡張されたデフォルト共通プロンプト（実用的で多様）
-    const defaultPrompts = [
-      // 🎨 スタイル系（拡張）
-      [
-        "🎨 スタイル",
-        "超リアル写真",
-        "photorealistic, ultra realistic, professional photography, DSLR camera, sharp focus, perfect lighting",
-        "プロカメラマンが撮影したような超高品質写真",
-        "★★★★★",
-      ],
-      [
-        "🎨 スタイル",
-        "日本アニメ",
-        "anime style, manga style, cel shading, vibrant colors, Japanese animation",
-        "日本のアニメ・マンガスタイル",
-        "★★★★☆",
-      ],
-      [
-        "🎨 スタイル",
-        "スタジオジブリ風",
-        "Studio Ghibli style, Hayao Miyazaki art style, whimsical, hand-drawn animation",
-        "スタジオジブリの温かみのあるアートスタイル",
-        "★★★★☆",
-      ],
-      [
-        "🎨 スタイル",
-        "油絵クラシック",
-        "oil painting, classical art, renaissance style, detailed brushstrokes, museum quality",
-        "ルネサンス期の古典絵画風",
-        "★★★☆☆",
-      ],
-      [
-        "🎨 スタイル",
-        "水彩画",
-        "watercolor painting, soft colors, artistic, flowing brushstrokes, paper texture",
-        "柔らかな水彩画タッチ",
-        "★★★☆☆",
-      ],
-      [
-        "🎨 スタイル",
-        "デジタルアート",
-        "digital art, concept art, artstation trending, highly detailed, modern digital painting",
-        "現代的なデジタルアート",
-        "★★★★☆",
-      ],
-      [
-        "🎨 スタイル",
-        "ピクサー3D",
-        "Pixar style, 3D animation, Disney Pixar, cute characters, colorful, family-friendly",
-        "ピクサー映画のような3Dアニメーション",
-        "★★★☆☆",
-      ],
-
-      // 🌅 環境・背景系（拡張）
-      [
-        "🌅 環境",
-        "黄金の夕日",
-        "beautiful golden sunset, golden hour lighting, warm orange and pink sky, cinematic lighting",
-        "映画のような美しい夕日の背景",
-        "★★★★★",
-      ],
-      [
-        "🌅 環境",
-        "神秘的な森",
-        "mystical forest, ancient trees, dappled sunlight, moss-covered ground, magical atmosphere",
-        "神秘的で魔法的な森の環境",
-        "★★★★☆",
-      ],
-      [
-        "🌅 環境",
-        "未来都市",
-        "futuristic city, cyberpunk, neon lights, skyscrapers, flying cars, sci-fi architecture",
-        "サイバーパンクな未来都市",
-        "★★★☆☆",
-      ],
-      [
-        "🌅 環境",
-        "美しい海辺",
-        "pristine beach, crystal clear turquoise water, white sand, palm trees, tropical paradise",
-        "南国の楽園のような美しいビーチ",
-        "★★★★☆",
-      ],
-      [
-        "🌅 環境",
-        "雪景色",
-        "winter wonderland, snow-covered landscape, frozen lake, pine trees, peaceful atmosphere",
-        "静寂な雪景色の冬の風景",
-        "★★★☆☆",
-      ],
-      [
-        "🌅 環境",
-        "桜の季節",
-        "cherry blossom season, sakura petals falling, spring in Japan, pink flowers, peaceful",
-        "日本の美しい桜の季節",
-        "★★★★☆",
-      ],
-      [
-        "🌅 環境",
-        "宇宙空間",
-        "outer space, stars, galaxies, nebula, cosmic background, infinite universe",
-        "壮大な宇宙空間の背景",
-        "★★★☆☆",
-      ],
-
-      // 📸 品質・技術系（拡張）
-      [
-        "📸 品質",
-        "最高品質8K",
-        "8K resolution, ultra high definition, masterpiece, best quality, award winning",
-        "最高峰の画質設定",
-        "★★★★★",
-      ],
-      [
-        "📸 品質",
-        "プロ撮影",
-        "professional photography, studio lighting, perfect composition, commercial quality",
-        "プロフェッショナルな撮影品質",
-        "★★★★☆",
-      ],
-      [
-        "📸 品質",
-        "芸術作品",
-        "artistic masterpiece, gallery worthy, creative composition, unique perspective",
-        "ギャラリーに展示される芸術作品レベル",
-        "★★★☆☆",
-      ],
-      [
-        "📸 品質",
-        "映画品質",
-        "cinematic quality, movie scene, dramatic composition, film grain, color grading",
-        "ハリウッド映画のような品質",
-        "★★★★☆",
-      ],
-
-      // 🎭 ムード・雰囲気系（拡張）
-      [
-        "🎭 ムード",
-        "明るく楽しい",
-        "bright, cheerful, joyful, positive energy, vibrant colors, happy atmosphere",
-        "明るく前向きで楽しい雰囲気",
-        "★★★★★",
-      ],
-      [
-        "🎭 ムード",
-        "穏やか癒し",
-        "calm, peaceful, serene, relaxing, tranquil atmosphere, zen-like",
-        "心が落ち着く癒しの雰囲気",
-        "★★★★☆",
-      ],
-      [
-        "🎭 ムード",
-        "神秘幻想",
-        "mysterious, magical, ethereal, dreamlike, fantasy atmosphere, enchanting",
-        "神秘的で幻想的な魔法の世界",
-        "★★★★☆",
-      ],
-      [
-        "🎭 ムード",
-        "ドラマチック",
-        "dramatic lighting, intense atmosphere, powerful emotion, cinematic mood",
-        "映画のようなドラマチックな演出",
-        "★★★☆☆",
-      ],
-      [
-        "🎭 ムード",
-        "ロマンチック",
-        "romantic, soft lighting, warm colors, intimate atmosphere, love theme",
-        "ロマンチックで温かい恋愛的雰囲気",
-        "★★★☆☆",
-      ],
-      [
-        "🎭 ムード",
-        "クール・モダン",
-        "cool, modern, minimalist, sleek design, contemporary style, sophisticated",
-        "洗練されたクールでモダンな雰囲気",
-        "★★★☆☆",
-      ],
-
-      // 🎯 特殊用途系（新カテゴリ）
-      [
-        "🎯 特殊用途",
-        "商品撮影",
-        "product photography, white background, professional lighting, commercial use, clean",
-        "ECサイト用の商品撮影スタイル",
-        "★★★☆☆",
-      ],
-      [
-        "🎯 特殊用途",
-        "SNS映え",
-        "Instagram worthy, social media perfect, trendy, aesthetic, eye-catching",
-        "SNSでバズりそうなトレンド感のある画像",
-        "★★★★☆",
-      ],
-      [
-        "🎯 特殊用途",
-        "プレゼン資料",
-        "presentation slide, business professional, clean design, infographic style",
-        "ビジネスプレゼンテーション用",
-        "★★☆☆☆",
-      ],
-      [
-        "🎯 特殊用途",
-        "子供向け",
-        "child-friendly, cute, colorful, safe for kids, educational, fun characters",
-        "子供が喜ぶ安全で楽しい内容",
-        "★★★☆☆",
-      ],
-
-      // 🌍 文化・地域系（新カテゴリ）
-      [
-        "🌍 文化・地域",
-        "日本文化",
-        "Japanese culture, traditional Japan, kimono, temple, zen garden, cultural heritage",
-        "日本の伝統文化を表現",
-        "★★★★☆",
-      ],
-      [
-        "🌍 文化・地域",
-        "ヨーロッパ風",
-        "European style, classical architecture, old world charm, historic buildings",
-        "ヨーロッパの古典的な雰囲気",
-        "★★★☆☆",
-      ],
-      [
-        "🌍 文化・地域",
-        "アメリカン",
-        "American style, modern lifestyle, urban culture, contemporary design",
-        "現代アメリカの文化とライフスタイル",
-        "★★☆☆☆",
-      ],
+    // 🔧 サンプルデータ（最小限）
+    const sampleData = [
+      ["高品質写真", "high quality, professional photography, 8k resolution"],
+      ["アニメ風", "anime style, manga art, japanese animation"],
+      ["リアル写真", "photorealistic, detailed, natural lighting"],
     ];
 
-    // データを設定
-    const dataRange = commonSheet.getRange(
-      2,
-      1,
-      defaultPrompts.length,
-      defaultPrompts[0].length
-    );
-    dataRange.setValues(defaultPrompts);
+    // サンプルデータを設定
+    if (sampleData.length > 0) {
+      const dataRange = commonSheet.getRange(2, 1, sampleData.length, 2);
+      dataRange.setValues(sampleData);
 
-    // データ行のスタイル設定（改善版）
-    for (let i = 2; i <= defaultPrompts.length + 1; i++) {
-      const rowRange = commonSheet.getRange(i, 1, 1, headers.length);
-      rowRange.setBorder(
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        "#d0d0d0",
-        SpreadsheetApp.BorderStyle.SOLID
-      );
-
-      // カテゴリごとに色分け（新カテゴリ対応）
-      const category = commonSheet.getRange(i, 1).getValue();
-      if (category.includes("🎨")) {
-        rowRange.setBackground("#fff3e0"); // オレンジ系（スタイル）
-      } else if (category.includes("🌅")) {
-        rowRange.setBackground("#e8f5e8"); // 緑系（環境）
-      } else if (category.includes("📸")) {
-        rowRange.setBackground("#e3f2fd"); // 青系（品質）
-      } else if (category.includes("🎭")) {
-        rowRange.setBackground("#f3e5f5"); // 紫系（ムード）
-      } else if (category.includes("🎯")) {
-        rowRange.setBackground("#fff8e1"); // 黄系（特殊用途）
-      } else if (category.includes("🌍")) {
-        rowRange.setBackground("#f1f8e9"); // 薄緑系（文化・地域）
+      // サンプル行のスタイル設定
+      for (let i = 2; i <= sampleData.length + 1; i++) {
+        const rowRange = commonSheet.getRange(i, 1, 1, 2);
+        rowRange.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#d0d0d0",
+          SpreadsheetApp.BorderStyle.SOLID
+        );
+        rowRange.setBackground("#f8f9fa"); // 薄いグレー
       }
-
-      // 使用頻度列のスタイル設定
-      const frequencyCell = commonSheet.getRange(i, 5);
-      frequencyCell.setHorizontalAlignment("center");
-      frequencyCell.setFontWeight("bold");
     }
 
-    // 📋 詳細な使用説明を追加（改善版）
-    const instructionRow = defaultPrompts.length + 3;
-    const instructionRange = commonSheet.getRange(instructionRow, 1, 1, 5);
+    // 📝 使用説明を追加
+    const instructionRow = sampleData.length + 3;
+    const instructionRange = commonSheet.getRange(instructionRow, 1, 1, 2);
     instructionRange.merge();
     instructionRange.setValue(
       "💡 共通プロンプト管理システムの使い方\n\n" +
-        "🔹 新しい共通プロンプトを追加：上記の表に新しい行を追加してください\n" +
-        "🔹 カテゴリ：🎨スタイル、🌅環境、📸品質、🎭ムード、🎯特殊用途、🌍文化・地域\n" +
-        "🔹 使用頻度：★の数で人気度を表示（★★★★★が最も人気）\n" +
-        "🔹 自動反映：編集するとメインシートのドロップダウンに即座に反映されます\n" +
-        "🔹 効率化：よく使うプロンプトを登録することで、毎回入力する手間が省けます"
+        "🔹 よく使うプロンプトをここに登録してください\n" +
+        "🔹 プロンプト名：覚えやすい名前（例：高品質写真、アニメ風）\n" +
+        "🔹 プロンプト内容：実際に使用される英語プロンプト\n" +
+        "🔹 登録後、メインシートのC列ドロップダウンに自動で反映されます\n" +
+        "🔹 サンプルは参考程度です。自由に編集・削除してください"
     );
-    instructionRange.setBackground("#fff9c4");
+    instructionRange.setBackground("#e3f2fd");
     instructionRange.setFontWeight("bold");
     instructionRange.setWrap(true);
     instructionRange.setVerticalAlignment("top");
     commonSheet.setRowHeight(instructionRow, 120);
 
-    // 📊 統計情報エリアを追加
+    // 📊 統計情報エリア（動的更新）
     const statsRow = instructionRow + 2;
-    const statsRange = commonSheet.getRange(statsRow, 1, 1, 5);
+    const statsRange = commonSheet.getRange(statsRow, 1, 1, 2);
     statsRange.merge();
     statsRange.setValue(
-      `📊 統計情報：合計${defaultPrompts.length}個の共通プロンプトが登録済み | ` +
-        `${
-          defaultPrompts.filter((p) => p[0].includes("🎨")).length
-        }個のスタイル、` +
-        `${
-          defaultPrompts.filter((p) => p[0].includes("🌅")).length
-        }個の環境、` +
-        `${
-          defaultPrompts.filter((p) => p[0].includes("📸")).length
-        }個の品質設定、` +
-        `${
-          defaultPrompts.filter((p) => p[0].includes("🎭")).length
-        }個のムード、` +
-        `${
-          defaultPrompts.filter((p) => p[0].includes("🎯")).length
-        }個の特殊用途、` +
-        `${
-          defaultPrompts.filter((p) => p[0].includes("🌍")).length
-        }個の文化・地域`
+      `📊 現在の登録数：${
+        sampleData.length
+      }個のプロンプト | 最終更新：${new Date().toLocaleString("ja-JP")}`
     );
     statsRange.setBackground("#e8f5e8");
     statsRange.setFontStyle("italic");
     statsRange.setHorizontalAlignment("center");
-    commonSheet.setRowHeight(statsRow, 40);
+    commonSheet.setRowHeight(statsRow, 30);
 
     console.log(
-      `✅ 改善された共通プロンプト設定シートを作成しました（${defaultPrompts.length}個のプロンプト）`
+      `✅ ユーザー主導の共通プロンプト設定シートを作成しました（サンプル${sampleData.length}個）`
     );
     return true;
   } catch (error) {
@@ -3288,39 +3028,34 @@ function combinePrompts(individualPrompt, commonPromptName) {
 }
 
 /**
- * 共通プロンプト名から内容を取得
+ * 共通プロンプト名から内容を取得（ユーザー主導版）
  */
 function getCommonPromptContent(promptName) {
   try {
-    const commonSheet =
-      SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-        "共通プロンプト設定"
+    if (!promptName || promptName.trim() === "") {
+      return "";
+    }
+
+    const prompts = getCommonPrompts();
+    const matchedPrompt = prompts.find((p) => p.name === promptName.trim());
+
+    if (matchedPrompt) {
+      console.log(
+        `✅ 共通プロンプト「${promptName}」の内容を取得: ${matchedPrompt.content.substring(
+          0,
+          50
+        )}...`
       );
-    if (!commonSheet) {
-      console.error("共通プロンプト設定シートが見つかりません");
-      return null;
+      return matchedPrompt.content;
+    } else {
+      console.log(
+        `⚠️ 共通プロンプト「${promptName}」が見つかりません。そのまま使用します。`
+      );
+      return promptName; // 見つからない場合はそのまま返す（手動入力対応）
     }
-
-    const lastRow = commonSheet.getLastRow();
-    if (lastRow < 2) {
-      return null;
-    }
-
-    // プロンプト名で検索
-    const data = commonSheet.getRange(2, 2, lastRow - 1, 2).getValues(); // B列（名前）とC列（内容）
-
-    for (let i = 0; i < data.length; i++) {
-      const [name, content] = data[i];
-      if (name === promptName) {
-        return content;
-      }
-    }
-
-    console.log(`共通プロンプト "${promptName}" が見つかりませんでした`);
-    return null;
   } catch (error) {
-    console.error("共通プロンプト取得エラー:", error);
-    return null;
+    console.error("共通プロンプト内容取得エラー:", error);
+    return promptName || ""; // エラー時は元の値をそのまま返す
   }
 }
 
@@ -3361,5 +3096,105 @@ function updateCombinedPrompt(sheet, row) {
     console.log(`行${row}: 結合プロンプトを更新しました`);
   } catch (error) {
     console.error(`行${row}の結合プロンプト更新エラー:`, error);
+  }
+}
+
+/**
+ * 共通プロンプト一覧を取得（ユーザー主導版）
+ */
+function getCommonPrompts() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const commonSheet = spreadsheet.getSheetByName("共通プロンプト設定");
+
+    if (!commonSheet) {
+      console.log("📋 共通プロンプト設定シートが見つかりません。作成します...");
+      createCommonPromptSheet();
+      return getCommonPrompts(); // 再帰呼び出しで取得
+    }
+
+    // 📊 シンプルな2列構造でデータを取得
+    const dataRange = commonSheet.getDataRange();
+    const values = dataRange.getValues();
+
+    if (values.length <= 1) {
+      console.log(
+        "📝 共通プロンプトデータがありません。空のリストを返します。"
+      );
+      return [];
+    }
+
+    // ヘッダー行をスキップしてデータを処理
+    const prompts = [];
+    for (let i = 1; i < values.length; i++) {
+      const row = values[i];
+      const promptName = row[0];
+      const promptContent = row[1];
+
+      // 空行や不完全なデータをスキップ
+      if (!promptName || !promptContent) {
+        continue;
+      }
+
+      prompts.push({
+        name: promptName.toString().trim(),
+        content: promptContent.toString().trim(),
+      });
+    }
+
+    console.log(`✅ ${prompts.length}個の共通プロンプトを取得しました`);
+    return prompts;
+  } catch (error) {
+    console.error("共通プロンプト取得エラー:", error);
+    return []; // エラー時は空配列を返す
+  }
+}
+
+/**
+ * C列の共通プロンプトドロップダウンを更新（ユーザー主導版）
+ */
+function updateCommonPromptDropdown() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const prompts = getCommonPrompts();
+
+    if (prompts.length === 0) {
+      console.log(
+        "📝 共通プロンプトが登録されていません。ドロップダウンは空になります。"
+      );
+      // 空の場合でもドロップダウンを設定（手動入力可能）
+      const range = sheet.getRange("C:C");
+      const rule = SpreadsheetApp.newDataValidation()
+        .requireValueInList(["（共通プロンプトを登録してください）"], true)
+        .setAllowInvalid(true)
+        .setHelpText(
+          "共通プロンプト設定シートにプロンプトを登録すると、ここに表示されます。手動入力も可能です。"
+        )
+        .build();
+      range.setDataValidation(rule);
+      return;
+    }
+
+    // 📋 シンプルなプロンプト名のリストを作成
+    const promptNames = prompts.map((p) => p.name);
+
+    // ドロップダウンリストを設定
+    const range = sheet.getRange("C:C");
+    const rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(promptNames, true)
+      .setAllowInvalid(true) // 手動入力も許可
+      .setHelpText(
+        `${promptNames.length}個の共通プロンプトから選択できます。手動入力も可能です。`
+      )
+      .build();
+
+    range.setDataValidation(rule);
+
+    console.log(
+      `✅ C列ドロップダウンを更新しました（${promptNames.length}個のプロンプト）`
+    );
+  } catch (error) {
+    console.error("ドロップダウン更新エラー:", error);
+    throw new Error(`ドロップダウンの更新に失敗しました: ${error.message}`);
   }
 }
