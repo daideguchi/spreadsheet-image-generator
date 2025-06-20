@@ -1082,7 +1082,7 @@ function populateStructuredTable(imageResults, promptRows) {
 
             const libraryData = {
               prompt: finalPrompt,
-              imageUrl: result.imageUrl,
+              imageUrl: result.url,
               aspectRatio: aspectRatio,
               status: "✅ GPT-Image-1",
               timestamp: new Date(),
@@ -3843,7 +3843,8 @@ function addToImageLibrary(imageData) {
 
     if (imageData.originalRow && imageData.originalRow !== "-") {
       try {
-        const mainSheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+        const mainSheet =
+          SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
         sourceImageCell = mainSheet.getRange(imageData.originalRow, 5); // E列から画像取得
         const sourceFormula = sourceImageCell.getFormula();
 
@@ -3945,15 +3946,15 @@ function addToImageLibrary(imageData) {
 
     // 💡 改善要求: コピー失敗時のフォールバック処理
     if (!imageSuccessfullyCopied) {
+      const fallbackUrl = imageData.imageUrl || imageData.url;
       if (
-        imageData.imageUrl &&
-        (imageData.imageUrl.startsWith("http") ||
-          imageData.imageUrl.startsWith("data:"))
+        fallbackUrl &&
+        (fallbackUrl.startsWith("http") || fallbackUrl.startsWith("data:"))
       ) {
         // フォールバック: 直接URLから画像挿入
-        imageCell.setFormula(`=IMAGE("${imageData.imageUrl}")`);
+        imageCell.setFormula(`=IMAGE("${fallbackUrl}")`);
         console.log(
-          `📷 フォールバック - URLから画像挿入: ${imageData.imageUrl.substring(
+          `📷 フォールバック - URLから画像挿入: ${fallbackUrl.substring(
             0,
             50
           )}...`
