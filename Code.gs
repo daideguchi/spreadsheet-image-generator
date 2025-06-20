@@ -3697,11 +3697,18 @@ function addToImageLibrary(imageData) {
     // 通し番号を計算（ヘッダー除く）
     const recordNumber = lastRow > 1 ? lastRow - 1 : 1;
 
-    // 💡 改善要求: チェックボックス列追加とデータ改善
+    // 💡 改善要求: プロンプト省略版とデータ改善
+    const promptText = imageData.prompt || "プロンプト不明";
+    const maxPromptLength = 30;
+    const displayPrompt =
+      promptText.length > maxPromptLength
+        ? promptText.substring(0, maxPromptLength) + "..."
+        : promptText;
+
     const rowData = [
       recordNumber, // A列: No.
-      imageData.prompt || "プロンプト不明", // B列: プロンプト
-      `=IMAGE("${imageData.imageUrl}")`, // C列: 画像（IMAGE関数）- 💡 改善要求: 画像表示確実化
+      displayPrompt, // B列: プロンプト（💡 改善要求: 省略版）
+      "", // C列: 画像（後で個別設定）
       imageData.aspectRatio || "1024x1024", // D列: 比率
       imageData.timestamp.toLocaleString("ja-JP"), // E列: 日時
       imageData.status || "✅ 生成完了", // F列: ステータス
@@ -3730,14 +3737,33 @@ function addToImageLibrary(imageData) {
 
     // 💡 改善要求: 各列の配置設定とプロンプト表示改善
     librarySheet.getRange(newRow, 1).setHorizontalAlignment("center"); // No.
-    const promptCell = librarySheet.getRange(newRow, 2); // プロンプト
-    promptCell.setWrap(true).setVerticalAlignment("top");
-    promptCell.setFontSize(9); // 💡 改善要求: プロンプト表示を小さく（9pxで可読性確保）
-    promptCell.setPadding(2, 2, 2, 2); // 💡 改善要求: パディング縮小
-    promptCell.setFontWeight("normal"); // 💡 改善要求: 通常フォント重み
-    promptCell.setFontColor("#424242"); // 💡 改善要求: 濃いグレー文字色
 
-    librarySheet.getRange(newRow, 3).setHorizontalAlignment("center"); // 画像
+    // 💡 改善要求: プロンプトセルの縦幅短縮とコンパクト化
+    const promptCell = librarySheet.getRange(newRow, 2); // プロンプト
+    promptCell.setWrap(false); // 💡 改善要求: 折り返しを無効にして縦幅短縮
+    promptCell.setVerticalAlignment("middle"); // 💡 改善要求: 中央配置
+    promptCell.setFontSize(8); // 💡 改善要求: より小さなフォント
+    promptCell.setPadding(1, 1, 1, 1); // 💡 改善要求: 最小パディング
+    promptCell.setFontWeight("normal");
+    promptCell.setFontColor("#424242");
+    // 💡 改善要求: 完全なプロンプトをツールチップに保存
+    if (promptText.length > maxPromptLength) {
+      promptCell.setNote(`📝 完全なプロンプト:\n${promptText}`); // ツールチップに完全版
+    }
+
+    // 💡 改善要求: 画像セルの適切な設定
+    const imageCell = librarySheet.getRange(newRow, 3);
+    imageCell.setHorizontalAlignment("center");
+    imageCell.setVerticalAlignment("middle");
+    // 💡 改善要求: 画像URLの有効性を確認してから挿入
+    if (imageData.imageUrl && imageData.imageUrl.startsWith("http")) {
+      imageCell.setFormula(`=IMAGE("${imageData.imageUrl}")`);
+      console.log(`📷 画像挿入: ${imageData.imageUrl.substring(0, 50)}...`);
+    } else {
+      imageCell.setValue("❌ 画像URL無効");
+      console.warn(`⚠️ 無効な画像URL: ${imageData.imageUrl}`);
+    }
+
     librarySheet.getRange(newRow, 4).setHorizontalAlignment("center"); // 比率
     librarySheet.getRange(newRow, 5).setHorizontalAlignment("center"); // 日時
     librarySheet.getRange(newRow, 6).setHorizontalAlignment("center"); // ステータス
@@ -3750,8 +3776,8 @@ function addToImageLibrary(imageData) {
     checkboxCell.setVerticalAlignment("middle");
     checkboxCell.setBackground("#e8f5e8"); // 操作エリアを明るい緑色に
 
-    // 行の高さを画像に合わせて調整
-    librarySheet.setRowHeight(newRow, 120);
+    // 💡 改善要求: 行の高さを大幅に短縮（プロンプト縦幅短縮）
+    librarySheet.setRowHeight(newRow, 60); // 120px → 60px に短縮
 
     console.log(
       `✅ ライブラリに記録追加: 行${newRow} - ${imageData.prompt?.substring(
