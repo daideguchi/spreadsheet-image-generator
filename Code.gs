@@ -596,7 +596,7 @@ function insertImages(imageResults, rangeA1) {
 
           // プロンプトセルを最適化（長いプロンプトでも表示を制限）
           const promptCell = sheet.getRange(promptRow, promptCol);
-          promptCell.setWrap(false); // 折り返しを無効化
+          promptCell.setWrap(true); // 💡 改善要求: セル内折り返しを有効化
           promptCell.setVerticalAlignment("middle");
 
           // プロンプトが長い場合は省略表示
@@ -1630,7 +1630,7 @@ function handleIndividualPromptInput(sheet, row, individualPrompt) {
     }
 
     // セルの表示設定（UX改善）
-    promptCell.setWrap(false); // 縦伸びを防止
+    promptCell.setWrap(true); // 💡 改善要求: セル内折り返しを有効化
     promptCell.setVerticalAlignment("middle");
     promptCell.setBorder(
       true,
@@ -2545,7 +2545,7 @@ function createStructuredTable() {
 
         // B列: 個別プロンプト入力エリア（ユーザー入力エリア）
         const promptCell = sheet.getRange(row, 2);
-        promptCell.setWrap(false); // 🔧 UX改善: 縦伸びを防止
+        promptCell.setWrap(true); // 💡 改善要求: セル内折り返しを有効化
         promptCell.setVerticalAlignment("middle");
         promptCell.setFontSize(11);
         promptCell.setPadding(8, 8, 8, 8);
