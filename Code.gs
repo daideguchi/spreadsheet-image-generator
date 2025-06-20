@@ -1005,8 +1005,8 @@ function populateStructuredTable(imageResults, promptRows) {
       processedCount++;
     });
 
-    // 💡 緊急修正: 確実なライブラリ記録実行
-    console.log("🚀 緊急修正: ライブラリ記録を強制実行します...");
+    // 🎯 限界突破: ライブラリ記録を完全に書き直し
+    console.log("🔥🔥🔥 限界突破: ライブラリ記録システム開始");
     console.log(
       "🚀 画像結果詳細:",
       JSON.stringify(
@@ -1018,128 +1018,96 @@ function populateStructuredTable(imageResults, promptRows) {
       )
     );
 
-    // 成功した画像のみを対象にライブラリ記録
-    const successPairs = imageResults
-      .map((res, idx) => ({ result: res, row: promptRows[idx] }))
-      .filter((pair) => !pair.result.failed);
-    console.log(`📊 ライブラリ記録対象: ${successPairs.length}件`);
-    console.log(
-      `📊 対象行詳細: [${successPairs.map((p) => p.row).join(", ")}]`
-    );
+    // 🎯 限界突破: 直接E列から画像を確認してライブラリに記録
+    try {
+      console.log("🔧 ライブラリシート準備開始...");
+      const librarySheet = getOrCreateLibrarySheet();
+      console.log(`📚 ライブラリシート準備完了: ${librarySheet.getName()}`);
 
-    if (successPairs.length > 0) {
-      try {
-        // ライブラリシートを強制作成
-        console.log("🔧 ライブラリシート作成開始...");
-        const librarySheet = getOrCreateLibrarySheet();
-        console.log(`📚 ライブラリシート準備完了: ${librarySheet.getName()}`);
+      let libraryRecordCount = 0;
 
-        // 各成功結果を個別処理
-        let librarySuccessCount = 0;
-        let libraryFailureCount = 0;
+      // 🎯 各行を直接チェックして画像が存在する行のみライブラリに記録
+      for (let i = 0; i < promptRows.length; i++) {
+        const row = promptRows[i];
+        const result = imageResults[i];
 
-        successPairs.forEach((pair, index) => {
-          const { result, row } = pair;
+        console.log(`🔍 行${row}の処理開始: failed=${result.failed}`);
+
+        // 失敗した画像はスキップ
+        if (result.failed) {
+          console.log(`⏭️ 行${row}は失敗のためスキップ`);
+          continue;
+        }
+
+        try {
+          // 🎯 元シートのE列から直接画像を確認
+          const imageCell = sheet.getRange(row, 5);
+          const imageFormula = imageCell.getFormula();
+
           console.log(
-            `🔥 強制ライブラリ記録開始 [${index + 1}/${
-              successPairs.length
-            }]: 行${row}, 画像URL: ${
-              result.imageUrl ? result.imageUrl.substring(0, 50) : "なし"
-            }...`
+            `📷 行${row} E列画像確認: ${
+              imageFormula ? imageFormula.substring(0, 100) + "..." : "なし"
+            }`
           );
 
-          try {
-            // プロンプトを確実に取得
-            let finalPrompt = "";
+          // IMAGE関数が存在する場合のみライブラリに記録
+          if (imageFormula && imageFormula.includes("=IMAGE(")) {
+            // プロンプト取得
+            let promptText = "";
             try {
-              finalPrompt =
-                getCombinedPrompt(sheet, row) || `画像生成_行${row}`;
-              console.log(
-                `📝 プロンプト取得成功: ${finalPrompt.substring(0, 30)}...`
-              );
+              promptText = getCombinedPrompt(sheet, row) || `画像生成_行${row}`;
             } catch (promptError) {
+              promptText = `画像生成_行${row}`;
               console.warn(`プロンプト取得エラー 行${row}:`, promptError);
-              finalPrompt = `画像生成_行${row}`;
             }
 
-            // 比率を確実に取得
+            // 比率取得
             let aspectRatio = "1024x1024";
             try {
               aspectRatio = sheet.getRange(row, 6).getValue() || "1024x1024";
-              console.log(`📐 比率取得成功: ${aspectRatio}`);
             } catch (ratioError) {
               console.warn(`比率取得エラー 行${row}:`, ratioError);
             }
 
-            console.log(`🔗 元行: ${row}`);
-            console.log(
-              `🌐 画像URL: ${
-                result.imageUrl
-                  ? result.imageUrl.substring(0, 50) + "..."
-                  : "なし"
-              }`
-            );
-
-            // 🎯 元シートから画像フォーミュラを取得
-            let sourceImageFormula = null;
-            try {
-              const currentSheet = SpreadsheetApp.getActiveSheet();
-              const sourceCell = currentSheet.getRange(row, 5); // E列
-              sourceImageFormula = sourceCell.getFormula();
-              console.log(
-                `🔍 元シート画像フォーミュラ取得 (行${row}): ${
-                  sourceImageFormula
-                    ? sourceImageFormula.substring(0, 100) + "..."
-                    : "なし"
-                }`
-              );
-            } catch (formulaError) {
-              console.warn(
-                `⚠️ 元シート画像フォーミュラ取得エラー (行${row}):`,
-                formulaError
-              );
-            }
-
+            // ライブラリデータ作成
             const libraryData = {
-              prompt: finalPrompt,
-              imageUrl: result.url,
+              prompt: promptText,
+              imageUrl: result.url || result.imageUrl || "URL不明",
               aspectRatio: aspectRatio,
               status: "✅ GPT-Image-1",
               timestamp: new Date(),
               originalRow: row,
-              sourceFormula: sourceImageFormula, // 🎯 フォーミュラも渡す
+              sourceFormula: imageFormula, // 🎯 確実に存在するフォーミュラ
             };
 
-            console.log(`🚀 ライブラリ記録実行中...`);
-            const libraryResult = addToImageLibrary(libraryData);
+            console.log(`🚀 行${row}のライブラリ記録実行`);
+            console.log(`📝 プロンプト: ${promptText.substring(0, 50)}...`);
+            console.log(
+              `🖼️ フォーミュラ: ${imageFormula.substring(0, 100)}...`
+            );
 
-            if (libraryResult) {
-              console.log(`✅ ライブラリ記録成功: 行${row}`);
-              librarySuccessCount++;
+            // ライブラリに記録
+            const success = addToImageLibrary(libraryData);
+
+            if (success) {
+              libraryRecordCount++;
+              console.log(`✅ 行${row}のライブラリ記録成功`);
             } else {
-              console.error(`❌ ライブラリ記録失敗: 行${row}`);
-              libraryFailureCount++;
+              console.error(`❌ 行${row}のライブラリ記録失敗`);
             }
-          } catch (itemError) {
-            console.error(`🚨 ライブラリ記録エラー 行${row}:`, itemError);
-            console.error(`🚨 エラー詳細:`, itemError.stack);
-            libraryFailureCount++;
+          } else {
+            console.warn(
+              `⚠️ 行${row}にはIMAGE関数が存在しません: ${imageFormula}`
+            );
           }
-        });
-
-        console.log(
-          `🎯 ライブラリ記録結果: 成功${librarySuccessCount}件, 失敗${libraryFailureCount}件`
-        );
-      } catch (librarySetupError) {
-        console.error("🚨 ライブラリシート準備エラー:", librarySetupError);
-        console.error(
-          "🚨 ライブラリシート準備エラー詳細:",
-          librarySetupError.stack
-        );
+        } catch (rowError) {
+          console.error(`🚨 行${row}の処理エラー:`, rowError);
+        }
       }
-    } else {
-      console.warn("⚠️ ライブラリ記録対象がありません");
-      console.warn("⚠️ 画像結果詳細確認:", imageResults);
+
+      console.log(`🎯 ライブラリ記録完了: ${libraryRecordCount}件記録`);
+    } catch (libraryError) {
+      console.error("🚨 ライブラリ記録システムエラー:", libraryError);
     }
 
     console.log("🎯 ライブラリ記録処理完了");
@@ -3940,34 +3908,61 @@ function addToImageLibrary(imageData) {
       }`
     );
 
-    // 方法1: 渡されたソースフォーミュラを使用（最優先）
+    // 🎯 限界突破: 確実なフォーミュラ設定（最優先）
     if (
       imageData.sourceFormula &&
       imageData.sourceFormula.includes("=IMAGE(")
     ) {
       try {
         console.log(
-          `🎯 渡されたフォーミュラを直接使用: ${imageData.sourceFormula.substring(
+          `🔥 限界突破フォーミュラ設定: ${imageData.sourceFormula.substring(
             0,
             100
           )}...`
         );
-        imageCell.setFormula(imageData.sourceFormula);
-        imageSuccessfullyCopied = true;
-        console.log(`✅ 渡されたフォーミュラ設定成功`);
 
-        // 🎯 設定直後の確認
-        const verifyFormula = imageCell.getFormula();
-        if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
-          console.log(
-            `✅ フォーミュラ設定確認OK: ${verifyFormula.substring(0, 50)}...`
-          );
-        } else {
-          console.warn(`⚠️ フォーミュラ設定確認NG: ${verifyFormula}`);
-          imageSuccessfullyCopied = false; // 再設定を試行
+        // 🎯 複数回試行で確実に設定
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts && !imageSuccessfullyCopied) {
+          attempts++;
+          console.log(`🔄 フォーミュラ設定試行 ${attempts}/${maxAttempts}`);
+
+          try {
+            imageCell.setFormula(imageData.sourceFormula);
+
+            // 即座に確認
+            Utilities.sleep(200); // 0.2秒待機
+            const verifyFormula = imageCell.getFormula();
+
+            if (verifyFormula && verifyFormula.includes("=IMAGE(")) {
+              imageSuccessfullyCopied = true;
+              console.log(
+                `✅ フォーミュラ設定成功 (試行${attempts}): ${verifyFormula.substring(
+                  0,
+                  50
+                )}...`
+              );
+              break;
+            } else {
+              console.warn(
+                `⚠️ フォーミュラ設定確認NG (試行${attempts}): ${verifyFormula}`
+              );
+            }
+          } catch (attemptError) {
+            console.warn(
+              `⚠️ フォーミュラ設定試行${attempts}エラー:`,
+              attemptError
+            );
+          }
+        }
+
+        if (!imageSuccessfullyCopied) {
+          console.error(`🚨 ${maxAttempts}回試行してもフォーミュラ設定失敗`);
         }
       } catch (formulaError) {
-        console.error("🚨 渡されたフォーミュラ設定エラー:", formulaError);
+        console.error("🚨 フォーミュラ設定システムエラー:", formulaError);
       }
     }
 
@@ -4063,24 +4058,54 @@ function addToImageLibrary(imageData) {
       console.log(`⏰ 画像設定後の待機完了`);
     }
 
-    // 最終確認: 画像セルの状態をチェック
+    // 🎯 限界突破: 最終確認と強制修正
     try {
-      const finalFormula = imageCell.getFormula();
-      const finalValue = imageCell.getValue();
-      console.log(
-        `🔍 最終画像セル状態: フォーミュラ="${finalFormula}", 値="${finalValue}"`
-      );
+      console.log(`🔍 最終画像セル状態確認開始: ${imageCell.getA1Notation()}`);
 
-      if (!finalFormula && !finalValue) {
-        console.error(`🚨 画像セルが空です！強制的にエラー表示を設定します`);
-        imageCell.setValue("❌ 画像設定失敗");
-        imageCell.setBackground("#ffebee");
-        imageCell.setFontColor("#d32f2f");
-      } else if (finalFormula && finalFormula.includes("=IMAGE(")) {
-        console.log(`✅ 画像セルに正常なIMAGE関数が設定されています`);
+      // 複数回確認で確実にチェック
+      let finalCheckAttempts = 0;
+      let finalFormula = "";
+
+      while (finalCheckAttempts < 3) {
+        finalCheckAttempts++;
+        Utilities.sleep(100); // 0.1秒待機
+
+        finalFormula = imageCell.getFormula();
+        console.log(
+          `🔍 確認試行${finalCheckAttempts}: フォーミュラ="${finalFormula}"`
+        );
+
+        if (finalFormula && finalFormula.includes("=IMAGE(")) {
+          console.log(
+            `✅ 画像セルに正常なIMAGE関数が確認されました (試行${finalCheckAttempts})`
+          );
+          break;
+        }
+      }
+
+      if (!finalFormula || !finalFormula.includes("=IMAGE(")) {
+        console.error(`🚨 最終確認: 画像セルが空または無効です！`);
+        console.error(`🚨 最終フォーミュラ: "${finalFormula}"`);
+
+        // 🎯 最後の手段: 直接URLから再設定
+        if (
+          imageUrl &&
+          (imageUrl.startsWith("http") || imageUrl.startsWith("data:"))
+        ) {
+          console.log(`🔄 最後の手段: URLから再設定試行`);
+          const emergencyFormula = `=IMAGE("${imageUrl}")`;
+          imageCell.setFormula(emergencyFormula);
+          console.log(`🆘 緊急フォーミュラ設定: ${emergencyFormula}`);
+        } else {
+          // 完全に失敗した場合のエラー表示
+          imageCell.setValue("❌ 画像設定失敗");
+          imageCell.setBackground("#ffebee");
+          imageCell.setFontColor("#d32f2f");
+          console.error(`🚨 完全失敗: エラー表示を設定`);
+        }
       }
     } catch (checkError) {
-      console.error("🚨 画像セル状態確認エラー:", checkError);
+      console.error("🚨 最終確認システムエラー:", checkError);
     }
 
     librarySheet.getRange(newRow, 4).setHorizontalAlignment("center"); // 比率
