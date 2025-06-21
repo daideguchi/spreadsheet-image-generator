@@ -113,6 +113,32 @@ create_split_monitor() {
     echo "  Ctrl+b + z      # ペイン最大化/復元"
     echo "  Ctrl+b + d      # セッションからデタッチ"
     echo ""
+    
+    # 🔥 自動でターミナルを開く
+    if command -v tmux >/dev/null 2>&1; then
+        print_info "4分割ターミナルを自動で開きます..."
+        if [[ "$TERM_PROGRAM" == "iTerm.app" ]]; then
+            # iTerm2の場合
+            osascript -e "
+                tell application \"iTerm\"
+                    activate
+                    tell current session of current tab of current window
+                        write text \"tmux attach -t $MONITOR_SESSION\"
+                    end tell
+                end tell
+            " 2>/dev/null || print_warning "iTerm自動起動に失敗しました"
+        elif [[ "$TERM_PROGRAM" == "Apple_Terminal" ]]; then
+            # Terminalの場合
+            osascript -e "
+                tell application \"Terminal\"
+                    activate
+                    do script \"tmux attach -t $MONITOR_SESSION\"
+                end tell
+            " 2>/dev/null || print_warning "Terminal自動起動に失敗しました"
+        else
+            print_info "手動でターミナルを起動してください: tmux attach -t $MONITOR_SESSION"
+        fi
+    fi
 }
 
 # リアルタイムダッシュボード表示

@@ -22,7 +22,7 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu("🎨 画像ツール")
     .addItem("📱 サイドバーを開く", "showSidebar")
-    .addItem("🔧 表を初期化", "initialSetup")
+    .addItem("🔧 新規プロジェクト作成", "initialSetup")
     .addSeparator()
     .addItem("🎯 共通プロンプト管理シートを作成", "createCommonPromptSheetMenu")
     .addSeparator()
@@ -3973,7 +3973,7 @@ function addToImageLibrary(imageData) {
     promptCell.setWrap(true); // 💡 改善要求: 結合プロンプト形式に合わせて折り返し有効
     promptCell.setVerticalAlignment("middle"); // 💡 改善要求: 中央配置
     promptCell.setFontSize(8); // 💡 改善要求: 結合プロンプトと同じ小さなフォント
-    promptCell.setPadding(2, 2, 2, 2); // 💡 改善要求: 結合プロンプトと同じパディング
+    // setPaddingはGASでサポートされていないため削除
     promptCell.setFontWeight("normal");
     promptCell.setFontColor("#757575"); // 💡 改善要求: 結合プロンプトと同じグレー文字色
     promptCell.setBackground("#eeeeee"); // 💡 改善要求: 結合プロンプトと同じグレー背景
