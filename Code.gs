@@ -33,6 +33,8 @@ function onOpen() {
     .addSeparator()
     .addItem("🔐 権限承認を実行", "forcePermissionRequest")
     .addSeparator()
+    .addItem("🧪 ライブラリ転記テスト実行", "testAddToImageLibraryForced")
+    .addSeparator()
     .addItem("⚙️ 設定を確認", "checkSettings")
     .addToUi();
 
@@ -3816,6 +3818,17 @@ function addToImageLibrary(imageData) {
   console.log("🚨🚨🚨 CRITICAL: addToImageLibrary関数が実行されました!");
   console.log("🚨🚨🚨 実行時刻:", new Date().toISOString());
   console.log("🚨🚨🚨 呼び出し元:", new Error().stack);
+  
+  // 🔥 SUPER CRITICAL: UI即座通知でユーザーに実行を報告
+  try {
+    SpreadsheetApp.getUi().alert(
+      "🚨 画像ライブラリ転記実行中", 
+      "addToImageLibrary関数が実行されました！\n画像転記処理を開始します...", 
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (uiError) {
+    console.log("UI通知エラー:", uiError);
+  }
 
   // スプレッドシートに直接ログを書き込み（デバッグ用）
   try {
@@ -4670,6 +4683,51 @@ function getDeveloperInfo() {
       lastUpdate: null,
       githubLink: null,
     };
+  }
+}
+
+/**
+ * 🔥 緊急診断: addToImageLibrary関数の強制実行テスト
+ */
+function testAddToImageLibraryForced() {
+  try {
+    console.log("🚨 緊急診断: addToImageLibrary強制実行テスト開始");
+    
+    // テスト用データを作成
+    const testImageData = {
+      prompt: "🔥 テスト実行: この画像は診断用テストです",
+      imageUrl: "https://via.placeholder.com/300x300/ff0000/ffffff?text=TEST",
+      aspectRatio: "1:1",
+      status: "🧪 テスト実行",
+      timestamp: new Date(),
+      originalRow: 999,
+      sourceFormula: '=IMAGE("https://via.placeholder.com/300x300/ff0000/ffffff?text=TEST", 1)',
+      sourceSheet: "テスト診断"
+    };
+    
+    console.log("🧪 テストデータ作成完了:", JSON.stringify(testImageData));
+    
+    // 強制実行
+    const result = addToImageLibrary(testImageData);
+    
+    console.log("✅ テスト実行結果:", result);
+    
+    // ユーザー通知
+    SpreadsheetApp.getUi().alert(
+      "🧪 診断テスト完了",
+      "addToImageLibrary関数の強制実行テストが完了しました。\n" +
+      "ライブラリシートを確認してテスト行が追加されているか確認してください。\n\n" +
+      "結果: " + (result ? "成功" : "失敗"),
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    
+  } catch (error) {
+    console.error("🚨 テスト実行エラー:", error);
+    SpreadsheetApp.getUi().alert(
+      "❌ テスト実行エラー",
+      "addToImageLibrary関数のテスト実行中にエラーが発生しました:\n" + error.message,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
   }
 }
 
