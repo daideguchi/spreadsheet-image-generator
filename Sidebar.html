@@ -630,9 +630,7 @@
             <button class="btn btn-danger btn-small" onclick="deleteSelectedImages()">
               🗑️ 選択削除
             </button>
-            <button class="btn btn-danger btn-small" onclick="deleteAllImagesWithConfirmation()">
-              🗑️ 全削除
-            </button>
+            <!-- 全削除ボタンを削除 -->
           </div>
         </div>
 
@@ -1274,12 +1272,14 @@
         showLoading();
         google.script.run
           .withSuccessHandler(function(result) {
+            hideLoading();
             showResult(result);
           })
           .withFailureHandler(function(error) {
+            hideLoading();
             showResult('エラー: ' + error.message, true);
           })
-          .downloadSelectedImages();
+          .downloadSelectedImagesToDrive();
       };
       
       window.downloadToBrowser = () => {
@@ -1296,9 +1296,10 @@
             }
           })
           .withFailureHandler(function(error) {
+            hideLoading();
             showResult('エラー: ' + error.message, true);
           })
-          .getSelectedImageUrls();
+          .downloadSelectedImageUrls();
       };
     }
     

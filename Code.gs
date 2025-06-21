@@ -1194,9 +1194,9 @@ function toggleAllImageSelection() {
 }
 
 /**
- * 選択された画像をダウンロード（9列構造対応）- 改良版
+ * Googleドライブ用：選択された画像をダウンロード
  */
-function downloadSelectedImages() {
+function downloadSelectedImagesToDrive() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
     const lastRow = sheet.getLastRow();
@@ -3500,9 +3500,9 @@ function uploadBase64ImageToDrive(dataUrl) {
 }
 
 /**
- * ブラウザダウンロード用：選択された画像のURLとファイル名を取得 - 改良版
+ * ブラウザダウンロード用に選択された画像のURLリストを取得
  */
-function getSelectedImageUrls() {
+function downloadSelectedImageUrls() {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
     const lastRow = sheet.getLastRow();
