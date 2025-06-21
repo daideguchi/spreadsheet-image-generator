@@ -3609,7 +3609,7 @@ function downloadSelectedImageUrls() {
 }
 
 /**
- * ZIPファイルでまとめてダウンロード
+ * ZIPファイルでまとめてローカルダウンロード
  */
 function downloadSelectedImagesAsZip() {
   try {
@@ -3650,44 +3650,41 @@ function downloadSelectedImagesAsZip() {
 
     console.log(`📦 ZIP作成対象: ${selectedImages.length}枚の画像`);
 
-    // ZIP作成用フォルダを作成
-    const zipFolderName = `DALL-E画像ZIP_${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss')}`;
-    const zipFolder = DriveApp.createFolder(zipFolderName);
-
-    // 画像をZIPフォルダに保存
+    // 各画像をダウンロードしてBase64配列を作成
+    const imageBlobs = [];
     let successCount = 0;
+    
     for (const imageData of selectedImages) {
       try {
         const response = UrlFetchApp.fetch(imageData.url);
         const blob = response.getBlob();
-        blob.setName(imageData.filename);
         
-        zipFolder.createFile(blob);
+        imageBlobs.push({
+          name: imageData.filename,
+          data: Utilities.base64Encode(blob.getBytes()),
+          mimeType: blob.getContentType() || 'image/png'
+        });
+        
         successCount++;
-        console.log(`✅ ZIP追加完了: ${imageData.filename}`);
+        console.log(`✅ 画像取得完了: ${imageData.filename}`);
       } catch (error) {
-        console.error(`❌ ZIP追加エラー (行${imageData.row}):`, error);
+        console.error(`❌ 画像取得エラー (行${imageData.row}):`, error);
       }
     }
 
     if (successCount === 0) {
-      // 空フォルダを削除
-      DriveApp.getFileById(zipFolder.getId()).setTrashed(true);
       return { error: "❌ 画像の取得に失敗しました" };
     }
 
-    // フォルダのダウンロードリンクを作成
-    const zipFolderId = zipFolder.getId();
-    const downloadUrl = `https://drive.google.com/drive/folders/${zipFolderId}?usp=sharing`;
-    
-    // フォルダを共有設定
-    zipFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // ZIPファイル名を生成
+    const zipFileName = `DALL-E画像_${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss')}.zip`;
 
     return {
-      zipUrl: downloadUrl,
-      filename: `${zipFolderName}.zip`,
+      success: true,
+      zipFileName: zipFileName,
       imageCount: successCount,
-      message: `✅ ${successCount}枚の画像をZIPフォルダに保存しました！\n📁 フォルダ名: ${zipFolderName}\n🔗 リンク: ${downloadUrl}`
+      images: imageBlobs,
+      message: `✅ ${successCount}枚の画像をZIPで準備しました！`
     };
 
   } catch (error) {

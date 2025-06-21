@@ -1822,6 +1822,61 @@ ENCOURAGEMENT_MESSAGES=(
     "🎓 TECH GENIUS! 🎓"
 )
 
+# 🤖 AI・テック・コマンド情報配列
+TECH_TIPS=(
+    "💡 AI: ChatGPT-4oはコード生成が格段に向上"
+    "🚀 Tech: Bun 1.0でNode.jsの3倍高速化"
+    "⚡ Cmd: git log --oneline -10 で最新10コミット"
+    "🔧 Tool: GitHub Copilot Chat でインライン質問"
+    "📊 AI: Claude 3.5 Sonnetは長文解析が得意"
+    "🎯 Tech: Vite 5.0でHMRが爆速に"
+    "💻 Cmd: git stash push -m \"作業中\" で作業保存"
+    "🌐 AI: Perplexity Proでリアルタイム情報取得"
+    "⚙️ Tech: Docker Composeでマルチコンテナ管理"
+    "🔍 Cmd: grep -r \"検索語\" . で全ファイル検索"
+    "🧠 AI: GitHub Copilot Workspace で全体設計"
+    "📱 Tech: React 19のServer Componentsが革新的"
+    "🔄 Cmd: git rebase -i HEAD~3 でコミット整理"
+    "🎨 AI: MidJourney v6で超リアルな画像生成"
+    "⚡ Tech: Turbo 8でSPA並みの体験をMPAで"
+    "📝 Cmd: code . && git status で開発開始"
+    "🤖 AI: OpenAI o1は数学・論理問題に特化"
+    "🛠️ Tech: Astro 4.0で島アーキテクチャ完成"
+    "🔧 Cmd: npm audit fix で脆弱性自動修正"
+    "🎯 AI: Cursor IDE でペアプログラミング体験"
+    "🌟 Tech: Deno 2.0でNode.js互換性向上"
+    "💾 Cmd: git commit --amend で直前コミット修正"
+    "🔮 AI: v0.dev でReactコンポーネント自動生成"
+    "⚡ Tech: Rust製ツールでフロントエンド高速化"
+    "🎪 Cmd: git branch -d feature で不要ブランチ削除"
+    "🧪 AI: Anthropic Claude でコードレビュー"
+    "🚀 Tech: Vercel v0でゼロ設定デプロイ"
+    "📋 Cmd: pbcopy < file.txt でファイル内容コピー"
+    "🎨 AI: Stable Diffusion XLで商用レベル画像"
+    "⚙️ Tech: Cloudflare Workers でエッジ実行"
+    "🔥 AI: Gemini Pro 1.5で200万トークン処理"
+    "💻 Tech: Tauri 2.0でRust製デスクトップアプリ"
+    "⚡ Cmd: find . -name \"*.js\" -type f で JS ファイル検索"
+    "🎯 AI: Meta Code Llama でオープンソース開発"
+    "🌐 Tech: Web Components で再利用可能UI"
+    "🔧 Cmd: curl -I URL でHTTPヘッダー確認"
+    "🧠 AI: Microsoft Copilot でOffice自動化"
+    "📊 Tech: D3.js v7でデータビジュアライゼーション"
+    "🎪 Cmd: history | grep \"git\" で Git コマンド履歴"
+    "🔮 AI: Runway ML でAI動画生成"
+    "⚡ Tech: SvelteKit でフルスタック開発"
+    "💎 Cmd: jq '.' data.json で JSON 整形表示"
+    "🎨 AI: Adobe Firefly で商用安全AI画像"
+    "🚀 Tech: Nuxt 3でVue.jsフルスタック"
+    "🔍 Cmd: ps aux | grep node で Node プロセス確認"
+    "🤖 AI: Hugging Face でオープンソースAI"
+    "🌟 Tech: Solid.js で高速リアクティブUI"
+    "📝 Cmd: tail -f log.txt でリアルタイムログ監視"
+    "💡 AI: Poe.com で複数AI比較チャット"
+    "⚙️ Tech: Prisma でタイプセーフDB操作"
+    "🎯 Cmd: netstat -tulpn で開放ポート確認"
+)
+
 # ランダムASCIIアート
 get_random_ascii_art() {
     local arts=(
@@ -2007,6 +2062,31 @@ show_combo_effect() {
 get_encouragement() {
     local index=$((RANDOM % ${#ENCOURAGEMENT_MESSAGES[@]}))
     echo "${ENCOURAGEMENT_MESSAGES[$index]}"
+}
+
+# 簡易アニメーション（場所を取らない1行表示）
+show_compact_animation() {
+    local message="$1"
+    local duration="${2:-2}"
+    
+    # スピナーアニメーション（1行のみ）
+    local spinners=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local colors=("${CYAN}" "${BLUE}" "${PURPLE}" "${MAGENTA}")
+    
+    echo -ne "${message} "
+    for i in $(seq 1 $((duration * 8))); do
+        local spinner_idx=$((i % ${#spinners[@]}))
+        local color_idx=$(((i / 2) % ${#colors[@]}))
+        echo -ne "\b${colors[$color_idx]}${spinners[$spinner_idx]}${NC}"
+        sleep 0.12
+    done
+    echo -e "\b${GREEN}✅${NC}"
+}
+
+# ランダムテック情報表示
+show_random_tech_tip() {
+    local tip_index=$((RANDOM % ${#TECH_TIPS[@]}))
+    echo -e "${GOLD}${TECH_TIPS[$tip_index]}${NC}"
 }
 
 # レベルアップ効果表示
@@ -2277,11 +2357,11 @@ echo -e "${PACKAGE} ${CYAN}コミットメッセージ:${NC} ${COMMIT_MSG}"
 echo ""
 
 # 全ての変更をステージング
-show_progress_animation "🔄 変更をステージング中" 2
+show_compact_animation "🔄 変更をステージング中" 1
 git add -A
 
 # コミット
-show_progress_animation "📝 コミット中" 2
+show_compact_animation "📝 コミット中" 1
 if git commit -m "$COMMIT_MSG" >/dev/null 2>&1; then
     echo -e "${GREEN}${CHECK} コミット完了${NC}"
 else
@@ -2290,7 +2370,7 @@ else
 fi
 
 # プッシュ
-show_progress_animation "🚀 リモートリポジトリにプッシュ中" 3
+show_compact_animation "🚀 リモートリポジトリにプッシュ中" 2
 if git push >/dev/null 2>&1; then
     echo ""
     # プッシュ成功の派手演出
@@ -2366,6 +2446,10 @@ if git push >/dev/null 2>&1; then
         # 励ましメッセージ
         echo -e "${SPARKLES} ${MAGENTA}$(get_encouragement)${NC}"
         echo -e "${PARTY} ${GOLD}+50 XP獲得！${NC}"
+        
+        # ランダムテック情報表示
+        echo ""
+        show_random_tech_tip
         
         # 通知統合送信
         send_all_notifications "🚀 Git Push 完了!" "$(get_encouragement) (+50 XP)" "3066993"

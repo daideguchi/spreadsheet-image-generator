@@ -4,6 +4,8 @@
   <base target="_top">
   <meta charset="utf-8">
   <title>🎨 DALL-E 画像生成ツール</title>
+  <!-- JSZip ライブラリを読み込み -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     body {
       font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -1312,15 +1314,6 @@
               </div>
             </button>
             
-            <button class="btn btn-create" onclick="downloadToBrowser(); closeModal();" style="width: 100%; padding: 20px; text-align: left; position: relative;">
-              <div style="display: flex; align-items: center; gap: 16px;">
-                <span style="font-size: 24px;">💻</span>
-                <div>
-                  <div style="font-weight: bold; font-size: 16px;">個別ダウンロード</div>
-                  <small style="display: block; font-size: 12px; opacity: 0.8; margin-top: 4px;">1枚ずつ保存場所を選択してダウンロード</small>
-                </div>
-              </div>
-            </button>
             
             <button class="btn" onclick="downloadZip(); closeModal();" style="width: 100%; padding: 20px; text-align: left; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; position: relative;">
               <div style="display: flex; align-items: center; gap: 16px;">
@@ -1347,7 +1340,6 @@
         document.body.removeChild(modal);
         delete window.closeModal;
         delete window.downloadToDrive;
-        delete window.downloadToBrowser;
         delete window.downloadZip;
       };
       
@@ -1365,134 +1357,96 @@
           .downloadSelectedImagesToDrive();
       };
       
-      window.downloadToBrowser = () => {
-        showTopMessage('📥 ローカルダウンロードを準備中...', 'processing');
-        google.script.run
-          .withSuccessHandler(function(result) {
-            hideTopMessage();
-            if (result.error) {
-              showErrorMessage(result.error);
-            } else if (result.images && result.images.length > 0) {
-              showSuccessMessage(`${result.images.length}枚の画像をダウンロード中...`);
-              downloadImagesToBrowser(result.images, result.totalCount);
-            } else {
-              showErrorMessage('❌ ダウンロード対象の画像がありません');
-            }
-          })
-          .withFailureHandler(function(error) {
-            hideTopMessage();
-            showErrorMessage('エラー: ' + error.message);
-          })
-          .downloadSelectedImageUrls();
-      };
       
-      window.downloadZip = () => {
-        // プログレスバーモーダルを表示
-        showProgressModal();
-        setProgressTitle('📦 ZIPファイル作成中...');
-        startZipCreationProgress();
-        
-        google.script.run
-          .withSuccessHandler(function(result) {
-            hideProgressModal();
-            hideTopMessage();
-            if (result.error) {
-              showErrorMessage(result.error);
-            } else if (result.zipUrl) {
-              // 完了通知
-              showSuccessMessage(`✅ ZIPファイル作成完了！\n${result.imageCount}枚の画像を保存しました\n\n📁 Googleドライブからダウンロードしてください`, 5000);
-              
-              // Google DriveのZIPフォルダを開く
-              window.open(result.zipUrl, '_blank', 'noopener,noreferrer');
-            } else {
-              showErrorMessage('❌ ZIPファイルの作成に失敗しました');
-            }
-          })
-          .withFailureHandler(function(error) {
-            hideProgressModal();
-            hideTopMessage();
-            showErrorMessage('エラー: ' + error.message);
-          })
-          .downloadSelectedImagesAsZip();
-      };
-    }
-    
-    async function downloadImagesToBrowser(imageUrls, totalCount) {
-      if (!imageUrls || imageUrls.length === 0) {
-        showErrorMessage('❌ 選択された画像がありません');
-        return;
-      }
-      
-      let downloadCount = 0;
-      let failedCount = 0;
-      
-      // 進捗表示
-      showTopMessage(`📥 ダウンロード中... (0/${imageUrls.length})`, 'processing');
-      
-      // 各画像を順次処理
-      for (let index = 0; index < imageUrls.length; index++) {
-        const imageData = imageUrls[index];
-        
+      window.downloadZip = async () => {
         try {
-          // 進捗更新
-          showTopMessage(`📥 ダウンロード中... (${index + 1}/${imageUrls.length})`, 'processing');
+          // プログレスバーモーダルを表示
+          showProgressModal();
+          setProgressTitle('📦 ZIPファイル作成中...');
+          startZipCreationProgress();
           
-          const success = await downloadSingleImage(imageData, index + 1);
-          if (success) {
-            downloadCount++;
-          } else {
-            failedCount++;
-          }
-          
-          // 少し間隔を開ける
-          await new Promise(resolve => setTimeout(resolve, 300));
+          // サーバーから画像データを取得
+          google.script.run
+            .withSuccessHandler(async function(result) {
+              if (result.error) {
+                hideProgressModal();
+                showErrorMessage(result.error);
+                return;
+              }
+              
+              if (!result.success || !result.images) {
+                hideProgressModal();
+                showErrorMessage('❌ ZIPファイルの作成に失敗しました');
+                return;
+              }
+              
+              try {
+                // JSZipでZIPファイルを作成
+                const zip = new JSZip();
+                
+                // 各画像をZIPに追加
+                for (const imageData of result.images) {
+                  // Base64データをバイナリに変換してZIPに追加
+                  zip.file(imageData.name, imageData.data, { base64: true });
+                }
+                
+                // ZIPファイルを生成
+                const zipBlob = await zip.generateAsync({ 
+                  type: "blob",
+                  compression: "DEFLATE",
+                  compressionOptions: { level: 6 }
+                });
+                
+                hideProgressModal();
+                
+                // ユーザーに保存場所を選択させる
+                await saveZipToLocal(zipBlob, result.zipFileName, result.imageCount);
+                
+              } catch (zipError) {
+                hideProgressModal();
+                console.error('ZIP作成エラー:', zipError);
+                showErrorMessage('❌ ZIPファイルの作成に失敗しました');
+              }
+            })
+            .withFailureHandler(function(error) {
+              hideProgressModal();
+              showErrorMessage('エラー: ' + error.message);
+            })
+            .downloadSelectedImagesAsZip();
+            
         } catch (error) {
-          console.error('ダウンロードエラー:', error);
-          failedCount++;
+          hideProgressModal();
+          console.error('ZIPダウンロードエラー:', error);
+          showErrorMessage('❌ ZIPダウンロードに失敗しました');
         }
-      }
-      
-      // 完了メッセージ
-      hideTopMessage();
-      if (downloadCount > 0) {
-        let message = `✅ ${downloadCount}枚の画像をダウンロードしました！`;
-        if (failedCount > 0) {
-          message += `\n⚠️ ${failedCount}枚のダウンロードに失敗しました`;
-        }
-        showSuccessMessage(message, 4000);
-      } else {
-        showErrorMessage('❌ 画像のダウンロードに失敗しました');
-      }
+      };
     }
     
-    // 単一画像の保存処理（アラートなし、シンプル版）
-    async function downloadSingleImage(imageData, imageNumber) {
+    // ZIPファイルをローカルに保存する関数
+    async function saveZipToLocal(zipBlob, fileName, imageCount) {
       try {
-        const fileName = imageData.filename || `image_${imageNumber}.png`;
-        
         // File System Access API使用（Chrome等対応ブラウザ）
         if (window.showSaveFilePicker) {
           const fileHandle = await window.showSaveFilePicker({
             suggestedName: fileName,
             types: [{
-              description: 'PNG Images',
-              accept: { 'image/png': ['.png'] }
+              description: 'ZIP Files',
+              accept: { 'application/zip': ['.zip'] }
             }]
           });
           
-          // Base64をBlobに変換
-          const response = await fetch(imageData.url);
-          const blob = await response.blob();
-          
           const writable = await fileHandle.createWritable();
-          await writable.write(blob);
+          await writable.write(zipBlob);
           await writable.close();
           
-          return true; // 成功
+          // 成功通知
+          showSuccessMessage(`✅ ZIPファイルを保存しました！\n${imageCount}枚の画像を含む\n📁 ${fileName}`, 4000);
+          
         } else {
-          // フォールバック：直接ダウンロード（アラートなし）
+          // フォールバック：従来のダウンロード方式
+          const url = URL.createObjectURL(zipBlob);
           const link = document.createElement('a');
-          link.href = imageData.url;
+          link.href = url;
           link.download = fileName;
           link.style.display = 'none';
           
@@ -1500,35 +1454,23 @@
           link.click();
           document.body.removeChild(link);
           
-          return true; // 成功
+          // URLを解放
+          URL.revokeObjectURL(url);
+          
+          // 成功通知
+          showSuccessMessage(`✅ ZIPファイルをダウンロードしました！\n${imageCount}枚の画像を含む\n📁 ${fileName}\n\n💻 ダウンロードフォルダを確認してください`, 4000);
         }
       } catch (error) {
         if (error.name === 'AbortError') {
-          // ユーザーがキャンセル（正常な動作）
-          return false;
+          // ユーザーがキャンセル
+          showErrorMessage('❌ ZIPファイルの保存がキャンセルされました');
         } else {
-          console.error('保存エラー:', error);
-          
-          // エラー時は従来方式でフォールバック
-          try {
-            const fileName = imageData.filename || `image_${imageNumber}.png`;
-            const link = document.createElement('a');
-            link.href = imageData.url;
-            link.download = fileName;
-            link.style.display = 'none';
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            return true; // フォールバック成功
-          } catch (fallbackError) {
-            console.error('フォールバックエラー:', fallbackError);
-            return false; // 失敗
-          }
+          console.error('ZIP保存エラー:', error);
+          showErrorMessage('❌ ZIPファイルの保存に失敗しました');
         }
       }
     }
+    
     
     function showImagePreview() {
       showTopMessage('👁️ 画像プレビューを読み込み中...', 'processing');
