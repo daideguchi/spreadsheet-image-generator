@@ -671,12 +671,7 @@
         </div>
       </div>
 
-      <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <p>処理中...</p>
-      </div>
-
-      <div class="result" id="result"></div>
+      <!-- 下部の処理表示を削除 - 上部固定メッセージで統一 -->
     </div>
   </div>
 
@@ -756,21 +751,22 @@
         .getSheetState();
     }
 
+    // 下部の処理表示を上部固定メッセージに統一
     function showLoading() {
-      document.getElementById('loading').style.display = 'block';
-      document.getElementById('result').style.display = 'none';
+      showTopMessage('🔄 処理中...', 'processing');
     }
 
     function hideLoading() {
-      document.getElementById('loading').style.display = 'none';
+      hideTopMessage();
     }
 
     function showResult(message, isError = false) {
-      const resultDiv = document.getElementById('result');
-      resultDiv.textContent = message;
-      resultDiv.className = `result ${isError ? 'error' : 'success'}`;
-      resultDiv.style.display = 'block';
-      hideLoading();
+      hideTopMessage();
+      if (isError) {
+        showErrorMessage(message);
+      } else {
+        showSuccessMessage(message);
+      }
     }
 
     // 🚨 上部固定メッセージ表示関数
@@ -1221,13 +1217,15 @@
     }
 
     function toggleAllImageSelection() {
-      showLoading();
+      showTopMessage('☑️ 選択状態を切り替え中...', 'processing');
       google.script.run
         .withSuccessHandler(function(result) {
-          showResult(result);
+          hideTopMessage();
+          showSuccessMessage(result, 2000);
         })
         .withFailureHandler(function(error) {
-          showResult('エラー: ' + error.message, true);
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
         })
         .toggleAllImageSelection();
     }
@@ -1269,35 +1267,36 @@
       };
       
       window.downloadToDrive = () => {
-        showLoading();
+        showTopMessage('📁 Googleドライブに保存中...', 'processing');
         google.script.run
           .withSuccessHandler(function(result) {
-            hideLoading();
-            showResult(result);
+            hideTopMessage();
+            showSuccessMessage(result, 5000);
           })
           .withFailureHandler(function(error) {
-            hideLoading();
-            showResult('エラー: ' + error.message, true);
+            hideTopMessage();
+            showErrorMessage('エラー: ' + error.message);
           })
           .downloadSelectedImagesToDrive();
       };
       
       window.downloadToBrowser = () => {
-        showLoading();
+        showTopMessage('📥 ローカルダウンロードを準備中...', 'processing');
         google.script.run
           .withSuccessHandler(function(result) {
-            hideLoading();
+            hideTopMessage();
             if (result.error) {
-              showResult(result.error, true);
+              showErrorMessage(result.error);
             } else if (result.images && result.images.length > 0) {
+              showSuccessMessage(`${result.images.length}枚の画像をダウンロード中...`);
               downloadImagesToBrowser(result.images, result.totalCount);
             } else {
-              showResult('❌ ダウンロード対象の画像がありません', true);
+              showErrorMessage('❌ ダウンロード対象の画像がありません');
             }
           })
           .withFailureHandler(function(error) {
-            hideLoading();
-            showResult('エラー: ' + error.message, true);
+            hideTopMessage();
+            showErrorMessage('エラー: ' + error.message);
           })
           .downloadSelectedImageUrls();
       };
@@ -1305,37 +1304,105 @@
     
     function downloadImagesToBrowser(imageUrls, totalCount) {
       if (!imageUrls || imageUrls.length === 0) {
-        showResult('❌ 選択された画像がありません', true);
+        showErrorMessage('❌ 選択された画像がありません');
         return;
       }
       
       let downloadCount = 0;
+      let failedCount = 0;
+      
+      // 進捗表示
+      showTopMessage(`📥 ダウンロード中... (0/${imageUrls.length})`, 'processing');
+      
       imageUrls.forEach((imageData, index) => {
         setTimeout(() => {
-          const link = document.createElement('a');
-          link.href = imageData.url;
-          link.download = imageData.filename;
-          link.style.display = 'none';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          downloadCount++;
-          
-          if (downloadCount === imageUrls.length) {
-            const message = `✅ ${downloadCount}枚の画像をブラウザでダウンロードしました！\n\n📊 ダウンロード詳細:\n• 選択された画像: ${imageUrls.length}枚\n• 全画像数: ${totalCount || imageUrls.length}枚\n\n💻 ダウンロードフォルダを確認してください`;
-            showResult(message);
+          try {
+            // Base64データを直接使用する場合
+            if (imageData.url.startsWith('data:')) {
+              const link = document.createElement('a');
+              link.href = imageData.url;
+              link.download = imageData.filename || `image_${index + 1}.png`;
+              link.style.display = 'none';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              downloadCount++;
+            } else {
+              // 外部URLの場合はfetchを使用
+              fetch(imageData.url)
+                .then(response => response.blob())
+                .then(blob => {
+                  const url = window.URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = imageData.filename || `image_${index + 1}.png`;
+                  link.style.display = 'none';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  window.URL.revokeObjectURL(url);
+                  downloadCount++;
+                  
+                  // 進捗更新
+                  const completed = downloadCount + failedCount;
+                  if (completed < imageUrls.length) {
+                    showTopMessage(`📥 ダウンロード中... (${completed}/${imageUrls.length})`, 'processing');
+                  } else {
+                    completeDownload();
+                  }
+                })
+                .catch(error => {
+                  console.error('ダウンロードエラー:', error);
+                  failedCount++;
+                  const completed = downloadCount + failedCount;
+                  if (completed >= imageUrls.length) {
+                    completeDownload();
+                  }
+                });
+            }
+            
+            // 直接ダウンロードの場合の完了チェック
+            if (imageData.url.startsWith('data:')) {
+              const completed = downloadCount + failedCount;
+              if (completed < imageUrls.length) {
+                showTopMessage(`📥 ダウンロード中... (${completed}/${imageUrls.length})`, 'processing');
+              } else {
+                completeDownload();
+              }
+            }
+          } catch (error) {
+            console.error('ダウンロードエラー:', error);
+            failedCount++;
+            const completed = downloadCount + failedCount;
+            if (completed >= imageUrls.length) {
+              completeDownload();
+            }
           }
-        }, index * 500); // 500ms間隔でダウンロード
+        }, index * 300); // 300ms間隔でダウンロード
       });
+      
+      function completeDownload() {
+        hideTopMessage();
+        if (downloadCount > 0) {
+          let message = `✅ ${downloadCount}枚の画像をダウンロードしました！`;
+          if (failedCount > 0) {
+            message += `\n⚠️ ${failedCount}枚のダウンロードに失敗しました`;
+          }
+          message += `\n\n💻 ダウンロードフォルダを確認してください`;
+          showSuccessMessage(message, 4000);
+        } else {
+          showErrorMessage('❌ 画像のダウンロードに失敗しました。画像のURLが無効か、ブラウザのセキュリティ制限により拒否されました。');
+        }
+      }
     }
     
     function showImagePreview() {
-      showLoading();
+      showTopMessage('👁️ 画像プレビューを読み込み中...', 'processing');
       google.script.run
         .withSuccessHandler(function(previewData) {
-          hideLoading();
+          hideTopMessage();
           if (previewData.length === 0) {
-            showResult('❌ 表示する画像がありません', true);
+            showErrorMessage('❌ 表示する画像がありません');
             return;
           }
           
@@ -1373,13 +1440,14 @@
           };
         })
         .withFailureHandler(function(error) {
-          showResult('エラー: ' + error.message, true);
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
         })
         .getAllImagePreviewData();
     }
 
     function regenerateSelectedImages() {
-      showLoading();
+      showTopMessage('🔄 選択画像の再生成を開始...', 'processing');
       
       // 選択画像再生成専用の進捗
       showProgressModal();
@@ -1392,13 +1460,15 @@
             startProgressWithImageCount(selectedCount);
           } else {
             hideProgressModal();
-            showResult('選択された画像がありません', true);
+            hideTopMessage();
+            showErrorMessage('選択された画像がありません');
             return;
           }
         })
         .withFailureHandler(function(error) {
           hideProgressModal();
-          showResult('エラー: ' + error.message, true);
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
           return;
         })
         .getSelectedImageCount();
@@ -1406,25 +1476,29 @@
       google.script.run
         .withSuccessHandler(function(result) {
           completeImageGeneration();
-          showResult(result);
+          hideTopMessage();
+          showSuccessMessage(result);
         })
         .withFailureHandler(function(error) {
           hideProgressModal();
-          showResult('エラー: ' + error.message, true);
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
         })
         .regenerateSelectedImagesWithProgress();
     }
 
     function deleteSelectedImages() {
-      showLoading();
+      showTopMessage('🗑️ 選択画像を削除中...', 'processing');
       google.script.run
         .withSuccessHandler(function(result) {
-          showResult(result);
+          hideTopMessage();
+          showSuccessMessage(result);
           // 削除完了後にボタン状態を再チェック
           checkSheetState();
         })
         .withFailureHandler(function(error) {
-          showResult('エラー: ' + error.message, true);
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
         })
         .deleteSelectedImages();
     }
@@ -1444,15 +1518,17 @@
     }
 
     function createBackup() {
-      showLoading();
+      showTopMessage('💾 バックアップを作成中...', 'processing');
       google.script.run
         .withSuccessHandler(function(result) {
-          showResult(result);
+          hideTopMessage();
+          showSuccessMessage(result);
           // バックアップ完了後にボタン状態を再チェック
           checkSheetState();
         })
         .withFailureHandler(function(error) {
-          showResult('エラー: ' + error.message, true);
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
         })
         .createBackupAndNewTable();
     }

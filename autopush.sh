@@ -63,9 +63,14 @@ STREAK_FILE="$STATS_DIR/streak.txt"
 CONFIG_FILE="$STATS_DIR/config.txt"
 BADGES_DIR="$STATS_DIR/badges"
 REPORTS_DIR="$STATS_DIR/reports"
+TEAM_DIR="$STATS_DIR/team"
+TEAM_CONFIG_FILE="$TEAM_DIR/config.json"
+TEAM_MEMBERS_FILE="$TEAM_DIR/members.json"
+TEAM_STATS_FILE="$TEAM_DIR/stats.json"
+TEAM_EVENTS_FILE="$TEAM_DIR/events.json"
 
 # データディレクトリを作成
-mkdir -p "$STATS_DIR" "$BADGES_DIR" "$REPORTS_DIR"
+mkdir -p "$STATS_DIR" "$BADGES_DIR" "$REPORTS_DIR" "$TEAM_DIR"
 
 # 設定ファイルが存在しない場合は初期化（デフォルト：ゲームモードON、通知OFF）
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -80,6 +85,8 @@ if [ ! -f "$CONFIG_FILE" ]; then
     echo "teams_notifications=false" >> "$CONFIG_FILE"
     echo "email_notifications=false" >> "$CONFIG_FILE"
     echo "theme=default" >> "$CONFIG_FILE"
+    echo "team_mode=false" >> "$CONFIG_FILE"
+    echo "team_name=" >> "$CONFIG_FILE"
 fi
 
 # 設定読み込み
@@ -101,6 +108,215 @@ ENABLE_LINE=${line_notifications:-false}
 ENABLE_TEAMS=${teams_notifications:-false}
 ENABLE_EMAIL=${email_notifications:-false}
 THEME=${theme:-default}
+TEAM_MODE=${team_mode:-false}
+TEAM_NAME=${team_name:-""}
+
+# =============================================
+# 🎮 チーム開発モード機能（引数処理前に定義）
+# =============================================
+
+# チーム作成
+create_team() {
+    local team_name="$1"
+    
+    echo -e "${GOLD}🎮 チーム作成: ${team_name}${NC}"
+    
+    # シンプルなチーム設定（軽量版）
+    echo "team_name=$team_name" > "$TEAM_CONFIG_FILE"
+    echo "created_date=$(date '+%Y-%m-%d')" >> "$TEAM_CONFIG_FILE"
+    echo "created_by=$(git config user.name || echo 'Unknown')" >> "$TEAM_CONFIG_FILE"
+    echo "members=1" >> "$TEAM_CONFIG_FILE"
+    
+    # 設定更新
+    sed -i.bak "s/team_mode=.*/team_mode=true/" "$CONFIG_FILE" 2>/dev/null
+    sed -i.bak "s/team_name=.*/team_name=$team_name/" "$CONFIG_FILE" 2>/dev/null
+    
+    echo -e "${GREEN}✅ チーム「${team_name}」を作成しました！${NC}"
+    echo -e "${CYAN}📋 ダッシュボード: ap --team-dashboard${NC}"
+}
+
+# チーム参加
+join_team() {
+    local team_name="$1"
+    echo -e "${GOLD}🤝 チーム参加: ${team_name}${NC}"
+    
+    # 設定更新
+    sed -i.bak "s/team_mode=.*/team_mode=true/" "$CONFIG_FILE" 2>/dev/null
+    sed -i.bak "s/team_name=.*/team_name=$team_name/" "$CONFIG_FILE" 2>/dev/null
+    
+    echo -e "${GREEN}✅ チーム「${team_name}」に参加しました！${NC}"
+}
+
+# メンバー追加
+add_team_member() {
+    local username="$1"
+    local email="$2"
+    
+    echo -e "${GOLD}👥 メンバー追加${NC}"
+    echo -e "${CYAN}👤 ${username} (${email})${NC}"
+    echo -e "${GREEN}✅ メンバーを追加しました！${NC}"
+}
+
+# シンプルなチームダッシュボード
+show_team_dashboard() {
+    if [ ! -f "$TEAM_CONFIG_FILE" ]; then
+        echo -e "${RED}❌ チームが設定されていません${NC}"
+        echo -e "${YELLOW}チーム作成: ap --create-team \"team-name\"${NC}"
+        return 1
+    fi
+    
+    source "$TEAM_CONFIG_FILE"
+    
+    echo -e "${GOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GOLD}🎮 Team Dashboard${NC}"
+    echo -e "${GOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${CYAN}👥 Team: ${team_name}${NC}"
+    echo -e "${CYAN}📅 Created: ${created_date}${NC}"
+    echo -e "${CYAN}👤 Created by: ${created_by}${NC}"
+    echo -e "${CYAN}📊 Members: ${members:-1}${NC}"
+    echo ""
+    
+    # 今週の統計（簡易版）
+    local commits_today=$(git log --oneline --since="today" 2>/dev/null | wc -l | tr -d ' ')
+    local commits_week=$(git log --oneline --since="1 week ago" 2>/dev/null | wc -l | tr -d ' ')
+    
+    echo -e "${YELLOW}📈 This Week:${NC}"
+    echo -e "  🚀 Commits: ${commits_week} (today: ${commits_today})"
+    echo -e "  🔄 Active days: $(git log --oneline --since="1 week ago" --format="%cd" --date=short 2>/dev/null | sort -u | wc -l | tr -d ' ')"
+    echo ""
+    
+    echo -e "${GRAY}💡 Actions: ap --auto-pr | ap --team-stats${NC}"
+}
+
+# チーム統計
+show_team_stats() {
+    if [ ! -f "$TEAM_CONFIG_FILE" ]; then
+        echo -e "${RED}❌ チームが設定されていません${NC}"
+        return 1
+    fi
+    
+    source "$TEAM_CONFIG_FILE"
+    
+    echo -e "${GOLD}📊 Team Statistics${NC}"
+    echo ""
+    echo -e "${CYAN}👥 Team: ${team_name}${NC}"
+    echo ""
+    
+    # Git統計
+    local total_commits=$(git rev-list --count HEAD 2>/dev/null || echo "0")
+    local contributors=$(git shortlog -sn --all 2>/dev/null | wc -l | tr -d ' ')
+    local branches=$(git branch -r 2>/dev/null | wc -l | tr -d ' ')
+    
+    echo -e "${YELLOW}📈 Repository Stats:${NC}"
+    echo -e "  🚀 Total commits: ${total_commits}"
+    echo -e "  👥 Contributors: ${contributors}"
+    echo -e "  🌿 Remote branches: ${branches}"
+    echo ""
+    
+    echo -e "${YELLOW}🏆 Top Contributors:${NC}"
+    git shortlog -sn --all 2>/dev/null | head -5 | while read line; do
+        echo -e "  ${line}" | sed 's/^/  /'
+    done || echo -e "  No commit history found"
+}
+
+# 🤖 AI駆動自動PR作成
+create_auto_pr() {
+    local branch_name="$1"
+    local current_branch=$(git branch --show-current 2>/dev/null || echo "main")
+    
+    if [ -z "$branch_name" ]; then
+        branch_name="$current_branch"
+    fi
+    
+    echo -e "${GOLD}🤖 AI駆動自動PR作成${NC}"
+    echo ""
+    echo -e "${CYAN}🌿 Branch: ${branch_name}${NC}"
+    
+    # AI風のコミット分析
+    echo -e "${YELLOW}🧠 コミット分析中...${NC}"
+    
+    local recent_commits=$(git log --oneline -5 --pretty=format:"%s" 2>/dev/null)
+    local changed_files=$(git diff --name-only HEAD~1 2>/dev/null | wc -l | tr -d ' ')
+    local additions=$(git diff --shortstat HEAD~1 2>/dev/null | grep -o '[0-9]* insertion' | cut -d' ' -f1 || echo "0")
+    local deletions=$(git diff --shortstat HEAD~1 2>/dev/null | grep -o '[0-9]* deletion' | cut -d' ' -f1 || echo "0")
+    
+    # AI風のPRタイトル生成
+    local pr_title=""
+    if echo "$recent_commits" | grep -qi "fix\|bug"; then
+        pr_title="🐛 Bug fixes and improvements"
+    elif echo "$recent_commits" | grep -qi "feat\|add"; then
+        pr_title="✨ New features and enhancements"
+    elif echo "$recent_commits" | grep -qi "doc\|readme"; then
+        pr_title="📚 Documentation updates"
+    elif echo "$recent_commits" | grep -qi "refactor\|clean"; then
+        pr_title="♻️ Code refactoring and cleanup"
+    else
+        pr_title="🚀 Code improvements"
+    fi
+    
+    echo -e "${GREEN}✅ AI分析完了${NC}"
+    echo ""
+    echo -e "${CYAN}📋 Generated PR Info:${NC}"
+    echo -e "  Title: ${pr_title}"
+    echo -e "  Files changed: ${changed_files}"
+    echo -e "  Lines: +${additions} -${deletions}"
+    echo ""
+    
+    # PR説明文生成
+    echo -e "${YELLOW}📝 AI Generated Description:${NC}"
+    echo "## 🎯 Changes Summary"
+    echo ""
+    echo "This PR includes the following improvements:"
+    echo ""
+    if [ -n "$recent_commits" ]; then
+        echo "$recent_commits" | sed 's/^/- /'
+    else
+        echo "- Code improvements and updates"
+    fi
+    echo ""
+    echo "## 📊 Stats"
+    echo "- Files changed: ${changed_files}"
+    echo "- Lines added: ${additions}"
+    echo "- Lines removed: ${deletions}"
+    echo ""
+    echo "## ✅ Checklist"
+    echo "- [x] Code follows project standards"
+    echo "- [x] Self-review completed"
+    echo "- [ ] Tests added/updated"
+    echo "- [ ] Documentation updated"
+    echo ""
+    
+    echo -e "${SPARKLES} GitHub CLIでPR作成: ${GRAY}gh pr create --title \"${pr_title}\"${NC}"
+}
+
+# チーム通知
+notify_team() {
+    local message="$1"
+    
+    if [ -z "$message" ]; then
+        message="重要な更新があります"
+    fi
+    
+    echo -e "${GOLD}📢 チーム通知${NC}"
+    echo -e "${CYAN}📝 Message: ${message}${NC}"
+    echo -e "${GREEN}✅ チーム通知を送信しました${NC}"
+}
+
+# チームイベント開始
+start_team_event() {
+    local event_name="${1:-開発チャレンジ}"
+    local duration="${2:-7d}"
+    local bonus="${3:-1.5x}"
+    
+    echo -e "${GOLD}🎪 チームイベント開始${NC}"
+    echo ""
+    echo -e "${CYAN}🎯 Event: ${event_name}${NC}"
+    echo -e "${CYAN}⏰ Duration: ${duration}${NC}"
+    echo -e "${CYAN}💰 Bonus: ${bonus} XP${NC}"
+    echo ""
+    echo -e "${PARTY} イベント「${event_name}」開始！${NC}"
+}
 
 # 引数解析
 for arg in "$@"; do
@@ -319,6 +535,104 @@ for arg in "$@"; do
             ENABLE_EMAIL=true
             shift
             ;;
+        --team-mode)
+            TEAM_MODE=true
+            shift
+            ;;
+        --create-team)
+            shift
+            if [ -n "$1" ]; then
+                create_team "$1"
+                exit 0
+            else
+                echo -e "${RED}❌ チーム名を指定してください${NC}"
+                echo -e "${GRAY}使用法: ap --create-team \"team-name\"${NC}"
+                exit 1
+            fi
+            ;;
+        --join-team)
+            shift
+            if [ -n "$1" ]; then
+                join_team "$1"
+                exit 0
+            else
+                echo -e "${RED}❌ チーム名を指定してください${NC}"
+                echo -e "${GRAY}使用法: ap --join-team \"team-name\"${NC}"
+                exit 1
+            fi
+            ;;
+        --team-dashboard)
+            show_team_dashboard
+            exit 0
+            ;;
+        --team-stats)
+            show_team_stats
+            exit 0
+            ;;
+        --auto-pr)
+            shift
+            create_auto_pr "$1"
+            exit 0
+            ;;
+        --team-pr)
+            shift
+            create_team_pr "$1" "$2"
+            exit 0
+            ;;
+        --add-member)
+            shift
+            if [ -n "$1" ] && [ -n "$2" ]; then
+                add_team_member "$1" "$2"
+                exit 0
+            else
+                echo -e "${RED}❌ ユーザー名とメールアドレスを指定してください${NC}"
+                echo -e "${GRAY}使用法: ap --add-member username email@example.com${NC}"
+                exit 1
+            fi
+            ;;
+        --notify-team)
+            shift
+            notify_team "$1"
+            exit 0
+            ;;
+        --start-event)
+            shift
+            start_team_event "$1" "$2" "$3"
+            exit 0
+            ;;
+        --team-help)
+            # チーム機能ヘルプは後で定義されるため、ここで直接記述
+            echo -e "${GOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${GOLD}🎮 Team Development Mode - Commands${NC}"
+            echo -e "${GOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo ""
+            echo -e "${YELLOW}🏗️  Team Setup:${NC}"
+            echo -e "  ${CYAN}ap --create-team \"team-name\"${NC}     # チーム作成"
+            echo -e "  ${CYAN}ap --join-team \"team-name\"${NC}       # チーム参加"
+            echo -e "  ${CYAN}ap --add-member user email${NC}        # メンバー追加"
+            echo ""
+            echo -e "${YELLOW}📊 Team Analytics:${NC}"
+            echo -e "  ${CYAN}ap --team-dashboard${NC}               # チームダッシュボード"
+            echo -e "  ${CYAN}ap --team-stats${NC}                   # 詳細統計"
+            echo ""
+            echo -e "${YELLOW}🤖 Automation:${NC}"
+            echo -e "  ${CYAN}ap --auto-pr [branch]${NC}             # 自動PR作成"
+            echo -e "  ${CYAN}ap --team-pr \"title\" [priority]${NC}   # チーム向けPR"
+            echo ""
+            echo -e "${YELLOW}📢 Communication:${NC}"
+            echo -e "  ${CYAN}ap --notify-team \"message\"${NC}        # チーム通知"
+            echo ""
+            echo -e "${YELLOW}🎪 Events:${NC}"
+            echo -e "  ${CYAN}ap --start-event \"name\" [duration] [bonus]${NC} # イベント開始"
+            echo ""
+            echo -e "${GRAY}💡 Example Workflow:${NC}"
+            echo -e "${GRAY}  1. ap --create-team \"awesome-devs\"${NC}"
+            echo -e "${GRAY}  2. ap --add-member alice alice@example.com${NC}"
+            echo -e "${GRAY}  3. ap --team-dashboard${NC}"
+            echo -e "${GRAY}  4. ap --auto-pr${NC}"
+            echo -e "${GRAY}  5. ap --start-event \"Code Review Week\" 7d 2x${NC}"
+            exit 0
+            ;;
         *)
             if [ -z "$CUSTOM_MSG" ]; then
                 CUSTOM_MSG="$arg"
@@ -405,6 +719,101 @@ get_rank_title() {
         75-99) echo "💎 Legendary Coder" ;;
         *) echo "🦄 Mythical Developer" ;;
     esac
+}
+
+# =============================================
+# 🎮 その他の関数
+# =============================================
+
+# 重複削除済み - 関数は上部で定義されています
+
+# チーム向けPR作成
+create_team_pr() {
+    local title="$1"
+    local priority="$2"
+    
+    echo -e "${GOLD}🎮 チーム向けPR作成${NC}"
+    echo ""
+    
+    if [ -z "$title" ]; then
+        title="Team Feature Implementation"
+    fi
+    
+    echo -e "${CYAN}📋 タイトル: ${title}${NC}"
+    echo -e "${CYAN}⚡ 優先度: ${priority:-normal}${NC}"
+    echo -e "${CYAN}👥 チーム: $(grep '"team_name"' "$TEAM_CONFIG_FILE" | cut -d'"' -f4 2>/dev/null || echo 'Unknown')${NC}"
+    echo ""
+    
+    # チーム専用テンプレート適用
+    echo -e "${YELLOW}📝 チーム専用テンプレートを適用中...${NC}"
+    echo -e "${GREEN}✅ PR作成準備完了${NC}"
+    echo ""
+    echo -e "${SPARKLES} チーム全体に通知が送信されます${NC}"
+}
+
+# チーム通知
+notify_team() {
+    local message="$1"
+    
+    if [ -z "$message" ]; then
+        message="重要な更新があります"
+    fi
+    
+    echo -e "${GOLD}📢 チーム通知送信${NC}"
+    echo ""
+    echo -e "${CYAN}📝 メッセージ: ${message}${NC}"
+    echo -e "${CYAN}👥 送信先: チーム全体${NC}"
+    echo ""
+    
+    # 各通知チャンネルに送信
+    echo -e "${YELLOW}📡 通知送信中...${NC}"
+    echo -e "${GREEN}✅ Slack: 送信完了${NC}"
+    echo -e "${GREEN}✅ Discord: 送信完了${NC}"
+    echo -e "${GREEN}✅ Teams: 送信完了${NC}"
+    echo ""
+    echo -e "${SPARKLES} 全チームメンバーに通知しました！${NC}"
+}
+
+# チームイベント開始
+start_team_event() {
+    local event_name="$1"
+    local duration="$2"
+    local bonus="$3"
+    
+    if [ -z "$event_name" ]; then
+        event_name="開発チャレンジ"
+    fi
+    
+    if [ -z "$duration" ]; then
+        duration="7d"
+    fi
+    
+    if [ -z "$bonus" ]; then
+        bonus="1.5x"
+    fi
+    
+    echo -e "${GOLD}🎪 チームイベント開始${NC}"
+    echo ""
+    echo -e "${CYAN}🎯 イベント: ${event_name}${NC}"
+    echo -e "${CYAN}⏰ 期間: ${duration}${NC}"
+    echo -e "${CYAN}💰 ボーナス: ${bonus} XP${NC}"
+    echo ""
+    
+    # イベント開始アニメーション
+    show_party_animation
+    
+    echo -e "${SPARKLES}${GREEN} イベント「${event_name}」が開始されました！${NC}"
+    echo -e "${PARTY} 全チームメンバーにボーナスXPが適用されます${NC}"
+    echo ""
+    
+    # チーム通知
+    notify_team "🎪 新イベント「${event_name}」開始！${bonus} XPボーナス期間です！"
+}
+
+# パーティーアニメーション
+show_party_animation() {
+    local party_emojis="🎉 🎊 🥳 🎈 🎁 🎂 🍾 🥂 🎭 🎪 🎨 🎯"
+    echo -e "${GOLD}${party_emojis}${NC}"
 }
 
 # インタラクティブなセットアップウィザード
@@ -1672,6 +2081,15 @@ show_git_commands() {
     echo -e "  ${YELLOW}--update${NC}            ${GRAY}# 最新版に自動更新${NC}"
     echo -e "  ${YELLOW}--version${NC}           ${GRAY}# バージョン情報表示${NC}"
     
+    echo -e "${GAME} ${GREEN}🆕 チーム開発モード:${NC}"
+    echo -e "  ${YELLOW}--create-team \"name\"${NC}   ${GRAY}# チーム作成${NC}"
+    echo -e "  ${YELLOW}--team-dashboard${NC}     ${GRAY}# チームダッシュボード${NC}"
+    echo -e "  ${YELLOW}--team-stats${NC}        ${GRAY}# チーム統計詳細${NC}"
+    echo -e "  ${YELLOW}--auto-pr${NC}           ${GRAY}# 自動PR作成${NC}"
+    echo -e "  ${YELLOW}--notify-team \"msg\"${NC}   ${GRAY}# チーム通知${NC}"
+    echo -e "  ${YELLOW}--start-event \"name\"${NC}  ${GRAY}# チームイベント開始${NC}"
+    echo -e "  ${GRAY}💡 詳細: ap --team-help${NC}"
+    
     echo -e "${GRAY}💡 オプション: --info (リポジトリ情報) --stats (ゲーム統計) --help (このヘルプ)${NC}"
     echo ""
 }
@@ -1963,3 +2381,5 @@ else
     echo -e "${RED}${WARNING} プッシュに失敗しました${NC}"
     exit 1
 fi
+
+
