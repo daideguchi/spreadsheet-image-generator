@@ -1442,9 +1442,20 @@
       try {
         showTopMessage('📦 ZIPファイル作成中...', 'processing');
         
-        // 簡易ZIP作成（PKZIP互換）
+        console.log('ZIP作成開始:', {
+          fileName: zipFileName,
+          fileCount: imageFiles.length,
+          files: imageFiles.map(f => ({ name: f.filename, size: f.data.length }))
+        });
+        
+        // ZIP作成（PKZIP互換）
         const zipData = createZipData(imageFiles);
         const blob = new Blob([zipData], { type: 'application/zip' });
+        
+        console.log('ZIP作成完了:', {
+          zipSize: blob.size,
+          zipDataLength: zipData.length
+        });
         
         // File System Access APIを使用してファイル保存ダイアログを表示
         if (window.showSaveFilePicker) {
@@ -1568,8 +1579,8 @@
         
         // セントラルディレクトリファイルヘッダシグネチャ
         view.setUint32(0, 0x02014b50, true);
-        // 作成したバージョン（UNIX）
-        view.setUint16(4, 0x031E, true);  // 3.0, UNIX
+        // 作成したバージョン（MS-DOS）
+        view.setUint16(4, 0x0014, true);  // 2.0, MS-DOS
         // 展開に必要なバージョン
         view.setUint16(6, 20, true);
         // 汎用ビットフラグ
@@ -1594,10 +1605,10 @@
         view.setUint16(32, 0, true);
         // ディスク番号開始
         view.setUint16(34, 0, true);
-        // 内部ファイル属性
+        // 内部ファイル属性（バイナリファイル）
         view.setUint16(36, 0, true);
-        // 外部ファイル属性（一般ファイル）
-        view.setUint32(38, 0x81A40000, true);  // rw-r--r--
+        // 外部ファイル属性（MS-DOS互換）
+        view.setUint32(38, 0, true);  // 通常ファイル
         // ローカルファイルヘッダの相対オフセット
         view.setUint32(42, file.offset, true);
         

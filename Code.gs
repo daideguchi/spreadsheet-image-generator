@@ -3635,10 +3635,14 @@ function downloadSelectedImagesAsZip() {
           const fullPrompt = getFullPrompt(sheet, i);
           const prompt = fullPrompt || `画像_${i}`;
 
+          // ファイル名をASCII安全な文字に変換
+          const safeFilename = `image_${i}_${Date.now()}.png`;
+          
           selectedImages.push({
             url: urlMatch[1],
-            filename: `${prompt.substring(0, 50).replace(/[^\w\s-]/g, "")}_${i}.png`,
-            row: i
+            filename: safeFilename,
+            row: i,
+            originalPrompt: prompt
           });
         }
       }
