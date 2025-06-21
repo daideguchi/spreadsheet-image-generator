@@ -942,6 +942,61 @@
       }, 1500);
     }
 
+    // ZIP作成用のプログレス表示
+    function startZipCreationProgress() {
+      const steps = [
+        { inc: 15, text: '選択画像を確認中...', duration: 500 },
+        { inc: 25, text: 'ZIPフォルダを作成中...', duration: 800 },
+        { inc: 40, text: '画像をダウンロード中...', duration: 2000 },
+        { inc: 15, text: 'ZIPフォルダに保存中...', duration: 1000 },
+        { inc: 5, text: '共有設定を適用中...', duration: 400 }
+      ];
+
+      let progress = 0;
+      let stepIdx = 0;
+      updateProgress(progress, '準備中...', '');
+
+      function executeStep() {
+        if (stepIdx < steps.length) {
+          const step = steps[stepIdx];
+          const targetProgress = progress + step.inc;
+          
+          const startProgress = progress;
+          const progressDuration = step.duration;
+          const updateInterval = 100;
+          const totalUpdates = progressDuration / updateInterval;
+          const progressPerUpdate = step.inc / totalUpdates;
+          
+          let currentUpdate = 0;
+          const currentStepNumber = stepIdx + 1;
+          
+          updateProgress(progress, step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          
+          const progressInterval = setInterval(() => {
+            currentUpdate++;
+            progress += progressPerUpdate;
+            
+            if (progress > 95) progress = 95;
+            if (currentUpdate >= totalUpdates) {
+              progress = Math.min(targetProgress, 95);
+              clearInterval(progressInterval);
+              stepIdx++;
+              
+              if (stepIdx >= steps.length) {
+                updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
+              } else {
+                setTimeout(executeStep, 100);
+              }
+            }
+            
+            updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          }, updateInterval);
+        }
+      }
+      
+      executeStep();
+    }
+
     // 💡 緊急修正: 安全なバックアップ付き初期化
     function executeSetupWithBackup() {
       // データ確認モーダルを表示
@@ -1239,24 +1294,49 @@
       `;
       
       modal.innerHTML = `
-        <div style="background: white; border-radius: 16px; padding: 24px; max-width: 400px; width: 90%;">
-          <h3 style="margin: 0 0 16px 0; color: #1a73e8; text-align: center;">📥 ダウンロード方法を選択</h3>
-          <div style="display: flex; flex-direction: column; gap: 12px;">
-            <button class="btn btn-secondary" onclick="downloadToDrive(); closeModal();" style="width: 100%;">
-              📁 Google Driveに保存
-              <small style="display: block; font-size: 11px; opacity: 0.8;">リンク付きで管理しやすい</small>
+        <div style="background: white; border-radius: 20px; padding: 32px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 12px;">📥</div>
+            <h3 style="margin: 0; color: #1a73e8; font-size: 24px; font-weight: bold;">ダウンロード方法を選択</h3>
+            <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">お好みの方法で画像をダウンロードできます</p>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <button class="btn btn-secondary" onclick="downloadToDrive(); closeModal();" style="width: 100%; padding: 20px; text-align: left; position: relative;">
+              <div style="display: flex; align-items: center; gap: 16px;">
+                <span style="font-size: 24px;">📁</span>
+                <div>
+                  <div style="font-weight: bold; font-size: 16px;">Google Driveに保存</div>
+                  <small style="display: block; font-size: 12px; opacity: 0.8; margin-top: 4px;">クラウドに保存、リンク共有が可能</small>
+                </div>
+              </div>
             </button>
-            <button class="btn btn-create" onclick="downloadToBrowser(); closeModal();" style="width: 100%;">
-              💻 個別ダウンロード
-              <small style="display: block; font-size: 11px; opacity: 0.8;">1枚ずつ直接PCに保存</small>
+            
+            <button class="btn btn-create" onclick="downloadToBrowser(); closeModal();" style="width: 100%; padding: 20px; text-align: left; position: relative;">
+              <div style="display: flex; align-items: center; gap: 16px;">
+                <span style="font-size: 24px;">💻</span>
+                <div>
+                  <div style="font-weight: bold; font-size: 16px;">個別ダウンロード</div>
+                  <small style="display: block; font-size: 12px; opacity: 0.8; margin-top: 4px;">1枚ずつ保存場所を選択してダウンロード</small>
+                </div>
+              </div>
             </button>
-            <button class="btn" onclick="downloadZip(); closeModal();" style="width: 100%; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;">
-              📦 ZIPでまとめてダウンロード
-              <small style="display: block; font-size: 11px; opacity: 0.8;">全画像を1つのZIPファイルで</small>
+            
+            <button class="btn" onclick="downloadZip(); closeModal();" style="width: 100%; padding: 20px; text-align: left; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; position: relative;">
+              <div style="display: flex; align-items: center; gap: 16px;">
+                <span style="font-size: 24px;">📦</span>
+                <div>
+                  <div style="font-weight: bold; font-size: 16px;">ZIPでまとめてダウンロード</div>
+                  <small style="display: block; font-size: 12px; opacity: 0.9; margin-top: 4px;">全画像を1つのフォルダにまとめて保存</small>
+                </div>
+              </div>
             </button>
-            <button class="btn" onclick="closeModal();" style="width: 100%; background: #ccc; color: #666;">
-              ❌ キャンセル
-            </button>
+            
+            <div style="border-top: 1px solid #eee; margin: 8px 0; padding-top: 16px;">
+              <button class="btn" onclick="closeModal();" style="width: 100%; background: #f5f5f5; color: #666; border: 2px solid #ddd;">
+                ❌ キャンセル
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -1307,14 +1387,19 @@
       };
       
       window.downloadZip = () => {
-        showTopMessage('📦 ZIPファイル作成中...', 'processing');
+        // プログレスバーモーダルを表示
+        showProgressModal();
+        setProgressTitle('📦 ZIPファイル作成中...');
+        startZipCreationProgress();
+        
         google.script.run
           .withSuccessHandler(function(result) {
+            hideProgressModal();
             hideTopMessage();
             if (result.error) {
               showErrorMessage(result.error);
             } else if (result.zipUrl) {
-              showSuccessMessage('ZIPファイルの準備完了！', 2000);
+              showSuccessMessage(`✅ ZIPファイル作成完了！\n${result.imageCount}枚の画像を保存しました`, 3000);
               // ZIPファイルをダウンロード
               const link = document.createElement('a');
               link.href = result.zipUrl;
@@ -1323,15 +1408,12 @@
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
-              
-              setTimeout(() => {
-                showSuccessMessage('✅ ZIPファイルをダウンロードしました！', 3000);
-              }, 1000);
             } else {
               showErrorMessage('❌ ZIPファイルの作成に失敗しました');
             }
           })
           .withFailureHandler(function(error) {
+            hideProgressModal();
             hideTopMessage();
             showErrorMessage('エラー: ' + error.message);
           })
@@ -1355,13 +1437,23 @@
         setTimeout(() => {
           try {
             // サーバーサイドでBase64変換済みなので直接ダウンロード
+            // ブラウザの保存場所選択ダイアログを有効にする
             const link = document.createElement('a');
             link.href = imageData.url;
             link.download = imageData.filename || `image_${index + 1}.png`;
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            
+            // ブラウザの保存場所選択を強制的に表示
+            if (window.showSaveFilePicker) {
+              // File System Access API対応ブラウザ
+              downloadWithFilePicker(imageData, index);
+            } else {
+              // 従来の方式（ブラウザのデフォルト保存場所）
+              link.style.display = 'none';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
+            
             downloadCount++;
             
             // 進捗更新
@@ -1379,8 +1471,43 @@
               completeDownload();
             }
           }
-        }, index * 500); // 500ms間隔でダウンロード（安定性重視）
+        }, index * 800); // 800ms間隔でダウンロード（保存場所選択時間考慮）
       });
+      
+      // File System Access API使用のダウンロード
+      async function downloadWithFilePicker(imageData, index) {
+        try {
+          const fileHandle = await window.showSaveFilePicker({
+            suggestedName: imageData.filename || `image_${index + 1}.png`,
+            types: [{
+              description: 'PNG Images',
+              accept: { 'image/png': ['.png'] }
+            }]
+          });
+          
+          // Base64をBlobに変換
+          const response = await fetch(imageData.url);
+          const blob = await response.blob();
+          
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          
+          console.log(`✅ ファイル保存完了: ${imageData.filename}`);
+        } catch (error) {
+          if (error.name !== 'AbortError') {
+            console.error('File System API エラー:', error);
+            // フォールバック：従来の方式
+            const link = document.createElement('a');
+            link.href = imageData.url;
+            link.download = imageData.filename || `image_${index + 1}.png`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        }
+      }
       
       function completeDownload() {
         hideTopMessage();
@@ -1389,7 +1516,7 @@
           if (failedCount > 0) {
             message += `\n⚠️ ${failedCount}枚のダウンロードに失敗しました`;
           }
-          message += `\n\n💻 ダウンロードフォルダを確認してください`;
+          message += `\n\n💻 保存した場所を確認してください`;
           showSuccessMessage(message, 4000);
         } else {
           showErrorMessage('❌ 画像のダウンロードに失敗しました');
