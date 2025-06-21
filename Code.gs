@@ -27,7 +27,7 @@ function onOpen() {
     .addItem("🎯 共通プロンプト管理シートを作成", "createCommonPromptSheetMenu")
     .addSeparator()
     .addItem("💾 バックアップ作成", "createBackupAndNewTable")
-    .addItem("🧹 シートを完全クリア", "clearSheetMenu")
+    .addItem("🧹 全データをリセット", "clearSheetMenu")
     .addSeparator()
     .addItem("📋 バージョン記録を開く", "openVersionSheet")
     .addSeparator()
@@ -1481,10 +1481,11 @@ function generateImagesWithProgressCallback(prompts, callbackFunction) {
 
     prompts.forEach((prompt, index) => {
       try {
-        // 進捗を通知（将来的にリアルタイム更新に使用）
-        const progress = Math.round((completedSteps / totalSteps) * 100);
+        // 🎯 改善: よりバランスの取れた進捗計算
+        // API呼び出し前: 基本進捗
+        const baseProgress = Math.round((completedSteps / totalSteps) * 80); // 80%まで
         console.log(
-          `画像生成進捗: ${progress}% (${completedSteps + 1}/${totalSteps})`
+          `🔄 画像生成開始: ${baseProgress}% (${completedSteps + 1}/${totalSteps}) - ${prompt.substring(0, 30)}...`
         );
 
         // 個別画像生成
@@ -1492,8 +1493,16 @@ function generateImagesWithProgressCallback(prompts, callbackFunction) {
         results.push(...imageResult);
 
         completedSteps++;
+        
+        // 🎯 改善: 生成完了時に適切な進捗表示
+        const completedProgress = Math.round(80 + (completedSteps / totalSteps) * 20); // 80-100%
+        console.log(
+          `✅ 画像生成完了: ${completedProgress}% (${completedSteps}/${totalSteps})`
+        );
+        
       } catch (imageError) {
         console.error(`画像${index + 1}の生成エラー:`, imageError);
+        completedSteps++; // エラーでも進捗を進める
         // エラーが発生してもその他の画像生成は続行
       }
     });
@@ -3859,6 +3868,7 @@ function addToImageLibrary(imageData) {
   let lastRow = 0;
   let newRow = 0;
   let recordNumber = 0;
+  let dataRange = null;
   
   try {
     // 🔥 チェックポイント1: ライブラリシート取得
@@ -3908,7 +3918,7 @@ function addToImageLibrary(imageData) {
 
     // 🔥 チェックポイント2: データ書き込み
     try {
-      const dataRange = librarySheet.getRange(newRow, 1, 1, rowData.length);
+      dataRange = librarySheet.getRange(newRow, 1, 1, rowData.length);
       dataRange.setValues([rowData]);
       console.log(`✅ 基本データ書き込み完了: 行${newRow}`);
       
@@ -3924,21 +3934,36 @@ function addToImageLibrary(imageData) {
       throw dataError;
     }
 
-    // スタイル設定
-    dataRange.setBorder(
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      "#e0e0e0",
-      SpreadsheetApp.BorderStyle.SOLID
-    );
+    // 🔥 チェックポイント3: スタイル設定（dataRange使用）  
+    try {
+      // スタイル設定
+      dataRange.setBorder(
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        "#e0e0e0",
+        SpreadsheetApp.BorderStyle.SOLID
+      );
 
-    // 行ごとの色分け（見やすさ向上）
-    const bgColor = newRow % 2 === 0 ? "#f8f9fa" : "#ffffff";
-    dataRange.setBackground(bgColor);
+      // 行ごとの色分け（見やすさ向上）
+      const bgColor = newRow % 2 === 0 ? "#f8f9fa" : "#ffffff";
+      dataRange.setBackground(bgColor);
+      
+      // チェックポイント3完了通知
+      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z5").setValue(
+        `✅ CP3: スタイル設定完了 - ${new Date().toISOString()}`
+      );
+      
+    } catch (styleError) {
+      console.error("🚨 チェックポイント3エラー:", styleError);
+      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z5").setValue(
+        `❌ CP3: スタイル設定失敗 - ${styleError.message}`
+      );
+      // スタイル設定エラーは致命的ではないので継続
+    }
 
     // 💡 改善要求: 各列の配置設定
     librarySheet.getRange(newRow, 1).setHorizontalAlignment("center"); // No.
