@@ -1317,7 +1317,7 @@
                 <span style="font-size: 24px;">💻</span>
                 <div>
                   <div style="font-weight: bold; font-size: 16px;">個別ダウンロード</div>
-                  <small style="display: block; font-size: 12px; opacity: 0.8; margin-top: 4px;">1枚ずつ保存場所を選択してダウンロード</small>
+                  <small style="display: block; font-size: 12px; opacity: 0.8; margin-top: 4px;">📁 1枚ずつ保存場所を選択！保存先が明確</small>
                 </div>
               </div>
             </button>
@@ -1421,7 +1421,7 @@
       };
     }
     
-    function downloadImagesToBrowser(imageUrls, totalCount) {
+    async function downloadImagesToBrowser(imageUrls, totalCount) {
       if (!imageUrls || imageUrls.length === 0) {
         showErrorMessage('❌ 選択された画像がありません');
         return;
@@ -1429,56 +1429,63 @@
       
       let downloadCount = 0;
       let failedCount = 0;
+      const savedLocations = [];
       
       // 進捗表示
-      showTopMessage(`📥 ダウンロード中... (0/${imageUrls.length})`, 'processing');
+      showTopMessage(`📥 保存場所選択中... (0/${imageUrls.length})`, 'processing');
       
-      imageUrls.forEach((imageData, index) => {
-        setTimeout(() => {
-          try {
-            // サーバーサイドでBase64変換済みなので直接ダウンロード
-            // ブラウザの保存場所選択ダイアログを有効にする
-            const link = document.createElement('a');
-            link.href = imageData.url;
-            link.download = imageData.filename || `image_${index + 1}.png`;
-            
-            // ブラウザの保存場所選択を強制的に表示
-            if (window.showSaveFilePicker) {
-              // File System Access API対応ブラウザ
-              downloadWithFilePicker(imageData, index);
-            } else {
-              // 従来の方式（ブラウザのデフォルト保存場所）
-              link.style.display = 'none';
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }
-            
-            downloadCount++;
-            
-            // 進捗更新
-            const completed = downloadCount + failedCount;
-            if (completed < imageUrls.length) {
-              showTopMessage(`📥 ダウンロード中... (${completed}/${imageUrls.length})`, 'processing');
-            } else {
-              completeDownload();
-            }
-          } catch (error) {
-            console.error('ダウンロードエラー:', error);
-            failedCount++;
-            const completed = downloadCount + failedCount;
-            if (completed >= imageUrls.length) {
-              completeDownload();
-            }
-          }
-        }, index * 800); // 800ms間隔でダウンロード（保存場所選択時間考慮）
-      });
-      
-      // File System Access API使用のダウンロード
-      async function downloadWithFilePicker(imageData, index) {
+      // 各画像を順次処理（ユーザーが保存場所を選択するため）
+      for (let index = 0; index < imageUrls.length; index++) {
+        const imageData = imageUrls[index];
+        
         try {
+          // 進捗更新
+          showTopMessage(`📥 画像 ${index + 1}/${imageUrls.length} の保存場所を選択してください`, 'processing');
+          
+          const savedPath = await downloadSingleImage(imageData, index + 1);
+          if (savedPath) {
+            downloadCount++;
+            savedLocations.push(savedPath);
+            console.log(`✅ 保存完了 (${index + 1}/${imageUrls.length}): ${savedPath}`);
+          } else {
+            failedCount++;
+            console.log(`❌ 保存失敗 (${index + 1}/${imageUrls.length})`);
+          }
+          
+          // 少し間隔を開ける
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+          console.error('ダウンロードエラー:', error);
+          failedCount++;
+        }
+      }
+      
+      // 完了メッセージ
+      hideTopMessage();
+      if (downloadCount > 0) {
+        let message = `✅ ${downloadCount}枚の画像を保存しました！`;
+        if (failedCount > 0) {
+          message += `\n⚠️ ${failedCount}枚の保存をキャンセルまたは失敗しました`;
+        }
+        if (savedLocations.length > 0) {
+          message += `\n\n📁 保存場所:\n${savedLocations.slice(0, 3).join('\n')}`;
+          if (savedLocations.length > 3) {
+            message += `\n... 他 ${savedLocations.length - 3}件`;
+          }
+        }
+        showSuccessMessage(message, 6000);
+      } else {
+        showErrorMessage('❌ 画像の保存がキャンセルされました');
+      }
+    }
+    
+    // 単一画像の保存処理
+    async function downloadSingleImage(imageData, imageNumber) {
+      try {
+        // File System Access API使用（Chrome等対応ブラウザ）
+        if (window.showSaveFilePicker) {
           const fileHandle = await window.showSaveFilePicker({
-            suggestedName: imageData.filename || `image_${index + 1}.png`,
+            suggestedName: imageData.filename || `image_${imageNumber}.png`,
             types: [{
               description: 'PNG Images',
               accept: { 'image/png': ['.png'] }
@@ -1493,35 +1500,102 @@
           await writable.write(blob);
           await writable.close();
           
-          console.log(`✅ ファイル保存完了: ${imageData.filename}`);
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error('File System API エラー:', error);
-            // フォールバック：従来の方式
-            const link = document.createElement('a');
-            link.href = imageData.url;
-            link.download = imageData.filename || `image_${index + 1}.png`;
+          return fileHandle.name; // 保存したファイル名を返す
+        } else {
+          // フォールバック：従来のダウンロード方式
+          return await downloadWithTraditionalMethod(imageData, imageNumber);
+        }
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          console.log('ユーザーが保存をキャンセルしました');
+          return null;
+        } else {
+          console.error('保存エラー:', error);
+          // エラー時もフォールバック
+          return await downloadWithTraditionalMethod(imageData, imageNumber);
+        }
+      }
+    }
+    
+    // 従来のダウンロード方式（フォールバック）
+    async function downloadWithTraditionalMethod(imageData, imageNumber) {
+      try {
+        // ブラウザ設定により保存ダイアログを強制表示させる方法を試行
+        const fileName = imageData.filename || `image_${imageNumber}.png`;
+        
+        // まずユーザーに確認
+        const userConfirmed = confirm(`画像 ${imageNumber} を保存します\n\nファイル名: ${fileName}\n\n※ブラウザの設定で「ダウンロード前に各ファイルの保存場所を確認する」を有効にすると、保存場所を選択できます`);
+        
+        if (userConfirmed) {
+          // ダウンロード属性を空にして、ブラウザのデフォルト動作を促進
+          const link = document.createElement('a');
+          link.href = imageData.url;
+          link.download = fileName;
+          
+          // 追加の属性でブラウザの保存ダイアログを促進
+          link.setAttribute('target', '_blank');
+          link.rel = 'noopener';
+          
+          // 右クリックメニューの表示を促すか、直接ダウンロード
+          const showSaveDialog = confirm(`保存場所を選択したい場合は「キャンセル」を押して、\n表示されるリンクを右クリック → 「名前を付けて保存」を選択してください。\n\n「OK」を押すとデフォルト保存場所にダウンロードします。`);
+          
+          if (showSaveDialog) {
+            // 直接ダウンロード
             link.style.display = 'none';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            return `ダウンロードフォルダ/${fileName}`;
+          } else {
+            // リンクを表示してユーザーに右クリック保存を促す
+            showSaveAsLinkModal(imageData.url, fileName, imageNumber);
+            return `手動保存/${fileName}`;
           }
-        }
-      }
-      
-      function completeDownload() {
-        hideTopMessage();
-        if (downloadCount > 0) {
-          let message = `✅ ${downloadCount}枚の画像をダウンロードしました！`;
-          if (failedCount > 0) {
-            message += `\n⚠️ ${failedCount}枚のダウンロードに失敗しました`;
-          }
-          message += `\n\n💻 保存した場所を確認してください`;
-          showSuccessMessage(message, 4000);
         } else {
-          showErrorMessage('❌ 画像のダウンロードに失敗しました');
+          return null; // キャンセル
         }
+      } catch (error) {
+        console.error('従来ダウンロードエラー:', error);
+        return null;
       }
+    }
+    
+    // 手動保存用のモーダルを表示
+    function showSaveAsLinkModal(imageUrl, fileName, imageNumber) {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.8); z-index: 1000000; display: flex;
+        align-items: center; justify-content: center;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 500px; width: 90%; text-align: center;">
+          <h3 style="color: #1a73e8; margin-bottom: 20px;">💾 保存場所を選択して保存</h3>
+          <p style="margin-bottom: 20px; color: #666;">下のリンクを <strong>右クリック</strong> して「名前を付けて保存」を選択してください</p>
+          
+          <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <a href="${imageUrl}" download="${fileName}" style="color: #1a73e8; text-decoration: none; font-weight: bold; display: block; padding: 10px;">
+              📸 ${fileName}
+            </a>
+          </div>
+          
+          <div style="font-size: 12px; color: #999; margin-bottom: 20px;">
+            手順: リンクを右クリック → 「名前を付けて保存」→ 保存場所選択 → 保存
+          </div>
+          
+          <button onclick="closeSaveModal()" style="background: #ccc; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+            完了
+          </button>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      window.closeSaveModal = () => {
+        document.body.removeChild(modal);
+        delete window.closeSaveModal;
+      };
     }
     
     function showImagePreview() {
