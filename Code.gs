@@ -3500,7 +3500,7 @@ function uploadBase64ImageToDrive(dataUrl) {
 }
 
 /**
- * ブラウザダウンロード用に選択された画像のURLリストを取得
+ * ブラウザダウンロード用に選択された画像をBase64で取得（CORS回避）
  */
 function downloadSelectedImageUrls() {
   try {
@@ -3534,6 +3534,7 @@ function downloadSelectedImageUrls() {
             filename: `${prompt
               .substring(0, 50)
               .replace(/[^\w\s-]/g, "")}_${i}.png`,
+            row: i
           };
 
           // 全画像リストに追加
@@ -3552,8 +3553,7 @@ function downloadSelectedImageUrls() {
       if (allImages.length === 0) {
         return {
           images: [],
-          error:
-            "❌ ダウンロードできる画像がありません。先に画像を生成してください。",
+          error: "❌ ダウンロードできる画像がありません。先に画像を生成してください。",
         };
       } else {
         return {
@@ -3563,16 +3563,136 @@ function downloadSelectedImageUrls() {
       }
     }
 
-    console.log(
-      `🖥️ ブラウザダウンロード対象: ${selectedImages.length}枚の画像（全${allImages.length}枚中）`
-    );
-    return { images: selectedImages, totalCount: allImages.length };
+    console.log(`🖥️ ブラウザダウンロード対象: ${selectedImages.length}枚の画像（全${allImages.length}枚中）`);
+    
+    // 🔧 サーバーサイドで画像をBase64に変換（CORS回避）
+    const base64Images = [];
+    for (const imageData of selectedImages) {
+      try {
+        // URLFetchを使って画像データを取得
+        const response = UrlFetchApp.fetch(imageData.url);
+        const blob = response.getBlob();
+        
+        // Base64に変換
+        const base64 = Utilities.base64Encode(blob.getBytes());
+        const mimeType = blob.getContentType() || 'image/png';
+        
+        base64Images.push({
+          base64: `data:${mimeType};base64,${base64}`,
+          filename: imageData.filename,
+          row: imageData.row
+        });
+        
+        console.log(`✅ Base64変換完了: ${imageData.filename}`);
+      } catch (error) {
+        console.error(`❌ Base64変換エラー (行${imageData.row}):`, error);
+        // エラーの場合は元のURLを使用（フォールバック）
+        base64Images.push({
+          base64: imageData.url,
+          filename: imageData.filename,
+          row: imageData.row
+        });
+      }
+    }
+    
+    return { 
+      images: base64Images.map(img => ({ url: img.base64, filename: img.filename })), 
+      totalCount: allImages.length 
+    };
   } catch (error) {
-    console.error("選択画像URL取得エラー:", error);
+    console.error("選択画像ダウンロード準備エラー:", error);
     return {
       images: [],
-      error: `選択画像URL取得に失敗しました: ${error.message}`,
+      error: `画像ダウンロード準備に失敗しました: ${error.message}`,
     };
+  }
+}
+
+/**
+ * ZIPファイルでまとめてダウンロード
+ */
+function downloadSelectedImagesAsZip() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      return { error: "❌ データがありません" };
+    }
+
+    const selectedImages = [];
+
+    // 選択された画像を収集
+    for (let i = 2; i <= lastRow; i++) {
+      const checkboxCell = sheet.getRange(i, 9); // I列（チェックボックス）
+      const isChecked = checkboxCell.getValue();
+      const imageCell = sheet.getRange(i, 5); // E列（画像列）
+      const imageFormula = imageCell.getFormula();
+
+      if (isChecked === true && imageFormula && imageFormula.includes("=IMAGE(")) {
+        const urlMatch = imageFormula.match(/=IMAGE\("([^"]+)"/);
+        if (urlMatch && urlMatch[1]) {
+          const fullPrompt = getFullPrompt(sheet, i);
+          const prompt = fullPrompt || `画像_${i}`;
+
+          selectedImages.push({
+            url: urlMatch[1],
+            filename: `${prompt.substring(0, 50).replace(/[^\w\s-]/g, "")}_${i}.png`,
+            row: i
+          });
+        }
+      }
+    }
+
+    if (selectedImages.length === 0) {
+      return { error: "❌ 選択された画像がありません" };
+    }
+
+    console.log(`📦 ZIP作成対象: ${selectedImages.length}枚の画像`);
+
+    // ZIP作成用フォルダを作成
+    const zipFolderName = `DALL-E画像ZIP_${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss')}`;
+    const zipFolder = DriveApp.createFolder(zipFolderName);
+
+    // 画像をZIPフォルダに保存
+    let successCount = 0;
+    for (const imageData of selectedImages) {
+      try {
+        const response = UrlFetchApp.fetch(imageData.url);
+        const blob = response.getBlob();
+        blob.setName(imageData.filename);
+        
+        zipFolder.createFile(blob);
+        successCount++;
+        console.log(`✅ ZIP追加完了: ${imageData.filename}`);
+      } catch (error) {
+        console.error(`❌ ZIP追加エラー (行${imageData.row}):`, error);
+      }
+    }
+
+    if (successCount === 0) {
+      // 空フォルダを削除
+      DriveApp.getFileById(zipFolder.getId()).setTrashed(true);
+      return { error: "❌ 画像の取得に失敗しました" };
+    }
+
+    // フォルダのダウンロードリンクを作成
+    const zipFolderId = zipFolder.getId();
+    const downloadUrl = `https://drive.google.com/drive/folders/${zipFolderId}?usp=sharing`;
+    
+    // フォルダを共有設定
+    zipFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    return {
+      zipUrl: downloadUrl,
+      filename: `${zipFolderName}.zip`,
+      imageCount: successCount,
+      message: `✅ ${successCount}枚の画像をZIPフォルダに保存しました！\n📁 フォルダ名: ${zipFolderName}\n🔗 リンク: ${downloadUrl}`
+    };
+
+  } catch (error) {
+    console.error("ZIPダウンロードエラー:", error);
+    return { error: `ZIPファイル作成に失敗しました: ${error.message}` };
   }
 }
 

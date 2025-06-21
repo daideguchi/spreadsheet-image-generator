@@ -1247,8 +1247,12 @@
               <small style="display: block; font-size: 11px; opacity: 0.8;">リンク付きで管理しやすい</small>
             </button>
             <button class="btn btn-create" onclick="downloadToBrowser(); closeModal();" style="width: 100%;">
-              💻 ブラウザでダウンロード
-              <small style="display: block; font-size: 11px; opacity: 0.8;">直接PCに保存</small>
+              💻 個別ダウンロード
+              <small style="display: block; font-size: 11px; opacity: 0.8;">1枚ずつ直接PCに保存</small>
+            </button>
+            <button class="btn" onclick="downloadZip(); closeModal();" style="width: 100%; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;">
+              📦 ZIPでまとめてダウンロード
+              <small style="display: block; font-size: 11px; opacity: 0.8;">全画像を1つのZIPファイルで</small>
             </button>
             <button class="btn" onclick="closeModal();" style="width: 100%; background: #ccc; color: #666;">
               ❌ キャンセル
@@ -1264,6 +1268,7 @@
         delete window.closeModal;
         delete window.downloadToDrive;
         delete window.downloadToBrowser;
+        delete window.downloadZip;
       };
       
       window.downloadToDrive = () => {
@@ -1300,6 +1305,38 @@
           })
           .downloadSelectedImageUrls();
       };
+      
+      window.downloadZip = () => {
+        showTopMessage('📦 ZIPファイル作成中...', 'processing');
+        google.script.run
+          .withSuccessHandler(function(result) {
+            hideTopMessage();
+            if (result.error) {
+              showErrorMessage(result.error);
+            } else if (result.zipUrl) {
+              showSuccessMessage('ZIPファイルの準備完了！', 2000);
+              // ZIPファイルをダウンロード
+              const link = document.createElement('a');
+              link.href = result.zipUrl;
+              link.download = result.filename || 'images.zip';
+              link.style.display = 'none';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              
+              setTimeout(() => {
+                showSuccessMessage('✅ ZIPファイルをダウンロードしました！', 3000);
+              }, 1000);
+            } else {
+              showErrorMessage('❌ ZIPファイルの作成に失敗しました');
+            }
+          })
+          .withFailureHandler(function(error) {
+            hideTopMessage();
+            showErrorMessage('エラー: ' + error.message);
+          })
+          .downloadSelectedImagesAsZip();
+      };
     }
     
     function downloadImagesToBrowser(imageUrls, totalCount) {
@@ -1317,58 +1354,22 @@
       imageUrls.forEach((imageData, index) => {
         setTimeout(() => {
           try {
-            // Base64データを直接使用する場合
-            if (imageData.url.startsWith('data:')) {
-              const link = document.createElement('a');
-              link.href = imageData.url;
-              link.download = imageData.filename || `image_${index + 1}.png`;
-              link.style.display = 'none';
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              downloadCount++;
-            } else {
-              // 外部URLの場合はfetchを使用
-              fetch(imageData.url)
-                .then(response => response.blob())
-                .then(blob => {
-                  const url = window.URL.createObjectURL(blob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.download = imageData.filename || `image_${index + 1}.png`;
-                  link.style.display = 'none';
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  window.URL.revokeObjectURL(url);
-                  downloadCount++;
-                  
-                  // 進捗更新
-                  const completed = downloadCount + failedCount;
-                  if (completed < imageUrls.length) {
-                    showTopMessage(`📥 ダウンロード中... (${completed}/${imageUrls.length})`, 'processing');
-                  } else {
-                    completeDownload();
-                  }
-                })
-                .catch(error => {
-                  console.error('ダウンロードエラー:', error);
-                  failedCount++;
-                  const completed = downloadCount + failedCount;
-                  if (completed >= imageUrls.length) {
-                    completeDownload();
-                  }
-                });
-            }
+            // サーバーサイドでBase64変換済みなので直接ダウンロード
+            const link = document.createElement('a');
+            link.href = imageData.url;
+            link.download = imageData.filename || `image_${index + 1}.png`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            downloadCount++;
             
-            // 直接ダウンロードの場合の完了チェック
-            if (imageData.url.startsWith('data:')) {
-              const completed = downloadCount + failedCount;
-              if (completed < imageUrls.length) {
-                showTopMessage(`📥 ダウンロード中... (${completed}/${imageUrls.length})`, 'processing');
-              } else {
-                completeDownload();
-              }
+            // 進捗更新
+            const completed = downloadCount + failedCount;
+            if (completed < imageUrls.length) {
+              showTopMessage(`📥 ダウンロード中... (${completed}/${imageUrls.length})`, 'processing');
+            } else {
+              completeDownload();
             }
           } catch (error) {
             console.error('ダウンロードエラー:', error);
@@ -1378,7 +1379,7 @@
               completeDownload();
             }
           }
-        }, index * 300); // 300ms間隔でダウンロード
+        }, index * 500); // 500ms間隔でダウンロード（安定性重視）
       });
       
       function completeDownload() {
@@ -1391,7 +1392,7 @@
           message += `\n\n💻 ダウンロードフォルダを確認してください`;
           showSuccessMessage(message, 4000);
         } else {
-          showErrorMessage('❌ 画像のダウンロードに失敗しました。画像のURLが無効か、ブラウザのセキュリティ制限により拒否されました。');
+          showErrorMessage('❌ 画像のダウンロードに失敗しました');
         }
       }
     }
