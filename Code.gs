@@ -3854,18 +3854,38 @@ function addToImageLibrary(imageData) {
     })
   );
 
+  // 🔥 重要修正: 変数スコープ問題解決
+  let librarySheet = null;
+  let lastRow = 0;
+  let newRow = 0;
+  let recordNumber = 0;
+  
   try {
+    // 🔥 チェックポイント1: ライブラリシート取得
     console.log("📚 ライブラリシート取得中...");
-    const librarySheet = getOrCreateLibrarySheet();
-    console.log(`✅ ライブラリシート取得成功: ${librarySheet.getName()}`);
-    console.log(`📊 ライブラリシート行数: ${librarySheet.getLastRow()}`);
+    try {
+      librarySheet = getOrCreateLibrarySheet();
+      console.log(`✅ ライブラリシート取得成功: ${librarySheet.getName()}`);
+      console.log(`📊 ライブラリシート行数: ${librarySheet.getLastRow()}`);
 
-    const lastRow = librarySheet.getLastRow();
-    const newRow = lastRow + 1;
-    console.log(`📊 新規行番号: ${newRow} (最終行: ${lastRow})`);
+      lastRow = librarySheet.getLastRow();
+      newRow = lastRow + 1;
+      console.log(`📊 新規行番号: ${newRow} (最終行: ${lastRow})`);
+      
+      // 🔥 チェックポイント1完了通知
+      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z3").setValue(
+        `✅ CP1: ライブラリシート取得成功 - ${new Date().toISOString()}`
+      );
+    } catch (sheetError) {
+      console.error("🚨 チェックポイント1エラー:", sheetError);
+      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z3").setValue(
+        `❌ CP1: ライブラリシート取得失敗 - ${sheetError.message}`
+      );
+      throw sheetError;
+    }
 
     // 通し番号を計算（ヘッダー除く）
-    const recordNumber = lastRow > 1 ? lastRow - 1 : 1;
+    recordNumber = lastRow > 1 ? lastRow - 1 : 1;
     console.log(`🔢 レコード番号: ${recordNumber}`);
 
     // 💡 改善要求: プロンプト表示を結合プロンプト形式に変更
@@ -3886,9 +3906,23 @@ function addToImageLibrary(imageData) {
 
     console.log(`📝 ライブラリ行データ準備完了:`, JSON.stringify(rowData));
 
-    const dataRange = librarySheet.getRange(newRow, 1, 1, rowData.length);
-    dataRange.setValues([rowData]);
-    console.log(`✅ 基本データ書き込み完了: 行${newRow}`);
+    // 🔥 チェックポイント2: データ書き込み
+    try {
+      const dataRange = librarySheet.getRange(newRow, 1, 1, rowData.length);
+      dataRange.setValues([rowData]);
+      console.log(`✅ 基本データ書き込み完了: 行${newRow}`);
+      
+      // チェックポイント2完了通知
+      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z4").setValue(
+        `✅ CP2: データ書き込み成功 - 行${newRow} - ${new Date().toISOString()}`
+      );
+    } catch (dataError) {
+      console.error("🚨 チェックポイント2エラー:", dataError);
+      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z4").setValue(
+        `❌ CP2: データ書き込み失敗 - ${dataError.message}`
+      );
+      throw dataError;
+    }
 
     // スタイル設定
     dataRange.setBorder(
@@ -4228,6 +4262,41 @@ function addToImageLibrary(imageData) {
     console.error("🚨 エラー詳細:", error.stack);
     console.error("🚨 入力データ:", JSON.stringify(imageData));
     console.error("🚨 エラー発生時点での処理状況を確認してください");
+    
+    // 🔥 超強力なエラー詳細出力とユーザー通知
+    const errorDetails = {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      inputData: JSON.stringify(imageData),
+      timestamp: new Date().toISOString()
+    };
+    
+    // ユーザーに詳細エラー情報を直接表示
+    try {
+      SpreadsheetApp.getUi().alert(
+        "🚨 addToImageLibrary関数エラー詳細", 
+        `エラーが発生しました：\n\n` +
+        `エラー名: ${error.name}\n` +
+        `メッセージ: ${error.message}\n` +
+        `発生時刻: ${new Date().toISOString()}\n\n` +
+        `詳細はコンソールログを確認してください。`,
+        SpreadsheetApp.getUi().ButtonSet.OK
+      );
+    } catch (uiError) {
+      console.error("UI通知エラー:", uiError);
+    }
+    
+    // Z2セルにエラー詳細を書き込み（確実な記録）
+    try {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+      sheet.getRange("Z2").setValue(
+        `🚨ERROR: ${error.name} - ${error.message} - ${new Date().toISOString()}`
+      );
+    } catch (logError) {
+      console.error("ログ書き込みエラー:", logError);
+    }
+    
     // エラーでも画像生成を止めない
     return false;
   }
@@ -4693,6 +4762,15 @@ function testAddToImageLibraryForced() {
   try {
     console.log("🚨 緊急診断: addToImageLibrary強制実行テスト開始");
     
+    // 事前チェック: Z列をクリア
+    try {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+      sheet.getRange("Z1:Z10").clearContent();
+      sheet.getRange("Z1").setValue("🔥 診断テスト開始: " + new Date().toISOString());
+    } catch (clearError) {
+      console.warn("Z列クリアエラー:", clearError);
+    }
+    
     // テスト用データを作成
     const testImageData = {
       prompt: "🔥 テスト実行: この画像は診断用テストです",
@@ -4707,17 +4785,70 @@ function testAddToImageLibraryForced() {
     
     console.log("🧪 テストデータ作成完了:", JSON.stringify(testImageData));
     
+    // 🔥 実行前の状態確認
+    let librarySheetBefore = null;
+    let lastRowBefore = 0;
+    try {
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      librarySheetBefore = spreadsheet.getSheetByName("画像生成ライブラリ");
+      if (librarySheetBefore) {
+        lastRowBefore = librarySheetBefore.getLastRow();
+        console.log(`📊 実行前ライブラリ行数: ${lastRowBefore}`);
+      }
+    } catch (preError) {
+      console.warn("実行前確認エラー:", preError);
+    }
+    
     // 強制実行
+    console.log("🚀 addToImageLibrary関数実行開始...");
     const result = addToImageLibrary(testImageData);
+    console.log("✅ addToImageLibrary関数実行完了 結果:", result);
     
-    console.log("✅ テスト実行結果:", result);
+    // 🔥 実行後の状態確認
+    let librarySheetAfter = null;
+    let lastRowAfter = 0;
+    let addedRows = 0;
+    try {
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      librarySheetAfter = spreadsheet.getSheetByName("画像生成ライブラリ");
+      if (librarySheetAfter) {
+        lastRowAfter = librarySheetAfter.getLastRow();
+        addedRows = lastRowAfter - lastRowBefore;
+        console.log(`📊 実行後ライブラリ行数: ${lastRowAfter} (追加: ${addedRows}行)`);
+      }
+    } catch (postError) {
+      console.warn("実行後確認エラー:", postError);
+    }
     
-    // ユーザー通知
+    // チェックポイント状況確認
+    let checkpoints = {};
+    try {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+      checkpoints = {
+        Z1: sheet.getRange("Z1").getValue(),
+        Z2: sheet.getRange("Z2").getValue(),
+        Z3: sheet.getRange("Z3").getValue(),
+        Z4: sheet.getRange("Z4").getValue(),
+        Z5: sheet.getRange("Z5").getValue()
+      };
+    } catch (cpError) {
+      console.warn("チェックポイント確認エラー:", cpError);
+    }
+    
+    // 詳細結果通知
     SpreadsheetApp.getUi().alert(
       "🧪 診断テスト完了",
-      "addToImageLibrary関数の強制実行テストが完了しました。\n" +
-      "ライブラリシートを確認してテスト行が追加されているか確認してください。\n\n" +
-      "結果: " + (result ? "成功" : "失敗"),
+      `addToImageLibrary関数の強制実行テストが完了しました。\n\n` +
+      `📊 結果: ${result ? "成功" : "失敗"}\n` +
+      `📊 実行前行数: ${lastRowBefore}\n` +
+      `📊 実行後行数: ${lastRowAfter}\n` +
+      `📊 追加行数: ${addedRows}\n\n` +
+      `チェックポイント状況:\n` +
+      `Z1: ${checkpoints.Z1 || "なし"}\n` +
+      `Z2: ${checkpoints.Z2 || "なし"}\n` +
+      `Z3: ${checkpoints.Z3 || "なし"}\n` +
+      `Z4: ${checkpoints.Z4 || "なし"}\n\n` +
+      `詳細はZ列とコンソールログを確認してください。`,
       SpreadsheetApp.getUi().ButtonSet.OK
     );
     
@@ -4725,7 +4856,10 @@ function testAddToImageLibraryForced() {
     console.error("🚨 テスト実行エラー:", error);
     SpreadsheetApp.getUi().alert(
       "❌ テスト実行エラー",
-      "addToImageLibrary関数のテスト実行中にエラーが発生しました:\n" + error.message,
+      `addToImageLibrary関数のテスト実行中にエラーが発生しました:\n\n` +
+      `エラー名: ${error.name}\n` +
+      `メッセージ: ${error.message}\n` +
+      `スタック: ${error.stack}`,
       SpreadsheetApp.getUi().ButtonSet.OK
     );
   }
