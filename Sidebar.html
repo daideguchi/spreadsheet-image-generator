@@ -1359,7 +1359,7 @@
       window.downloadZip = () => {
         // プログレスバーモーダルを表示
         showProgressModal();
-        setProgressTitle('📦 ZIPフォルダ作成中...');
+        setProgressTitle('📦 ZIP作成中...');
         startZipCreationProgress();
         
         google.script.run
@@ -1370,12 +1370,9 @@
               return;
             }
             
-            if (result.success && result.zipUrl) {
-              // 成功通知
-              showSuccessMessage(`✅ ZIPフォルダ作成完了！\n${result.imageCount}枚の画像を保存\n\n📁 Googleドライブでダウンロードしてください`, 4000);
-              
-              // Google Driveフォルダを新しいタブで開く
-              window.open(result.zipUrl, '_blank', 'noopener,noreferrer');
+            if (result.success && result.imageFiles) {
+              // ローカルZIPダウンロードを実行
+              createAndDownloadZip(result.zipFileName, result.imageFiles, result.imageCount);
             } else {
               showErrorMessage('❌ ZIPファイルの作成に失敗しました');
             }
@@ -1438,6 +1435,241 @@
           showErrorMessage('エラー: ' + error.message);
         })
         .getAllImagePreviewData();
+    }
+
+    // ローカルZIPファイル作成とダウンロード
+    function createAndDownloadZip(zipFileName, imageFiles, imageCount) {
+      try {
+        showTopMessage('📦 ZIPファイル作成中...', 'processing');
+        
+        // 簡易ZIP作成（PKZIP互換）
+        const zipData = createZipData(imageFiles);
+        const blob = new Blob([zipData], { type: 'application/zip' });
+        
+        // File System Access APIを使用してファイル保存ダイアログを表示
+        if (window.showSaveFilePicker) {
+          // モダンブラウザの場合
+          saveFileWithPicker(blob, zipFileName, imageCount);
+        } else {
+          // フォールバック：自動ダウンロード
+          downloadBlob(blob, zipFileName);
+          showSuccessMessage(`✅ ZIPダウンロード完了！\n${imageCount}枚の画像を保存`, 4000);
+        }
+      } catch (error) {
+        console.error('ZIP作成エラー:', error);
+        showErrorMessage('❌ ZIPファイル作成に失敗しました: ' + error.message);
+      }
+    }
+
+    // File System Access APIを使用したファイル保存
+    async function saveFileWithPicker(blob, filename, imageCount) {
+      try {
+        const fileHandle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{
+            description: 'ZIPアーカイブ',
+            accept: { 'application/zip': ['.zip'] }
+          }]
+        });
+        
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        
+        showSuccessMessage(`✅ ZIPダウンロード完了！\n${imageCount}枚の画像を保存\n📁 保存先: ${filename}`, 5000);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('ファイル保存エラー:', error);
+          // フォールバック
+          downloadBlob(blob, filename);
+          showSuccessMessage(`✅ ZIPダウンロード完了！\n${imageCount}枚の画像を保存`, 4000);
+        }
+      }
+    }
+
+    // フォールバック：従来のダウンロード方式
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // 簡易ZIP作成（PKZIP互換形式）
+    function createZipData(imageFiles) {
+      const files = [];
+      let centralDirSize = 0;
+      let centralDirOffset = 0;
+      
+      // 各ファイルのローカルヘッダとデータを作成
+      for (const file of imageFiles) {
+        const filenameBytes = new TextEncoder().encode(file.filename);
+        const fileData = base64ToUint8Array(file.data);
+        const crc32 = calculateCRC32(fileData);
+        
+        // ローカルファイルヘッダ（30バイト + ファイル名）
+        const localHeader = new Uint8Array(30 + filenameBytes.length);
+        const view = new DataView(localHeader.buffer);
+        
+        // ローカルファイルヘッダシグネチャ
+        view.setUint32(0, 0x04034b50, true);
+        // バージョン
+        view.setUint16(4, 20, true);
+        // フラグ
+        view.setUint16(6, 0, true);
+        // 圧縮方式（無圧縮）
+        view.setUint16(8, 0, true);
+        // 時刻・日付（ダミー）
+        view.setUint16(10, 0, true);
+        view.setUint16(12, 0, true);
+        // CRC32
+        view.setUint32(14, crc32, true);
+        // 圧縮サイズ
+        view.setUint32(18, fileData.length, true);
+        // 非圧縮サイズ
+        view.setUint32(22, fileData.length, true);
+        // ファイル名長
+        view.setUint16(26, filenameBytes.length, true);
+        // 拡張フィールド長
+        view.setUint16(28, 0, true);
+        
+        // ファイル名をコピー
+        localHeader.set(filenameBytes, 30);
+        
+        files.push({
+          header: localHeader,
+          data: fileData,
+          filename: filenameBytes,
+          crc32: crc32,
+          offset: centralDirOffset
+        });
+        
+        centralDirOffset += localHeader.length + fileData.length;
+      }
+      
+      // セントラルディレクトリを作成
+      const centralDir = [];
+      for (const file of files) {
+        const dirEntry = new Uint8Array(46 + file.filename.length);
+        const view = new DataView(dirEntry.buffer);
+        
+        // セントラルディレクトリヘッダシグネチャ
+        view.setUint32(0, 0x02014b50, true);
+        // 作成バージョン
+        view.setUint16(4, 20, true);
+        // 展開バージョン
+        view.setUint16(6, 20, true);
+        // フラグ
+        view.setUint16(8, 0, true);
+        // 圧縮方式
+        view.setUint16(10, 0, true);
+        // 時刻・日付
+        view.setUint16(12, 0, true);
+        view.setUint16(14, 0, true);
+        // CRC32
+        view.setUint32(16, file.crc32, true);
+        // 圧縮サイズ
+        view.setUint32(20, file.data.length, true);
+        // 非圧縮サイズ
+        view.setUint32(24, file.data.length, true);
+        // ファイル名長
+        view.setUint16(28, file.filename.length, true);
+        // 拡張フィールド長
+        view.setUint16(30, 0, true);
+        // コメント長
+        view.setUint16(32, 0, true);
+        // ディスク番号
+        view.setUint16(34, 0, true);
+        // 内部属性
+        view.setUint16(36, 0, true);
+        // 外部属性
+        view.setUint32(38, 0, true);
+        // ローカルヘッダオフセット
+        view.setUint32(42, file.offset, true);
+        
+        // ファイル名をコピー
+        dirEntry.set(file.filename, 46);
+        
+        centralDir.push(dirEntry);
+        centralDirSize += dirEntry.length;
+      }
+      
+      // 終端レコード
+      const endRecord = new Uint8Array(22);
+      const endView = new DataView(endRecord.buffer);
+      
+      // 終端レコードシグネチャ
+      endView.setUint32(0, 0x06054b50, true);
+      // ディスク番号
+      endView.setUint16(4, 0, true);
+      // セントラルディレクトリ開始ディスク
+      endView.setUint16(6, 0, true);
+      // このディスクのセントラルディレクトリエントリ数
+      endView.setUint16(8, files.length, true);
+      // セントラルディレクトリエントリ総数
+      endView.setUint16(10, files.length, true);
+      // セントラルディレクトリサイズ
+      endView.setUint32(12, centralDirSize, true);
+      // セントラルディレクトリオフセット
+      endView.setUint32(16, centralDirOffset, true);
+      // コメント長
+      endView.setUint16(20, 0, true);
+      
+      // 全体を結合
+      const totalSize = centralDirOffset + centralDirSize + 22;
+      const zipData = new Uint8Array(totalSize);
+      let offset = 0;
+      
+      // ファイルデータを追加
+      for (const file of files) {
+        zipData.set(file.header, offset);
+        offset += file.header.length;
+        zipData.set(file.data, offset);
+        offset += file.data.length;
+      }
+      
+      // セントラルディレクトリを追加
+      for (const dir of centralDir) {
+        zipData.set(dir, offset);
+        offset += dir.length;
+      }
+      
+      // 終端レコードを追加
+      zipData.set(endRecord, offset);
+      
+      return zipData;
+    }
+
+    // Base64をUint8Arrayに変換
+    function base64ToUint8Array(base64) {
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    // CRC32計算
+    function calculateCRC32(data) {
+      const crcTable = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let j = 0; j < 8; j++) {
+          c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        }
+        crcTable[i] = c;
+      }
+      
+      let crc = 0xFFFFFFFF;
+      for (let i = 0; i < data.length; i++) {
+        crc = crcTable[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+      }
+      return crc ^ 0xFFFFFFFF;
     }
 
     function regenerateSelectedImages() {
