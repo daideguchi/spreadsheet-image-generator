@@ -20,6 +20,72 @@
       padding: 0;
     }
 
+    /* 🚨 上部固定メッセージエリア */
+    .top-message {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 10000;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+      animation: slideDown 0.3s ease-out;
+      max-width: calc(100vw - 24px);
+    }
+
+    .top-message.success {
+      background: linear-gradient(135deg, rgba(76, 175, 80, 0.95) 0%, rgba(139, 195, 74, 0.95) 100%);
+      color: white;
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .top-message.error {
+      background: linear-gradient(135deg, rgba(244, 67, 54, 0.95) 0%, rgba(229, 57, 53, 0.95) 100%);
+      color: white;
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .top-message.warning {
+      background: linear-gradient(135deg, rgba(255, 193, 7, 0.95) 0%, rgba(255, 152, 0, 0.95) 100%);
+      color: #333;
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .top-message.info {
+      background: linear-gradient(135deg, rgba(33, 150, 243, 0.95) 0%, rgba(30, 136, 229, 0.95) 100%);
+      color: white;
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .top-message.processing {
+      background: linear-gradient(135deg, rgba(156, 39, 176, 0.95) 0%, rgba(123, 31, 162, 0.95) 100%);
+      color: white;
+      border-color: rgba(255,255,255,0.4);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.95; }
+      50% { opacity: 1; }
+    }
+
     .card {
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
@@ -503,6 +569,11 @@
 </head>
 <body>
   <div class="container">
+    <!-- 🚨 上部固定メッセージエリア -->
+    <div id="topMessage" class="top-message" style="display: none;">
+      <div id="topMessageContent"></div>
+    </div>
+    
     <div class="card">
       <h2>🎨 DALL-E 画像生成</h2>
       
@@ -702,6 +773,48 @@
       resultDiv.className = `result ${isError ? 'error' : 'success'}`;
       resultDiv.style.display = 'block';
       hideLoading();
+    }
+
+    // 🚨 上部固定メッセージ表示関数
+    function showTopMessage(message, type = 'info', duration = 5000) {
+      const messageDiv = document.getElementById('topMessage');
+      const contentDiv = document.getElementById('topMessageContent');
+      
+      // メッセージ内容を設定
+      contentDiv.textContent = message;
+      
+      // タイプに応じてクラスを設定
+      messageDiv.className = `top-message ${type}`;
+      messageDiv.style.display = 'block';
+      
+      // 自動非表示（処理中メッセージ以外）
+      if (type !== 'processing') {
+        setTimeout(() => {
+          hideTopMessage();
+        }, duration);
+      }
+    }
+
+    function hideTopMessage() {
+      const messageDiv = document.getElementById('topMessage');
+      messageDiv.style.display = 'none';
+    }
+
+    // 処理中メッセージの便利関数
+    function showProcessingMessage(message) {
+      showTopMessage(message, 'processing');
+    }
+
+    function showSuccessMessage(message, duration = 3000) {
+      showTopMessage(message, 'success', duration);
+    }
+
+    function showErrorMessage(message, duration = 5000) {
+      showTopMessage(message, 'error', duration);
+    }
+
+    function showWarningMessage(message, duration = 4000) {
+      showTopMessage(message, 'warning', duration);
     }
 
     function updateStepIndicator(currentStep) {
@@ -1068,6 +1181,7 @@
         return;
       }
 
+      showProcessingMessage('🎨 画像生成を開始しています...');
       showLoading();
       updateStepIndicator('step3');
       startImageGenerationProgress();
@@ -1077,6 +1191,8 @@
           updateProgress(100, '✅ 画像生成が完了しました！', '完了');
           setTimeout(() => {
             hideProgressModal();
+            hideTopMessage();
+            showSuccessMessage('✅ 画像生成が完了しました！');
             showResult(result);
             // 画像生成完了後にボタン状態を再チェック
             checkSheetState();
@@ -1084,6 +1200,8 @@
         })
         .withFailureHandler(function(error) {
           hideProgressModal();
+          hideTopMessage();
+          showErrorMessage('❌ 画像生成エラー: ' + error.message);
           showResult('エラー: ' + error.message, true);
         })
         .generateImagesFromStructuredTable();

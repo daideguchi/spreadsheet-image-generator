@@ -4172,6 +4172,14 @@ function addToImageLibrary(imageData) {
     checkboxCell.setVerticalAlignment("middle");
     checkboxCell.setBackground("#e8f5e8"); // 操作エリアを明るい緑色に
 
+    // 🔧 H列にチェックボックスを設定
+    const libraryCheckboxCell = librarySheet.getRange(newRow, 8);
+    libraryCheckboxCell.insertCheckboxes();
+    libraryCheckboxCell.setValue(false); // デフォルトは未選択
+    console.log(
+      `☑️ チェックボックス設定完了: ${libraryCheckboxCell.getA1Notation()}`
+    );
+
     // 🔥 書式問題修正：行の高さは既にcreateEmptyLibrarySheet()で設定済み（100px）
 
     console.log(
