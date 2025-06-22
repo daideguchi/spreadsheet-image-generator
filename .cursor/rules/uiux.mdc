@@ -1,0 +1,21 @@
+---
+description: UI/UX optimization
+globs: *.tsx,*.jsx
+alwaysApply: false
+---
+# UI/UX最適化ルール
+
+## デザインシステム
+- shadcn/ui使用を推奨
+- Tailwind CSS最適化
+- レスポンシブデザイン重視
+
+## アクセシビリティ
+- ARIA属性の適切な使用
+- キーボードナビゲーション対応
+- 色彩コントラスト確保
+
+## パフォーマンス
+- 画像最適化
+- バンドルサイズ監視
+- 遅延読み込み実装

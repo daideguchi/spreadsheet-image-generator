@@ -15,6 +15,7 @@ function getOpenAIApiKey() {
   return apiKey;
 }
 
+
 /**
  * スプレッドシート起動時にメニューを追加し、サイドバーを自動表示
  */

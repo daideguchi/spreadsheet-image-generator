@@ -1,0 +1,21 @@
+---
+description: Testing guidelines
+globs:
+alwaysApply: false
+---
+# テストガイドライン
+
+## テスト戦略
+- Unit Tests: 80%以上のカバレッジ
+- Integration Tests: API動作確認
+- E2E Tests: ユーザーシナリオ
+
+## テスト作成
+- AAA パターン (Arrange-Act-Assert)
+- モック適切使用
+- 意味のあるテスト名
+
+## CI/CD統合
+- 自動テスト実行
+- カバレッジレポート
+- 品質ゲート設定

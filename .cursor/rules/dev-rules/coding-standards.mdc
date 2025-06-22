@@ -1,0 +1,16 @@
+---
+description: Basic coding standards
+globs:
+alwaysApply: false
+---
+# 基本コーディング規約
+
+## 命名規則
+- 関数: camelCase
+- コンポーネント: PascalCase
+- 定数: SCREAMING_SNAKE_CASE
+
+## ファイル構造
+- 機能別ディレクトリ構成
+- 明確な責任分離
+- 適切なインポート構造

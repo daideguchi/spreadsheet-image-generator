@@ -1,0 +1,14 @@
+{
+  "name": "cursor-claude-project",
+  "version": "1.0.0",
+  "description": "Cursor + Claude Code project",
+  "main": "index.js",
+  "scripts": {
+    "dev": "echo 'Development server command here'",
+    "build": "echo 'Build command here'",
+    "test": "echo 'Test command here'"
+  },
+  "keywords": ["cursor", "claude", "ai"],
+  "author": "",
+  "license": "MIT"
+}

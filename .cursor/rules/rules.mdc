@@ -1,0 +1,16 @@
+---
+description: Basic Cursor Rules
+globs: 
+alwaysApply: false
+---
+# 基本Cursorルール
+
+## 開発ガイドライン
+- 簡潔で直接的なコード作成
+- 既存ファイルの編集を優先
+- 適切なコメント記述
+
+## コード品質
+- TypeScript strict mode使用
+- ESLint/Prettier設定準拠
+- 適切なエラーハンドリング

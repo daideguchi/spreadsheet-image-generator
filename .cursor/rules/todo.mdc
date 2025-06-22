@@ -1,0 +1,16 @@
+---
+description: Task management
+globs: 
+alwaysApply: true
+---
+# タスク管理
+
+## TodoWrite/TodoRead活用
+- 進捗の可視化
+- 優先順位管理
+- 完了条件の明確化
+
+## ワークフロー
+- 計画 → 実装 → テスト → 完了
+- 継続的な改善
+- チーム連携重視

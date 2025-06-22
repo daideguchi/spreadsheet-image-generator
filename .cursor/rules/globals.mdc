@@ -1,0 +1,11 @@
+---
+description: Global Cursor settings
+globs: 
+alwaysApply: true
+---
+# グローバル設定
+
+## AI支援
+- 4行以内の簡潔な回答
+- 既存ファイル優先編集
+- セキュリティ重視の開発
