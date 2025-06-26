@@ -67,68 +67,16 @@ function onOpen() {
  */
 function initialSetup() {
   try {
-    const ui = SpreadsheetApp.getUi();
+    // 🚀 確認アラート削除：シンプルな初期化実行
+    console.log("📋 構造化テーブルの初期化を開始します");
 
-    // 🚨 必ず表示される確認アラート（シンプル設計）
-    const confirmResponse = ui.alert(
-      "⚠️ 重要：データ消失の確認",
-      "🚨 表を初期化すると、現在のシートの全データが失われます！\n\n" +
-        "⚠️ 削除される内容：\n" +
-        "• プロンプト内容\n" +
-        "• 生成済みの画像\n" +
-        "• その他の全てのデータ\n\n" +
-        "🔴 本当にデータを削除して初期化しますか？\n" +
-        "（この操作は取り消せません）",
-      ui.ButtonSet.YES_NO
-    );
-
-    // キャンセルの場合は即座に終了
-    if (confirmResponse !== ui.Button.YES) {
-      ui.alert(
-        "❌ 初期化キャンセル",
-        "表の初期化をキャンセルしました。\nデータは変更されていません。",
-        ui.ButtonSet.OK
-      );
-      return "❌ 初期化をキャンセルしました";
-    }
-
-    // 🔧 確認後は即座に初期化実行（複雑な分岐なし）
-    ui.alert(
-      "🔧 初期化実行中",
-      "表の初期化を開始します...\n少々お待ちください。",
-      ui.ButtonSet.OK
-    );
-
-    // シンプルに初期化実行
+    // 直接初期化実行
     const result = createStructuredTable();
 
-    // 成功メッセージ
-    ui.alert(
-      "✅ 初期化完了",
-      "表の初期化が完了しました！\n\n" +
-        "📋 作成された内容：\n" +
-        "• 100行の構造化テーブル\n" +
-        "• 共通プロンプトのプルダウン\n" +
-        "• 画像生成機能\n\n" +
-        "🎨 サイドバーから画像生成を開始できます！",
-      ui.ButtonSet.OK
-    );
-
+    console.log("✅ 構造化テーブルの初期化が完了しました");
     return result;
   } catch (error) {
     console.error("表初期化エラー:", error);
-
-    // エラーの場合もユーザーに明確に伝える
-    const ui = SpreadsheetApp.getUi();
-    ui.alert(
-      "❌ 初期化エラー",
-      `表の初期化中にエラーが発生しました：\n${error.message}\n\n` +
-        "💡 対処方法：\n" +
-        "1. ページをリロードしてから再実行\n" +
-        "2. それでも解決しない場合は開発者にお問い合わせください",
-      ui.ButtonSet.OK
-    );
-
     throw new Error(`表の初期化に失敗しました: ${error.message}`);
   }
 }
@@ -1485,7 +1433,9 @@ function generateImagesWithProgressCallback(prompts, callbackFunction) {
         // API呼び出し前: 基本進捗
         const baseProgress = Math.round((completedSteps / totalSteps) * 80); // 80%まで
         console.log(
-          `🔄 画像生成開始: ${baseProgress}% (${completedSteps + 1}/${totalSteps}) - ${prompt.substring(0, 30)}...`
+          `🔄 画像生成開始: ${baseProgress}% (${
+            completedSteps + 1
+          }/${totalSteps}) - ${prompt.substring(0, 30)}...`
         );
 
         // 個別画像生成
@@ -1493,13 +1443,14 @@ function generateImagesWithProgressCallback(prompts, callbackFunction) {
         results.push(...imageResult);
 
         completedSteps++;
-        
+
         // 🎯 改善: 生成完了時に適切な進捗表示
-        const completedProgress = Math.round(80 + (completedSteps / totalSteps) * 20); // 80-100%
+        const completedProgress = Math.round(
+          80 + (completedSteps / totalSteps) * 20
+        ); // 80-100%
         console.log(
           `✅ 画像生成完了: ${completedProgress}% (${completedSteps}/${totalSteps})`
         );
-        
       } catch (imageError) {
         console.error(`画像${index + 1}の生成エラー:`, imageError);
         completedSteps++; // エラーでも進捗を進める
@@ -2078,54 +2029,13 @@ function forcePermissionRequest() {
  */
 function clearSheetMenu() {
   try {
-    const ui = SpreadsheetApp.getUi();
-    const response = ui.alert(
-      "⚠️ シート完全クリア",
-      "シート内のすべてのデータを削除します。\n\n" +
-        "🗑️ 削除される内容：\n" +
-        "• すべてのテキストデータ\n" +
-        "• すべての画像\n" +
-        "• セルの書式設定\n" +
-        "• セルのコメント\n\n" +
-        "⚠️ この操作は取り消せません。\n" +
-        "💾 重要なデータがある場合は、事前にバックアップを取ることをお勧めします。\n\n" +
-        "本当に削除しますか？",
-      ui.ButtonSet.YES_NO
-    );
-
-    if (response === ui.Button.YES) {
-      // 確認のダブルチェック
-      const confirmResponse = ui.alert(
-        "🚨 最終確認",
-        "シートのすべてのデータが完全に削除されます。\n\n" +
-          "本当によろしいですか？",
-        ui.ButtonSet.YES_NO
-      );
-
-      if (confirmResponse === ui.Button.YES) {
-        clearAllData();
-        ui.alert(
-          "✅ クリア完了",
-          "シートが完全にクリアされました。\n\n" +
-            "🚀 新しく作業を開始するには：\n" +
-            "1️⃣ 「🔧 初期セットアップ」を実行\n" +
-            "2️⃣ サイドバーから画像生成を開始",
-          ui.ButtonSet.OK
-        );
-        return "✅ シートを完全にクリアしました";
-      } else {
-        return "クリア操作をキャンセルしました";
-      }
-    } else {
-      return "クリア操作をキャンセルしました";
-    }
+    // 🚀 確認アラート削除：直接クリア実行
+    console.log("🧹 シートの完全クリアを開始します");
+    clearAllData();
+    console.log("✅ シートが完全にクリアされました");
+    return "✅ シートを完全にクリアしました";
   } catch (error) {
     console.error("シートクリアエラー:", error);
-    SpreadsheetApp.getUi().alert(
-      "エラー",
-      "シートのクリアに失敗しました: " + error.message,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
     throw error;
   }
 }
@@ -3534,7 +3444,7 @@ function downloadSelectedImageUrls() {
             filename: `${prompt
               .substring(0, 50)
               .replace(/[^\w\s-]/g, "")}_${i}.png`,
-            row: i
+            row: i,
           };
 
           // 全画像リストに追加
@@ -3553,7 +3463,8 @@ function downloadSelectedImageUrls() {
       if (allImages.length === 0) {
         return {
           images: [],
-          error: "❌ ダウンロードできる画像がありません。先に画像を生成してください。",
+          error:
+            "❌ ダウンロードできる画像がありません。先に画像を生成してください。",
         };
       } else {
         return {
@@ -3563,8 +3474,10 @@ function downloadSelectedImageUrls() {
       }
     }
 
-    console.log(`🖥️ ブラウザダウンロード対象: ${selectedImages.length}枚の画像（全${allImages.length}枚中）`);
-    
+    console.log(
+      `🖥️ ブラウザダウンロード対象: ${selectedImages.length}枚の画像（全${allImages.length}枚中）`
+    );
+
     // 🔧 サーバーサイドで画像をBase64に変換（CORS回避）
     const base64Images = [];
     for (const imageData of selectedImages) {
@@ -3572,17 +3485,17 @@ function downloadSelectedImageUrls() {
         // URLFetchを使って画像データを取得
         const response = UrlFetchApp.fetch(imageData.url);
         const blob = response.getBlob();
-        
+
         // Base64に変換
         const base64 = Utilities.base64Encode(blob.getBytes());
-        const mimeType = blob.getContentType() || 'image/png';
-        
+        const mimeType = blob.getContentType() || "image/png";
+
         base64Images.push({
           base64: `data:${mimeType};base64,${base64}`,
           filename: imageData.filename,
-          row: imageData.row
+          row: imageData.row,
         });
-        
+
         console.log(`✅ Base64変換完了: ${imageData.filename}`);
       } catch (error) {
         console.error(`❌ Base64変換エラー (行${imageData.row}):`, error);
@@ -3590,14 +3503,17 @@ function downloadSelectedImageUrls() {
         base64Images.push({
           base64: imageData.url,
           filename: imageData.filename,
-          row: imageData.row
+          row: imageData.row,
         });
       }
     }
-    
-    return { 
-      images: base64Images.map(img => ({ url: img.base64, filename: img.filename })), 
-      totalCount: allImages.length 
+
+    return {
+      images: base64Images.map((img) => ({
+        url: img.base64,
+        filename: img.filename,
+      })),
+      totalCount: allImages.length,
     };
   } catch (error) {
     console.error("選択画像ダウンロード準備エラー:", error);
@@ -3629,7 +3545,11 @@ function downloadSelectedImagesAsZip() {
       const imageCell = sheet.getRange(i, 5); // E列（画像列）
       const imageFormula = imageCell.getFormula();
 
-      if (isChecked === true && imageFormula && imageFormula.includes("=IMAGE(")) {
+      if (
+        isChecked === true &&
+        imageFormula &&
+        imageFormula.includes("=IMAGE(")
+      ) {
         const urlMatch = imageFormula.match(/=IMAGE\("([^"]+)"/);
         if (urlMatch && urlMatch[1]) {
           const fullPrompt = getFullPrompt(sheet, i);
@@ -3637,12 +3557,12 @@ function downloadSelectedImagesAsZip() {
 
           // ファイル名をASCII安全な文字に変換
           const safeFilename = `image_${i}_${Date.now()}.png`;
-          
+
           selectedImages.push({
             url: urlMatch[1],
             filename: safeFilename,
             row: i,
-            originalPrompt: prompt
+            originalPrompt: prompt,
           });
         }
       }
@@ -3657,19 +3577,19 @@ function downloadSelectedImagesAsZip() {
     // 各画像をBase64データとして取得
     const imageFiles = [];
     let successCount = 0;
-    
+
     for (const imageData of selectedImages) {
       try {
         const response = UrlFetchApp.fetch(imageData.url);
         const blob = response.getBlob();
         const base64Data = Utilities.base64Encode(blob.getBytes());
-        
+
         imageFiles.push({
           filename: imageData.filename,
           data: base64Data,
-          mimeType: blob.getContentType() || 'image/png'
+          mimeType: blob.getContentType() || "image/png",
         });
-        
+
         successCount++;
         console.log(`✅ 画像取得完了: ${imageData.filename}`);
       } catch (error) {
@@ -3682,16 +3602,19 @@ function downloadSelectedImagesAsZip() {
     }
 
     // ZIPファイル名を生成
-    const zipFileName = `DALL-E画像_${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss')}.zip`;
-    
+    const zipFileName = `DALL-E画像_${Utilities.formatDate(
+      new Date(),
+      Session.getScriptTimeZone(),
+      "yyyyMMdd_HHmmss"
+    )}.zip`;
+
     return {
       success: true,
       zipFileName: zipFileName,
       imageCount: successCount,
       imageFiles: imageFiles,
-      message: `✅ ${successCount}枚の画像をZIP準備完了！`
+      message: `✅ ${successCount}枚の画像をZIP準備完了！`,
     };
-
   } catch (error) {
     console.error("ZIPダウンロードエラー:", error);
     return { error: `ZIPファイル作成に失敗しました: ${error.message}` };
@@ -3949,12 +3872,12 @@ function addToImageLibrary(imageData) {
   console.log("🚨🚨🚨 CRITICAL: addToImageLibrary関数が実行されました!");
   console.log("🚨🚨🚨 実行時刻:", new Date().toISOString());
   console.log("🚨🚨🚨 呼び出し元:", new Error().stack);
-  
+
   // 🔥 SUPER CRITICAL: UI即座通知でユーザーに実行を報告
   try {
     SpreadsheetApp.getUi().alert(
-      "🚨 画像ライブラリ転記実行中", 
-      "addToImageLibrary関数が実行されました！\n画像転記処理を開始します...", 
+      "🚨 画像ライブラリ転記実行中",
+      "addToImageLibrary関数が実行されました！\n画像転記処理を開始します...",
       SpreadsheetApp.getUi().ButtonSet.OK
     );
   } catch (uiError) {
@@ -3991,7 +3914,7 @@ function addToImageLibrary(imageData) {
   let newRow = 0;
   let recordNumber = 0;
   let dataRange = null;
-  
+
   try {
     // 🔥 チェックポイント1: ライブラリシート取得
     console.log("📚 ライブラリシート取得中...");
@@ -4003,16 +3926,20 @@ function addToImageLibrary(imageData) {
       lastRow = librarySheet.getLastRow();
       newRow = lastRow + 1;
       console.log(`📊 新規行番号: ${newRow} (最終行: ${lastRow})`);
-      
+
       // 🔥 チェックポイント1完了通知
-      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z3").setValue(
-        `✅ CP1: ライブラリシート取得成功 - ${new Date().toISOString()}`
-      );
+      SpreadsheetApp.getActiveSpreadsheet()
+        .getActiveSheet()
+        .getRange("Z3")
+        .setValue(
+          `✅ CP1: ライブラリシート取得成功 - ${new Date().toISOString()}`
+        );
     } catch (sheetError) {
       console.error("🚨 チェックポイント1エラー:", sheetError);
-      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z3").setValue(
-        `❌ CP1: ライブラリシート取得失敗 - ${sheetError.message}`
-      );
+      SpreadsheetApp.getActiveSpreadsheet()
+        .getActiveSheet()
+        .getRange("Z3")
+        .setValue(`❌ CP1: ライブラリシート取得失敗 - ${sheetError.message}`);
       throw sheetError;
     }
 
@@ -4043,20 +3970,24 @@ function addToImageLibrary(imageData) {
       dataRange = librarySheet.getRange(newRow, 1, 1, rowData.length);
       dataRange.setValues([rowData]);
       console.log(`✅ 基本データ書き込み完了: 行${newRow}`);
-      
+
       // チェックポイント2完了通知
-      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z4").setValue(
-        `✅ CP2: データ書き込み成功 - 行${newRow} - ${new Date().toISOString()}`
-      );
+      SpreadsheetApp.getActiveSpreadsheet()
+        .getActiveSheet()
+        .getRange("Z4")
+        .setValue(
+          `✅ CP2: データ書き込み成功 - 行${newRow} - ${new Date().toISOString()}`
+        );
     } catch (dataError) {
       console.error("🚨 チェックポイント2エラー:", dataError);
-      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z4").setValue(
-        `❌ CP2: データ書き込み失敗 - ${dataError.message}`
-      );
+      SpreadsheetApp.getActiveSpreadsheet()
+        .getActiveSheet()
+        .getRange("Z4")
+        .setValue(`❌ CP2: データ書き込み失敗 - ${dataError.message}`);
       throw dataError;
     }
 
-    // 🔥 チェックポイント3: スタイル設定（dataRange使用）  
+    // 🔥 チェックポイント3: スタイル設定（dataRange使用）
     try {
       // スタイル設定
       dataRange.setBorder(
@@ -4073,17 +4004,18 @@ function addToImageLibrary(imageData) {
       // 行ごとの色分け（見やすさ向上）
       const bgColor = newRow % 2 === 0 ? "#f8f9fa" : "#ffffff";
       dataRange.setBackground(bgColor);
-      
+
       // チェックポイント3完了通知
-      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z5").setValue(
-        `✅ CP3: スタイル設定完了 - ${new Date().toISOString()}`
-      );
-      
+      SpreadsheetApp.getActiveSpreadsheet()
+        .getActiveSheet()
+        .getRange("Z5")
+        .setValue(`✅ CP3: スタイル設定完了 - ${new Date().toISOString()}`);
     } catch (styleError) {
       console.error("🚨 チェックポイント3エラー:", styleError);
-      SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange("Z5").setValue(
-        `❌ CP3: スタイル設定失敗 - ${styleError.message}`
-      );
+      SpreadsheetApp.getActiveSpreadsheet()
+        .getActiveSheet()
+        .getRange("Z5")
+        .setValue(`❌ CP3: スタイル設定失敗 - ${styleError.message}`);
       // スタイル設定エラーは致命的ではないので継続
     }
 
@@ -4409,41 +4341,45 @@ function addToImageLibrary(imageData) {
     console.error("🚨 エラー詳細:", error.stack);
     console.error("🚨 入力データ:", JSON.stringify(imageData));
     console.error("🚨 エラー発生時点での処理状況を確認してください");
-    
+
     // 🔥 超強力なエラー詳細出力とユーザー通知
     const errorDetails = {
       message: error.message,
       name: error.name,
       stack: error.stack,
       inputData: JSON.stringify(imageData),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
-    
+
     // ユーザーに詳細エラー情報を直接表示
     try {
       SpreadsheetApp.getUi().alert(
-        "🚨 addToImageLibrary関数エラー詳細", 
+        "🚨 addToImageLibrary関数エラー詳細",
         `エラーが発生しました：\n\n` +
-        `エラー名: ${error.name}\n` +
-        `メッセージ: ${error.message}\n` +
-        `発生時刻: ${new Date().toISOString()}\n\n` +
-        `詳細はコンソールログを確認してください。`,
+          `エラー名: ${error.name}\n` +
+          `メッセージ: ${error.message}\n` +
+          `発生時刻: ${new Date().toISOString()}\n\n` +
+          `詳細はコンソールログを確認してください。`,
         SpreadsheetApp.getUi().ButtonSet.OK
       );
     } catch (uiError) {
       console.error("UI通知エラー:", uiError);
     }
-    
+
     // Z2セルにエラー詳細を書き込み（確実な記録）
     try {
       const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-      sheet.getRange("Z2").setValue(
-        `🚨ERROR: ${error.name} - ${error.message} - ${new Date().toISOString()}`
-      );
+      sheet
+        .getRange("Z2")
+        .setValue(
+          `🚨ERROR: ${error.name} - ${
+            error.message
+          } - ${new Date().toISOString()}`
+        );
     } catch (logError) {
       console.error("ログ書き込みエラー:", logError);
     }
-    
+
     // エラーでも画像生成を止めない
     return false;
   }
@@ -4908,16 +4844,18 @@ function getDeveloperInfo() {
 function testAddToImageLibraryForced() {
   try {
     console.log("🚨 緊急診断: addToImageLibrary強制実行テスト開始");
-    
+
     // 事前チェック: Z列をクリア
     try {
       const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
       sheet.getRange("Z1:Z10").clearContent();
-      sheet.getRange("Z1").setValue("🔥 診断テスト開始: " + new Date().toISOString());
+      sheet
+        .getRange("Z1")
+        .setValue("🔥 診断テスト開始: " + new Date().toISOString());
     } catch (clearError) {
       console.warn("Z列クリアエラー:", clearError);
     }
-    
+
     // テスト用データを作成
     const testImageData = {
       prompt: "🔥 テスト実行: この画像は診断用テストです",
@@ -4926,12 +4864,13 @@ function testAddToImageLibraryForced() {
       status: "🧪 テスト実行",
       timestamp: new Date(),
       originalRow: 999,
-      sourceFormula: '=IMAGE("https://via.placeholder.com/300x300/ff0000/ffffff?text=TEST", 1)',
-      sourceSheet: "テスト診断"
+      sourceFormula:
+        '=IMAGE("https://via.placeholder.com/300x300/ff0000/ffffff?text=TEST", 1)',
+      sourceSheet: "テスト診断",
     };
-    
+
     console.log("🧪 テストデータ作成完了:", JSON.stringify(testImageData));
-    
+
     // 🔥 実行前の状態確認
     let librarySheetBefore = null;
     let lastRowBefore = 0;
@@ -4945,12 +4884,12 @@ function testAddToImageLibraryForced() {
     } catch (preError) {
       console.warn("実行前確認エラー:", preError);
     }
-    
+
     // 強制実行
     console.log("🚀 addToImageLibrary関数実行開始...");
     const result = addToImageLibrary(testImageData);
     console.log("✅ addToImageLibrary関数実行完了 結果:", result);
-    
+
     // 🔥 実行後の状態確認
     let librarySheetAfter = null;
     let lastRowAfter = 0;
@@ -4961,12 +4900,14 @@ function testAddToImageLibraryForced() {
       if (librarySheetAfter) {
         lastRowAfter = librarySheetAfter.getLastRow();
         addedRows = lastRowAfter - lastRowBefore;
-        console.log(`📊 実行後ライブラリ行数: ${lastRowAfter} (追加: ${addedRows}行)`);
+        console.log(
+          `📊 実行後ライブラリ行数: ${lastRowAfter} (追加: ${addedRows}行)`
+        );
       }
     } catch (postError) {
       console.warn("実行後確認エラー:", postError);
     }
-    
+
     // チェックポイント状況確認
     let checkpoints = {};
     try {
@@ -4976,39 +4917,28 @@ function testAddToImageLibraryForced() {
         Z2: sheet.getRange("Z2").getValue(),
         Z3: sheet.getRange("Z3").getValue(),
         Z4: sheet.getRange("Z4").getValue(),
-        Z5: sheet.getRange("Z5").getValue()
+        Z5: sheet.getRange("Z5").getValue(),
       };
     } catch (cpError) {
       console.warn("チェックポイント確認エラー:", cpError);
     }
-    
-    // 詳細結果通知
-    SpreadsheetApp.getUi().alert(
-      "🧪 診断テスト完了",
-      `addToImageLibrary関数の強制実行テストが完了しました。\n\n` +
-      `📊 結果: ${result ? "成功" : "失敗"}\n` +
-      `📊 実行前行数: ${lastRowBefore}\n` +
-      `📊 実行後行数: ${lastRowAfter}\n` +
-      `📊 追加行数: ${addedRows}\n\n` +
-      `チェックポイント状況:\n` +
-      `Z1: ${checkpoints.Z1 || "なし"}\n` +
-      `Z2: ${checkpoints.Z2 || "なし"}\n` +
-      `Z3: ${checkpoints.Z3 || "なし"}\n` +
-      `Z4: ${checkpoints.Z4 || "なし"}\n\n` +
-      `詳細はZ列とコンソールログを確認してください。`,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-    
+
+    // 🚀 アラート削除：詳細結果はコンソールに出力
+    console.log("🧪 診断テスト完了", {
+      result: result ? "成功" : "失敗",
+      beforeRows: lastRowBefore,
+      afterRows: lastRowAfter,
+      addedRows: addedRows,
+      checkpoints: checkpoints,
+    });
   } catch (error) {
     console.error("🚨 テスト実行エラー:", error);
-    SpreadsheetApp.getUi().alert(
-      "❌ テスト実行エラー",
-      `addToImageLibrary関数のテスト実行中にエラーが発生しました:\n\n` +
-      `エラー名: ${error.name}\n` +
-      `メッセージ: ${error.message}\n` +
-      `スタック: ${error.stack}`,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
+    // 🚀 アラート削除：エラー詳細はコンソールに出力
+    console.error("テスト実行エラー詳細", {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
   }
 }
 

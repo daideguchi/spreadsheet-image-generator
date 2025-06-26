@@ -335,47 +335,7 @@
       margin-bottom: 8px;
     }
 
-    .loading {
-      display: none;
-      text-align: center;
-      padding: 20px;
-      color: #666;
-    }
-
-    .spinner {
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #667eea;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 10px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .result {
-      margin-top: 16px;
-      padding: 12px;
-      border-radius: 8px;
-      display: none;
-      font-size: 13px;
-    }
-
-    .result.success {
-      background-color: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
-    }
-
-    .result.error {
-      background-color: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
-    }
+    /* 🚀 UX改善：下部表示削除（上部メッセージ表示に統一） */
 
     /* プログレスバーモーダル */
     .progress-modal {
@@ -762,10 +722,11 @@
 
     function showResult(message, isError = false) {
       hideTopMessage();
+      // 🚀 UX改善：全て上部メッセージ表示に統一
       if (isError) {
-        showErrorMessage(message);
+        showTopMessage(message, 'error', 6000);
       } else {
-        showSuccessMessage(message);
+        showTopMessage(message, 'success', 4000);
       }
     }
 
@@ -1972,16 +1933,8 @@
       showLoading();
       google.script.run
         .withSuccessHandler(function(result) {
-          // 診断結果を整形して表示
-          const formattedResult = result.replace(/\n/g, '<br>');
-          const resultDiv = document.getElementById('result');
-          resultDiv.innerHTML = formattedResult;
-          resultDiv.className = 'result';
-          resultDiv.style.display = 'block';
-          resultDiv.style.fontSize = '12px';
-          resultDiv.style.lineHeight = '1.4';
-          resultDiv.style.textAlign = 'left';
-          hideLoading();
+          // 🚀 UX改善：診断結果も上部メッセージ表示に統一
+          showTopMessage(result, 'info', 10000);
         })
         .withFailureHandler(function(error) {
           showResult('診断エラー: ' + error.message, true);
