@@ -38,7 +38,7 @@ function onOpen() {
     .addItem("⚙️ 設定を確認", "checkSettings")
     .addToUi();
 
-  // サイドバーを自動で表示（権限チェック付き）
+  // 🔐 権限チェック後のサイドバー自動表示
   try {
     Utilities.sleep(100); // 100ms待機で確実な表示
 
@@ -47,12 +47,21 @@ function onOpen() {
       console.log("💡 初回使用者: 使い方ガイドを表示します");
       showUsageGuide();
     } else {
-      showSidebar();
-      console.log("✅ サイドバーを自動表示しました");
+      // 🚀 権限承認済みかチェック
+      const permissionResult = showPermissionAlertIfNeeded();
+
+      if (permissionResult.success && !permissionResult.alerted) {
+        // 権限OK: サイレントでサイドバー表示
+        showSidebar();
+        console.log("✅ サイドバーを自動表示しました（権限承認済み）");
+      } else if (permissionResult.alerted) {
+        // 権限不足: アラート表示済みなので処理終了
+        console.log("🔐 権限承認が必要: アラート表示済み");
+      }
     }
   } catch (error) {
     console.log("⚠️ サイドバーの自動表示をスキップ:", error.message);
-    // 権限エラーの場合は使い方ガイドを表示
+    // フォールバック: 従来の使い方ガイド表示
     if (
       error.message.includes("container.ui") ||
       error.message.includes("permissions")
@@ -63,14 +72,22 @@ function onOpen() {
 }
 
 /**
- * 初期セットアップ（プロンプト入力エリアを作成）- 確実な確認アラート付き
+ * 初期セットアップ（プロンプト入力エリアを作成）- 権限チェック統合版
  */
 function initialSetup() {
-  try {
-    // 🚀 確認アラート削除：シンプルな初期化実行
-    console.log("📋 構造化テーブルの初期化を開始します");
+  // 🔐 権限チェック最優先実行
+  const permissionResult = showPermissionAlertIfNeeded();
 
-    // 直接初期化実行
+  // 権限が不足している場合はアラート表示済みなので終了
+  if (!permissionResult.success && permissionResult.alerted) {
+    console.log("🔐 権限不足: 初期セットアップをスキップ");
+    return "権限承認が必要です";
+  }
+
+  try {
+    console.log("📋 構造化テーブルの初期化を開始します（権限チェック済み）");
+
+    // 権限OK: 直接初期化実行
     const result = createStructuredTable();
 
     console.log("✅ 構造化テーブルの初期化が完了しました");
@@ -82,46 +99,68 @@ function initialSetup() {
 }
 
 /**
- * サイドバーを表示（シンプル版）
+ * サイドバーを表示（権限チェック統合版）
  */
 function showSidebar() {
+  // 🔐 権限チェック最優先実行
+  const permissionResult = showPermissionAlertIfNeeded();
+
+  // 権限が不足している場合はアラート表示済みなので終了
+  if (!permissionResult.success && permissionResult.alerted) {
+    console.log("🔐 権限不足: アラート表示済み、サイドバー表示をスキップ");
+    return;
+  }
+
   try {
-    // 直接サイドバーを開く（権限エラーが出たら後で処理）
+    // 権限OK: サイドバーを表示
     const html = HtmlService.createHtmlOutputFromFile("Sidebar")
       .setTitle("🎨 DALL-E 画像生成ツール")
       .setWidth(500);
     SpreadsheetApp.getUi().showSidebar(html);
 
+    console.log("✅ サイドバー表示成功（権限チェック済み）");
     // 成功したら権限承認済みとして記録
     markPermissionGranted();
   } catch (error) {
-    // 権限エラーの場合のみ、サイレント承認を試行
+    console.error("サイドバー表示エラー:", error);
+
+    // 🚨 権限エラーの場合のみ権限承認アラート表示
     if (
       error.message.includes("container.ui") ||
       error.message.includes("permissions")
     ) {
+      // 権限チェックが見逃したケースの緊急対応
       try {
-        // サイレント権限承認を試行
-        forcePermissionRequest();
-        markPermissionGranted();
-      } catch (permissionError) {
-        // 最後の手段：詳細な開始手順
         SpreadsheetApp.getUi().alert(
-          "🚀 ツール開始手順",
-          "以下の手順でサイドバーを開いてください：\n\n" +
-            "1️⃣ 画面上部のメニューバーから「🎨 画像ツール」をクリック\n" +
-            "2️⃣ ドロップダウンメニューから「📱 サイドバーを開く」を選択\n" +
-            "3️⃣ 右側にサイドバーが表示されます\n\n" +
-            "💡 サイドバーが表示されない場合は、ブラウザをリロードしてから再度お試しください。",
+          "🔐 権限承認が必要です",
+          "サイドバーの表示に権限承認が必要です。\n\n" +
+            "📋 手順:\n" +
+            "1️⃣ メニューから「🎨 画像ツール」→「🔐 権限承認を実行」\n" +
+            "2️⃣ 承認ダイアログで「許可」をクリック\n" +
+            "3️⃣ 再度サイドバーを開く\n\n" +
+            "💡 権限承認は初回のみ必要です。",
           SpreadsheetApp.getUi().ButtonSet.OK
         );
+      } catch (alertError) {
+        console.error("緊急権限アラート表示エラー:", alertError);
       }
     } else {
-      SpreadsheetApp.getUi().alert(
-        "エラー",
-        "サイドバーの表示に失敗しました: " + error.message,
-        SpreadsheetApp.getUi().ButtonSet.OK
-      );
+      // その他のエラー
+      try {
+        SpreadsheetApp.getUi().alert(
+          "❌ エラー",
+          "サイドバーの表示に失敗しました:\n" +
+            error.message +
+            "\n\n" +
+            "💡 解決方法:\n" +
+            "1️⃣ ページをリロードして再実行\n" +
+            "2️⃣ ブラウザのキャッシュをクリア\n" +
+            "3️⃣ しばらく時間をおいて再実行",
+          SpreadsheetApp.getUi().ButtonSet.OK
+        );
+      } catch (alertError) {
+        console.error("エラーアラート表示エラー:", alertError);
+      }
     }
   }
 }
@@ -1900,6 +1939,157 @@ function isPermissionGranted() {
 }
 
 /**
+ * 🔐 包括的権限チェック（リアルタイム検証）
+ * 実際に必要な権限を全てテストし、不足している場合のみアラート表示
+ */
+function checkAndHandlePermissions() {
+  console.log("🔍 権限状態を包括的にチェック中...");
+
+  const permissionResults = {
+    spreadsheet: false,
+    ui: false,
+    drive: false,
+    urlFetch: false,
+    overall: false,
+  };
+
+  let missingPermissions = [];
+
+  try {
+    // 1. スプレッドシート権限チェック
+    try {
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = spreadsheet.getActiveSheet();
+      const testCell = sheet.getRange("A1");
+      permissionResults.spreadsheet = true;
+      console.log("✅ スプレッドシート権限: OK");
+    } catch (error) {
+      permissionResults.spreadsheet = false;
+      missingPermissions.push("スプレッドシート操作");
+      console.log("❌ スプレッドシート権限: 不足");
+    }
+
+    // 2. UI権限チェック
+    try {
+      const ui = SpreadsheetApp.getUi();
+      permissionResults.ui = true;
+      console.log("✅ UI権限: OK");
+    } catch (error) {
+      permissionResults.ui = false;
+      missingPermissions.push("ユーザーインターフェース");
+      console.log("❌ UI権限: 不足");
+    }
+
+    // 3. Drive権限チェック（オプション）
+    try {
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const file = DriveApp.getFileById(spreadsheet.getId());
+      permissionResults.drive = true;
+      console.log("✅ Drive権限: OK");
+    } catch (error) {
+      permissionResults.drive = false;
+      // Driveは必須ではないので警告のみ
+      console.log("⚠️ Drive権限: 不足（オプション）");
+    }
+
+    // 4. 外部API権限チェック（オプション）
+    try {
+      UrlFetchApp.fetch("https://httpbin.org/get", {
+        method: "GET",
+        muteHttpExceptions: true,
+        headers: { "User-Agent": "DALL-E Permission Test" },
+      });
+      permissionResults.urlFetch = true;
+      console.log("✅ 外部API権限: OK");
+    } catch (error) {
+      permissionResults.urlFetch = false;
+      // 外部APIは画像生成時に必要なので警告
+      console.log("⚠️ 外部API権限: 不足（画像生成時必要）");
+    }
+
+    // 必須権限（スプレッドシート + UI）の判定
+    permissionResults.overall =
+      permissionResults.spreadsheet && permissionResults.ui;
+
+    // 結果に基づく処理
+    if (permissionResults.overall) {
+      console.log("🎉 必須権限チェック完了: 全て承認済み");
+      markPermissionGranted(); // 権限承認状態を記録
+      return {
+        granted: true,
+        needsAlert: false,
+        results: permissionResults,
+      };
+    } else {
+      console.log("⚠️ 必須権限チェック: 不足している権限があります");
+      return {
+        granted: false,
+        needsAlert: true,
+        missingPermissions: missingPermissions,
+        results: permissionResults,
+      };
+    }
+  } catch (error) {
+    console.error("権限チェック中にエラー:", error);
+    return {
+      granted: false,
+      needsAlert: true,
+      error: error.message,
+      results: permissionResults,
+    };
+  }
+}
+
+/**
+ * 🚨 条件付き権限アラート表示
+ * 権限が不足している場合のみアラートを表示
+ */
+function showPermissionAlertIfNeeded() {
+  const permissionCheck = checkAndHandlePermissions();
+
+  // 権限が完全に承認済みの場合はサイレント処理
+  if (permissionCheck.granted && !permissionCheck.needsAlert) {
+    console.log("🔓 権限承認済み: サイレント処理");
+    return { success: true, alerted: false };
+  }
+
+  // 権限が不足している場合のみアラート表示
+  if (permissionCheck.needsAlert) {
+    try {
+      const ui = SpreadsheetApp.getUi();
+      const missingList = permissionCheck.missingPermissions
+        ? permissionCheck.missingPermissions.join("、")
+        : "不明";
+
+      ui.alert(
+        "🔐 権限承認が必要です",
+        "ツールを使用するために以下の権限承認が必要です：\n\n" +
+          `❌ 不足している権限: ${missingList}\n\n` +
+          "📋 承認手順:\n" +
+          "1️⃣ 表示される承認ダイアログで「許可を確認」をクリック\n" +
+          "2️⃣ Googleアカウントを選択\n" +
+          "3️⃣ 「安全ではないアプリ」警告が出た場合:\n" +
+          "   • 「詳細」をクリック\n" +
+          "   • 「〜に移動（安全ではないページ）」をクリック\n" +
+          "4️⃣ 「許可」をクリック\n\n" +
+          "✅ 承認完了後の開始手順:\n" +
+          "📋 メニュー「🎨 画像ツール」→「📱 サイドバーを開く」\n\n" +
+          "💡 権限承認は初回のみ必要です。",
+        ui.ButtonSet.OK
+      );
+
+      console.log("🚨 権限不足アラートを表示しました");
+      return { success: false, alerted: true };
+    } catch (alertError) {
+      console.error("権限アラート表示エラー:", alertError);
+      return { success: false, alerted: false, error: alertError.message };
+    }
+  }
+
+  return { success: true, alerted: false };
+}
+
+/**
  * 使い方ガイドを表示（初回使用者向け）
  */
 function showUsageGuide() {
@@ -1989,16 +2179,24 @@ function forcePermissionRequest() {
     // 権限承認完了を記録
     markPermissionGranted();
 
-    ui.alert(
-      "✅ 権限承認完了",
-      "すべての権限が正常に承認されました！\n\n" +
-        "🚀 次の手順でツールを開始してください：\n" +
-        "1️⃣ メニューバーの「🎨 画像ツール」をクリック\n" +
-        "2️⃣ 「📱 サイドバーを開く」を選択\n" +
-        "3️⃣ サイドバーが表示されたら使用開始！\n\n" +
-        "💡 サイドバーからすべての機能にアクセスできます。",
-      ui.ButtonSet.OK
-    );
+    // 🚨 権限承認完了時は条件付きアラート（権限不足の場合のみ表示）
+    const finalCheck = checkAndHandlePermissions();
+    if (!finalCheck.granted) {
+      // まだ権限が不足している場合のみアラート表示
+      ui.alert(
+        "⚠️ 権限承認未完了",
+        "一部の権限承認が完了していません。\n\n" +
+          "🔄 以下を再実行してください：\n" +
+          "1️⃣ ブラウザをリロード\n" +
+          "2️⃣ メニューから「🔐 権限承認を実行」を再実行\n" +
+          "3️⃣ 承認ダイアログで「許可」をクリック\n\n" +
+          "💡 権限承認後はサイレントで動作します。",
+        ui.ButtonSet.OK
+      );
+    } else {
+      // 権限承認完了: 最小限の成功メッセージ
+      console.log("🎉 権限承認完了: 今後はサイレント動作");
+    }
 
     return "✅ 権限承認が完了しました";
   } catch (error) {
@@ -2025,12 +2223,20 @@ function forcePermissionRequest() {
 }
 
 /**
- * シートを完全クリア（メニューから呼び出し）
+ * シートを完全クリア（メニューから呼び出し）- 権限チェック統合版
  */
 function clearSheetMenu() {
+  // 🔐 権限チェック最優先実行
+  const permissionResult = showPermissionAlertIfNeeded();
+
+  // 権限が不足している場合はアラート表示済みなので終了
+  if (!permissionResult.success && permissionResult.alerted) {
+    console.log("🔐 権限不足: シートクリアをスキップ");
+    return "権限承認が必要です";
+  }
+
   try {
-    // 🚀 確認アラート削除：直接クリア実行
-    console.log("🧹 シートの完全クリアを開始します");
+    console.log("🧹 シートの完全クリアを開始します（権限チェック済み）");
     clearAllData();
     console.log("✅ シートが完全にクリアされました");
     return "✅ シートを完全にクリアしました";
@@ -4842,8 +5048,19 @@ function getDeveloperInfo() {
  * 🔥 緊急診断: addToImageLibrary関数の強制実行テスト
  */
 function testAddToImageLibraryForced() {
+  // 🔐 権限チェック最優先実行
+  const permissionResult = showPermissionAlertIfNeeded();
+
+  // 権限が不足している場合はアラート表示済みなので終了
+  if (!permissionResult.success && permissionResult.alerted) {
+    console.log("🔐 権限不足: ライブラリテストをスキップ");
+    return "権限承認が必要です";
+  }
+
   try {
-    console.log("🚨 緊急診断: addToImageLibrary強制実行テスト開始");
+    console.log(
+      "🚨 緊急診断: addToImageLibrary強制実行テスト開始（権限チェック済み）"
+    );
 
     // 事前チェック: Z列をクリア
     try {
