@@ -1190,9 +1190,7 @@ function downloadSelectedImagesToDrive() {
 
           const imageData = {
             url: urlMatch[1],
-            filename: `${prompt
-              .substring(0, 50)
-              .replace(/[^\w\s-]/g, "")}_${i}.png`,
+            filename: createSimpleFilename(prompt, i),
             row: i,
           };
 
@@ -1272,6 +1270,41 @@ function downloadSelectedImagesToDrive() {
   } catch (error) {
     console.error("画像ダウンロードエラー:", error);
     throw new Error(`画像ダウンロードに失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 🎯 簡潔で分かりやすいファイル名を生成（ユーザー要求対応）
+ */
+function createSimpleFilename(prompt, rowNumber) {
+  try {
+    if (!prompt || typeof prompt !== "string") {
+      return `画像_${String(rowNumber).padStart(3, "0")}.png`;
+    }
+
+    // プロンプトから主要なキーワードを抽出（最初の20文字）
+    let cleanPrompt = prompt.trim().substring(0, 20);
+
+    // 日本語と英数字以外の文字を除去し、アンダースコアに置換
+    cleanPrompt = cleanPrompt
+      .replace(/[^\w\s\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, "")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "");
+
+    // 空になった場合のフォールバック
+    if (!cleanPrompt) {
+      cleanPrompt = "画像";
+    }
+
+    // 行番号を3桁でゼロ埋め
+    const paddedRow = String(rowNumber).padStart(3, "0");
+
+    // 最終的なファイル名：「プロンプト_001.png」形式
+    return `${cleanPrompt}_${paddedRow}.png`;
+  } catch (error) {
+    console.error("ファイル名生成エラー:", error);
+    return `画像_${String(rowNumber).padStart(3, "0")}.png`;
   }
 }
 
@@ -3792,9 +3825,7 @@ function downloadSelectedImageUrls() {
 
           const imageData = {
             url: urlMatch[1],
-            filename: `${prompt
-              .substring(0, 50)
-              .replace(/[^\w\s-]/g, "")}_${i}.png`,
+            filename: createSimpleFilename(prompt, i),
             row: i,
           };
 
@@ -3906,12 +3937,9 @@ function downloadSelectedImagesAsZip() {
           const fullPrompt = getFullPrompt(sheet, i);
           const prompt = fullPrompt || `画像_${i}`;
 
-          // ファイル名をASCII安全な文字に変換
-          const safeFilename = `image_${i}_${Date.now()}.png`;
-
           selectedImages.push({
             url: urlMatch[1],
-            filename: safeFilename,
+            filename: createSimpleFilename(prompt, i),
             row: i,
             originalPrompt: prompt,
           });
@@ -4765,10 +4793,7 @@ function downloadSelectedLibraryImages() {
           if (urlMatch && urlMatch[1]) {
             selectedImages.push({
               url: urlMatch[1],
-              filename: `${prompt
-                .toString()
-                .substring(0, 50)
-                .replace(/[^\w\s-]/g, "")}_library_${i}.png`,
+              filename: createSimpleFilename(prompt.toString(), i),
               row: i,
             });
             selectedCount++;
