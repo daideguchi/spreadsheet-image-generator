@@ -25,6 +25,7 @@ function onOpen() {
     .addItem("🔧 新規プロジェクト作成", "initialSetup")
     .addSeparator()
     .addItem("🎯 共通プロンプト管理シートを作成", "createCommonPromptSheetMenu")
+    .addItem("📊 整列", "alignQualitySettings")
     .addSeparator()
     .addItem("💾 バックアップ作成", "createBackupAndNewTable")
     .addItem("🧹 全データをリセット", "clearSheetMenu")
@@ -729,8 +730,8 @@ function generateImagesFromStructuredTable() {
           return; // この行をスキップ
         }
 
-        // J列から画質設定を取得
-        const qualityCell = sheet.getRange(actualRow, 10); // J列（画質列）
+        // H列から画質設定を取得
+        const qualityCell = sheet.getRange(actualRow, 8); // H列（画質列）
         let quality = qualityCell.getValue();
 
         // 画質設定の検証とデフォルト値の設定
@@ -935,27 +936,8 @@ function populateStructuredTable(imageResults, promptRows) {
           SpreadsheetApp.BorderStyle.DASHED
         ); // 📱 視覚改善: 破線境界線
 
-        // H列: ステータス（自動生成エリア）
-        const statusCell = sheet.getRange(row, 8);
-        statusCell.setValue("✅ GPT-Image-1");
-        statusCell.setHorizontalAlignment("center");
-        statusCell.setVerticalAlignment("middle");
-        statusCell.setFontWeight("bold");
-        statusCell.setFontColor("#4caf50"); // 📱 視覚改善: 成功を示す緑色フォント
-        statusCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアのグレー
-
-        // 💡 改善要求: 画像設定完了後にライブラリ記録（画像確実コピーのため）
-        // ライブラリ記録は後で実行（画像設定完了後）
-        statusCell.setBorder(
-          true,
-          true,
-          true,
-          true,
-          true,
-          true,
-          "#bdbdbd",
-          SpreadsheetApp.BorderStyle.DASHED
-        ); // 📱 視覚改善: 破線境界線
+        // H列は画質選択のため、ステータス処理は削除
+        // 画質設定は既にユーザーが設定済みなので上書きしない
       }
 
       // プロンプト情報の処理（UX改善版）
@@ -1388,8 +1370,8 @@ function regenerateSelectedImages() {
         const fullPrompt = getFullPrompt(sheet, i);
 
         if (fullPrompt && fullPrompt.trim() !== "") {
-          // J列から画質設定を取得
-          const qualityCell = sheet.getRange(i, 10); // J列（画質列）
+          // H列から画質設定を取得
+          const qualityCell = sheet.getRange(i, 8); // H列（画質列）
           let quality = qualityCell.getValue();
 
           // 画質設定の検証とデフォルト値の設定
@@ -1430,12 +1412,12 @@ function regenerateSelectedImages() {
       `${selectedPrompts.length}個の選択されたプロンプトを再生成します`
     );
 
-    // 選択された行のステータスを「再生成中」に更新
+    // G列（生成日時）に再生成中を表示
     selectedRows.forEach((row) => {
-      const statusCell = sheet.getRange(row, 7); // G列（ステータス）
-      statusCell.setValue("🔄 再生成中");
-      statusCell.setBackground("#fff3e0");
-      statusCell.setFontColor("#ef6c00");
+      const timeCell = sheet.getRange(row, 7); // G列（生成日時）
+      timeCell.setValue("🔄 再生成中");
+      timeCell.setBackground("#fff3e0");
+      timeCell.setFontColor("#ef6c00");
     });
 
     // 画像を再生成
@@ -2788,9 +2770,8 @@ function createStructuredTable() {
       "🖼️ 生成画像", // E列: 画像
       "📐 画像比率", // F列: 比率
       "⏰ 生成日時", // G列: 日時
-      "✅ ステータス", // H列: ステータス
+      "🎨 画質", // H列: 画質選択（high/medium/low）
       "☑️ 選択", // I列: チェックボックス
-      "🎨 画質", // J列: 画質選択（high/medium/low）
     ];
 
     const headerRange = sheet.getRange(1, 1, 1, headers.length);
@@ -2808,8 +2789,8 @@ function createStructuredTable() {
     // ユーザー入力エリア（明るい色）
     sheet.getRange(1, 2).setBackground("#4caf50"); // B列: プロンプト入力（緑）
     sheet.getRange(1, 3).setBackground("#ff9800"); // C列: 共通プロンプト選択（オレンジ）
+    sheet.getRange(1, 8).setBackground("#9c27b0"); // H列: 画質選択（紫）
     sheet.getRange(1, 9).setBackground("#4caf50"); // I列: 選択（緑）
-    sheet.getRange(1, 10).setBackground("#9c27b0"); // J列: 画質選択（紫）
 
     // 自動生成エリア（グレー系）
     sheet.getRange(1, 1).setBackground("#757575"); // A列: 番号（グレー）
@@ -2817,9 +2798,8 @@ function createStructuredTable() {
     sheet.getRange(1, 5).setBackground("#757575"); // E列: 画像（グレー）
     sheet.getRange(1, 6).setBackground("#757575"); // F列: 比率（グレー）
     sheet.getRange(1, 7).setBackground("#757575"); // G列: 日時（グレー）
-    sheet.getRange(1, 8).setBackground("#757575"); // H列: ステータス（グレー）
 
-    // 列幅の最適化（10列構造）- 結合プロンプト列を拡張
+    // 列幅の最適化（9列構造）- 結合プロンプト列を拡張
     sheet.setColumnWidth(1, 60); // A: No.
     sheet.setColumnWidth(2, 250); // B: 個別プロンプト
     sheet.setColumnWidth(3, 150); // C: 共通プロンプト選択
@@ -2827,9 +2807,8 @@ function createStructuredTable() {
     sheet.setColumnWidth(5, 220); // E: 画像
     sheet.setColumnWidth(6, 100); // F: 比率
     sheet.setColumnWidth(7, 140); // G: 日時
-    sheet.setColumnWidth(8, 100); // H: ステータス
+    sheet.setColumnWidth(8, 100); // H: 画質選択
     sheet.setColumnWidth(9, 80); // I: 選択
-    sheet.setColumnWidth(10, 100); // J: 画質選択
 
     console.log("ヘッダー行と列幅を設定完了");
 
@@ -2961,44 +2940,8 @@ function createStructuredTable() {
           SpreadsheetApp.BorderStyle.DASHED
         ); // 📱 視覚改善: 破線の境界線
 
-        // H列: ステータス（自動生成エリア）- テキスト折り返し対応
-        const statusCell = sheet.getRange(row, 8);
-        statusCell.setBackground("#f5f5f5"); // 📱 視覚改善: 自動生成エリアをグレーアウト
-        statusCell.setFontColor("#757575"); // 📱 視覚改善: フォント色を控えめに
-        statusCell.setWrap(true); // 🔧 テキスト折り返しを有効化
-        statusCell.setVerticalAlignment("top"); // 上寄せで読みやすく
-        statusCell.setNote("✅ ステータス（自動更新・折り返し対応）");
-        statusCell.setBorder(
-          true,
-          true,
-          true,
-          true,
-          true,
-          true,
-          "#bdbdbd",
-          SpreadsheetApp.BorderStyle.DASHED
-        ); // 📱 視覚改善: 破線の境界線
-
-        // I列: チェックボックス（ユーザー入力エリア）
-        const checkboxCell = sheet.getRange(row, 9);
-        checkboxCell.insertCheckboxes();
-        checkboxCell.setHorizontalAlignment("center");
-        checkboxCell.setVerticalAlignment("middle");
-        checkboxCell.setBackground("#e8f5e8"); // 📱 視覚改善: 操作エリアを明るい緑色に
-        checkboxCell.setBorder(
-          true,
-          true,
-          true,
-          true,
-          true,
-          true,
-          "#4caf50",
-          SpreadsheetApp.BorderStyle.SOLID
-        ); // 📱 視覚改善: 緑色の境界線
-        checkboxCell.setNote("☑️ 選択・操作エリア");
-
-        // J列: 画質選択（ユーザー入力エリア）
-        const qualityCell = sheet.getRange(row, 10);
+        // H列: 画質選択（ユーザー入力エリア）
+        const qualityCell = sheet.getRange(row, 8);
         qualityCell.setValue("high"); // デフォルト値を高品質に設定
         qualityCell.setHorizontalAlignment("center");
         qualityCell.setVerticalAlignment("middle");
@@ -3018,6 +2961,24 @@ function createStructuredTable() {
         qualityCell.setNote(
           "🎨 画質を選択してください\n🔥 high: 高品質（推奨）\n⚡ medium: 中品質\n💨 low: 低品質（高速）"
         );
+
+        // I列: チェックボックス（ユーザー入力エリア）
+        const checkboxCell = sheet.getRange(row, 9);
+        checkboxCell.insertCheckboxes();
+        checkboxCell.setHorizontalAlignment("center");
+        checkboxCell.setVerticalAlignment("middle");
+        checkboxCell.setBackground("#e8f5e8"); // 📱 視覚改善: 操作エリアを明るい緑色に
+        checkboxCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#4caf50",
+          SpreadsheetApp.BorderStyle.SOLID
+        ); // 📱 視覚改善: 緑色の境界線
+        checkboxCell.setNote("☑️ 選択・操作エリア");
 
         // 行の高さを固定（UX改善 + 結合プロンプト縦幅制限）
         sheet.setRowHeight(row, 50); // 🔧 結合プロンプト省略表示対応で50pxに戻す
@@ -3064,10 +3025,10 @@ function createStructuredTable() {
     // 完了メッセージを下部に追加
     try {
       const messageRow = 103;
-      const messageRange = sheet.getRange(messageRow, 1, 1, 10);
+      const messageRange = sheet.getRange(messageRow, 1, 1, 9);
       messageRange.merge();
       messageRange.setValue(
-        `✨ テーブルを作成しました！\n🟢 緑色・紫色・オレンジ色エリア = 入力・操作エリア  |  🔘 グレーエリア = 自動生成・読み取り専用`
+        `✨ テーブルを作成しました！\n🟢 緑色・🟣紫色・🟠オレンジ色エリア = 入力・操作エリア  |  🔘 グレーエリア = 自動生成・読み取り専用`
       );
       messageRange.setBackground("#e8f5e8");
       messageRange.setFontColor("#2e7d32");
@@ -3092,6 +3053,106 @@ function createStructuredTable() {
 }
 
 /**
+ * 📊 整列: H列の画質設定を一括置き換え
+ */
+function alignQualitySettings() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+
+    // 画質選択のダイアログを表示
+    const response = ui.alert(
+      "📊 画質整列機能",
+      "H列（画質）の全ての値を一括で設定します。\n\n" +
+        "🔥 high: 高品質（推奨・コスト高）\n" +
+        "⚡ medium: 中品質（バランス）\n" +
+        "💨 low: 低品質（高速・コスト安）\n\n" +
+        "どの画質に統一しますか？",
+      ui.ButtonSet.YES_NO_CANCEL
+    );
+
+    if (response === ui.Button.CANCEL) {
+      return "キャンセルされました";
+    }
+
+    // 画質選択のダイアログ
+    let selectedQuality = "high"; // デフォルト
+    if (response === ui.Button.YES) {
+      // 高品質を選択
+      selectedQuality = "high";
+    } else if (response === ui.Button.NO) {
+      // 詳細選択ダイアログを表示
+      const detailResponse = ui.alert(
+        "📊 詳細画質選択",
+        "画質を選択してください：\n\n" +
+          "はい = ⚡ medium（中品質・バランス）\n" +
+          "いいえ = 💨 low（低品質・高速・コスト安）\n" +
+          "キャンセル = 🔥 high（高品質・推奨）",
+        ui.ButtonSet.YES_NO_CANCEL
+      );
+
+      if (detailResponse === ui.Button.YES) {
+        selectedQuality = "medium";
+      } else if (detailResponse === ui.Button.NO) {
+        selectedQuality = "low";
+      } else {
+        selectedQuality = "high";
+      }
+    }
+
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      ui.alert(
+        "エラー",
+        "データが見つかりません。\n先に構造化テーブルを作成してください。",
+        ui.ButtonSet.OK
+      );
+      return "データが見つかりません";
+    }
+
+    // H列（画質列）の全てを選択した画質に設定
+    const qualityRange = sheet.getRange(2, 8, lastRow - 1, 1); // H2:H(lastRow)
+
+    console.log(`📊 整列実行: H2:H${lastRow} を「${selectedQuality}」に設定`);
+
+    // 一括で画質を設定
+    const qualityValues = [];
+    for (let i = 0; i < lastRow - 1; i++) {
+      qualityValues.push([selectedQuality]);
+    }
+    qualityRange.setValues(qualityValues);
+
+    // 成功メッセージ
+    const qualityEmoji =
+      selectedQuality === "high"
+        ? "🔥"
+        : selectedQuality === "medium"
+        ? "⚡"
+        : "💨";
+    const successMessage = `✅ 画質整列完了！\n\n${qualityEmoji} 全${
+      lastRow - 1
+    }行を「${selectedQuality}」に統一しました`;
+
+    ui.alert("📊 整列完了", successMessage, ui.ButtonSet.OK);
+
+    console.log(
+      `✅ 画質整列完了: ${lastRow - 1}行を「${selectedQuality}」に設定`
+    );
+    return successMessage;
+  } catch (error) {
+    console.error("📊 整列機能エラー:", error);
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      "エラー",
+      `画質整列に失敗しました:\n${error.message}`,
+      ui.ButtonSet.OK
+    );
+    throw new Error(`画質整列に失敗しました: ${error.message}`);
+  }
+}
+
+/**
  * 画質選択のプルダウン設定
  */
 function setupQualityValidation() {
@@ -3103,8 +3164,8 @@ function setupQualityValidation() {
     // 画質の選択肢を定義
     const qualityOptions = ["high", "medium", "low"];
 
-    // J列（画質選択）にプルダウンを設定（2-101行目）
-    const validationRange = sheet.getRange(2, 10, 100, 1); // J2:J101
+    // H列（画質選択）にプルダウンを設定（2-101行目）
+    const validationRange = sheet.getRange(2, 8, 100, 1); // H2:H101
 
     // データ検証ルールを作成
     const rule = SpreadsheetApp.newDataValidation()
