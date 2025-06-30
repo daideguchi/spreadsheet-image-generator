@@ -1542,10 +1542,20 @@ function getSheetState() {
  */
 function onEdit(e) {
   try {
+    // 🚨🚨🚨 超重要デバッグ: onEdit実行確認
+    console.log("🔥🔥🔥 onEdit関数が実行されました！🔥🔥🔥");
+
     const range = e.range;
     const sheet = range.getSheet();
     const row = range.getRow();
     const col = range.getColumn();
+
+    // 🔍 詳細情報ログ
+    console.log(`📝 編集位置: シート="${sheet.getName()}" 行=${row} 列=${col}`);
+    console.log(`🎯 セル: ${range.getA1Notation()}`);
+    console.log(
+      `💾 値: "${range.getValue()}" (型: ${typeof range.getValue()})`
+    );
 
     // メインシートでの編集のみ処理（共通プロンプト設定シートは除外）
     if (sheet.getName() === "共通プロンプト設定") {
@@ -1602,10 +1612,10 @@ function onEdit(e) {
         const finalResult = sheet.getRange(row, 4).getValue();
         console.log(`✅ B列自動更新完了 行${row}: D列="${finalResult}"`);
       } else if (col === 3) {
-        // C列（共通プロンプト選択）の編集 - 強化版
+        // 🚀 C列（共通プロンプト選択）の編集 - 限界突破自動更新版
         const newValue = range.getValue();
         console.log(
-          `📋 C列変更検出: "${newValue}" → 結合プロンプト更新実行 行${row}`
+          `🔥 C列変更検出: "${newValue}" → 結合プロンプト更新実行 行${row}`
         );
 
         // 💡 追加デバッグ: 共通プロンプトの値を詳細確認
@@ -1613,15 +1623,26 @@ function onEdit(e) {
           `🔍 C列詳細確認 - 行${row}: 型=${typeof newValue}, 値="${newValue}"`
         );
 
+        // 💡 強化修正: 即座に1回目の更新
+        console.log(`🚀 Step1: C列→D列即座更新 行${row}`);
+        updateCombinedPrompt(sheet, row);
+
         // 💡 強化修正: C列変更時は0.1秒遅延後に確実更新（プルダウン選択完了を待つ）
         Utilities.sleep(100);
+        console.log(`🚀 Step2: C列→D列遅延更新 行${row}`);
         updateCombinedPrompt(sheet, row);
 
         // 💡 更なる確実性: 直後にもう一度更新（プルダウン値の反映を確実に）
         Utilities.sleep(50);
         const finalValue = sheet.getRange(row, 3).getValue();
-        console.log(`🔄 C列最終確認 - 行${row}: "${finalValue}" で再更新`);
+        console.log(
+          `🚀 Step3: C列最終確認 - 行${row}: "${finalValue}" で再更新`
+        );
         updateCombinedPrompt(sheet, row);
+
+        // 🔥 最終確認ログ
+        const finalResult = sheet.getRange(row, 4).getValue();
+        console.log(`✅ C列自動更新完了 行${row}: D列="${finalResult}"`);
       }
     }
   } catch (error) {
@@ -1711,6 +1732,69 @@ function getFullPrompt(sheet, row) {
   } catch (error) {
     console.error(`行${row}の完全プロンプト取得エラー:`, error);
     return "";
+  }
+}
+
+/**
+ * 🚀 限界突破：全行の結合プロンプト一括更新（手動実行機能）
+ */
+function updateAllCombinedPrompts() {
+  try {
+    console.log("🔥🔥🔥 全行結合プロンプト一括更新を開始 🔥🔥🔥");
+
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      console.log("⚠️ データが存在しません");
+      return;
+    }
+
+    let updatedCount = 0;
+
+    // 2行目から最終行まで全て処理
+    for (let row = 2; row <= lastRow; row++) {
+      const bValue = sheet.getRange(row, 2).getValue(); // B列
+      const cValue = sheet.getRange(row, 3).getValue(); // C列
+
+      // B列またはC列に何かデータがある行のみ処理
+      if (
+        (bValue !== null &&
+          bValue !== undefined &&
+          bValue.toString().trim() !== "") ||
+        (cValue !== null &&
+          cValue !== undefined &&
+          cValue.toString().trim() !== "")
+      ) {
+        console.log(`🔄 行${row}の結合プロンプト更新中...`);
+        console.log(`   B列: "${bValue}"`);
+        console.log(`   C列: "${cValue}"`);
+
+        // 結合プロンプトを更新
+        updateCombinedPrompt(sheet, row);
+        updatedCount++;
+
+        // 結果確認
+        const dValue = sheet.getRange(row, 4).getValue();
+        console.log(`   ✅ 更新完了 D列: "${dValue}"`);
+      }
+    }
+
+    console.log(`🎉 一括更新完了: ${updatedCount}行を更新しました`);
+
+    // 成功メッセージ表示
+    SpreadsheetApp.getUi().alert(
+      "✅ 結合プロンプト一括更新完了",
+      `${updatedCount}行の結合プロンプトを更新しました。\n\nD列をご確認ください。`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (error) {
+    console.error("全行結合プロンプト更新エラー:", error);
+    SpreadsheetApp.getUi().alert(
+      "❌ エラー",
+      `結合プロンプトの一括更新でエラーが発生しました：\n${error.message}`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
   }
 }
 
