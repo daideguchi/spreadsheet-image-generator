@@ -732,12 +732,15 @@ function generateImagesFromStructuredTable() {
 
         // H列から画質設定を取得
         const qualityCell = sheet.getRange(actualRow, 8); // H列（画質列）
-        let quality = qualityCell.getValue();
+        let displayQuality = qualityCell.getValue();
+
+        // 表示値をAPI値に変換
+        let quality = parseQualityValue(displayQuality);
 
         // 画質設定の検証とデフォルト値の設定
         if (!quality || !["high", "medium", "low"].includes(quality)) {
           quality = "high"; // デフォルトは高品質
-          qualityCell.setValue("high"); // セルにもデフォルト値を設定
+          qualityCell.setValue(formatQualityDisplay("high")); // セルにもデフォルト表示値を設定
           console.log(`行${actualRow}: 画質設定が無効のため "high" に設定`);
         }
 
@@ -1372,12 +1375,15 @@ function regenerateSelectedImages() {
         if (fullPrompt && fullPrompt.trim() !== "") {
           // H列から画質設定を取得
           const qualityCell = sheet.getRange(i, 8); // H列（画質列）
-          let quality = qualityCell.getValue();
+          let displayQuality = qualityCell.getValue();
+
+          // 表示値をAPI値に変換
+          let quality = parseQualityValue(displayQuality);
 
           // 画質設定の検証とデフォルト値の設定
           if (!quality || !["high", "medium", "low"].includes(quality)) {
             quality = "high"; // デフォルトは高品質
-            qualityCell.setValue("high"); // セルにもデフォルト値を設定
+            qualityCell.setValue(formatQualityDisplay("high")); // セルにもデフォルト表示値を設定
             console.log(`行${i}: 再生成時の画質設定が無効のため "high" に設定`);
           }
 
@@ -2942,7 +2948,7 @@ function createStructuredTable() {
 
         // H列: 画質選択（ユーザー入力エリア）
         const qualityCell = sheet.getRange(row, 8);
-        qualityCell.setValue("high"); // デフォルト値を高品質に設定
+        qualityCell.setValue(formatQualityDisplay("high")); // デフォルト値を高品質表示に設定
         qualityCell.setHorizontalAlignment("center");
         qualityCell.setVerticalAlignment("middle");
         qualityCell.setFontSize(10);
@@ -3116,10 +3122,10 @@ function alignQualitySettings() {
 
     console.log(`📊 整列実行: H2:H${lastRow} を「${selectedQuality}」に設定`);
 
-    // 一括で画質を設定
+    // 一括で画質を設定（表示形式で）
     const qualityValues = [];
     for (let i = 0; i < lastRow - 1; i++) {
-      qualityValues.push([selectedQuality]);
+      qualityValues.push([formatQualityDisplay(selectedQuality)]);
     }
     qualityRange.setValues(qualityValues);
 
@@ -3153,6 +3159,41 @@ function alignQualitySettings() {
 }
 
 /**
+ * 画質表示値をAPI値に変換
+ */
+function parseQualityValue(displayValue) {
+  if (!displayValue) return "high"; // デフォルト
+
+  const value = displayValue.toString().toLowerCase();
+  if (value.includes("high")) return "high";
+  if (value.includes("medium")) return "medium";
+  if (value.includes("low")) return "low";
+
+  // 従来の値もサポート（後方互換性）
+  if (value === "high" || value === "medium" || value === "low") {
+    return value;
+  }
+
+  return "high"; // デフォルト
+}
+
+/**
+ * API値を画質表示値に変換
+ */
+function formatQualityDisplay(apiValue) {
+  switch (apiValue) {
+    case "high":
+      return "🔥 high（高品質）";
+    case "medium":
+      return "⚡ medium（中品質）";
+    case "low":
+      return "💨 low（低品質）";
+    default:
+      return "🔥 high（高品質）";
+  }
+}
+
+/**
  * 画質選択のプルダウン設定
  */
 function setupQualityValidation() {
@@ -3161,8 +3202,12 @@ function setupQualityValidation() {
 
     console.log("画質選択のプルダウン設定を開始");
 
-    // 画質の選択肢を定義
-    const qualityOptions = ["high", "medium", "low"];
+    // 画質の選択肢を定義（視認性向上版）
+    const qualityOptions = [
+      "🔥 high（高品質）",
+      "⚡ medium（中品質）",
+      "💨 low（低品質）",
+    ];
 
     // H列（画質選択）にプルダウンを設定（2-101行目）
     const validationRange = sheet.getRange(2, 8, 100, 1); // H2:H101
