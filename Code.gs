@@ -124,43 +124,20 @@ function showSidebar() {
   } catch (error) {
     console.error("サイドバー表示エラー:", error);
 
-    // 🚨 権限エラーの場合のみ権限承認アラート表示
+    // 🔐 権限エラーはサイレント処理（アラート表示削除）
     if (
       error.message.includes("container.ui") ||
       error.message.includes("permissions")
     ) {
-      // 権限チェックが見逃したケースの緊急対応
-      try {
-        SpreadsheetApp.getUi().alert(
-          "🔐 権限承認が必要です",
-          "サイドバーの表示に権限承認が必要です。\n\n" +
-            "📋 手順:\n" +
-            "1️⃣ メニューから「🎨 画像ツール」→「🔐 権限承認を実行」\n" +
-            "2️⃣ 承認ダイアログで「許可」をクリック\n" +
-            "3️⃣ 再度サイドバーを開く\n\n" +
-            "💡 権限承認は初回のみ必要です。",
-          SpreadsheetApp.getUi().ButtonSet.OK
-        );
-      } catch (alertError) {
-        console.error("緊急権限アラート表示エラー:", alertError);
-      }
+      // 権限不足の場合はコンソールログのみ
+      console.log("🔐 権限不足: サイドバー表示をスキップしました");
+      console.log("💡 メニューから「🔐 権限承認を実行」で権限承認が可能です");
     } else {
-      // その他のエラー
-      try {
-        SpreadsheetApp.getUi().alert(
-          "❌ エラー",
-          "サイドバーの表示に失敗しました:\n" +
-            error.message +
-            "\n\n" +
-            "💡 解決方法:\n" +
-            "1️⃣ ページをリロードして再実行\n" +
-            "2️⃣ ブラウザのキャッシュをクリア\n" +
-            "3️⃣ しばらく時間をおいて再実行",
-          SpreadsheetApp.getUi().ButtonSet.OK
-        );
-      } catch (alertError) {
-        console.error("エラーアラート表示エラー:", alertError);
-      }
+      // その他のエラーもコンソールログのみ
+      console.error("❌ サイドバー表示エラー:", error.message);
+      console.log(
+        "💡 解決方法: ページリロード、キャッシュクリア、時間をおいて再実行"
+      );
     }
   }
 }
@@ -2109,35 +2086,17 @@ function showPermissionAlertIfNeeded() {
 
   // 権限が不足している場合のみアラート表示
   if (permissionCheck.needsAlert) {
-    try {
-      const ui = SpreadsheetApp.getUi();
-      const missingList = permissionCheck.missingPermissions
-        ? permissionCheck.missingPermissions.join("、")
-        : "不明";
+    // 🔐 権限不足時もアラート表示を削除（コンソールログのみ）
+    const missingList = permissionCheck.missingPermissions
+      ? permissionCheck.missingPermissions.join("、")
+      : "不明";
 
-      ui.alert(
-        "🔐 権限承認が必要です",
-        "ツールを使用するために以下の権限承認が必要です：\n\n" +
-          `❌ 不足している権限: ${missingList}\n\n` +
-          "📋 承認手順:\n" +
-          "1️⃣ 表示される承認ダイアログで「許可を確認」をクリック\n" +
-          "2️⃣ Googleアカウントを選択\n" +
-          "3️⃣ 「安全ではないアプリ」警告が出た場合:\n" +
-          "   • 「詳細」をクリック\n" +
-          "   • 「〜に移動（安全ではないページ）」をクリック\n" +
-          "4️⃣ 「許可」をクリック\n\n" +
-          "✅ 承認完了後の開始手順:\n" +
-          "📋 メニュー「🎨 画像ツール」→「📱 サイドバーを開く」\n\n" +
-          "💡 権限承認は初回のみ必要です。",
-        ui.ButtonSet.OK
-      );
+    console.log("🔐 権限不足検出:", missingList);
+    console.log("💡 権限承認手順: メニューから「🔐 権限承認を実行」");
+    console.log("💡 承認後の手順: メニューから「📱 サイドバーを開く」");
 
-      console.log("🚨 権限不足アラートを表示しました");
-      return { success: false, alerted: true };
-    } catch (alertError) {
-      console.error("権限アラート表示エラー:", alertError);
-      return { success: false, alerted: false, error: alertError.message };
-    }
+    // アラート表示を削除、サイレント処理
+    return { success: false, alerted: false };
   }
 
   return { success: true, alerted: false };
@@ -2233,20 +2192,12 @@ function forcePermissionRequest() {
     // 権限承認完了を記録
     markPermissionGranted();
 
-    // 🚨 権限承認完了時は条件付きアラート（権限不足の場合のみ表示）
+    // 🔐 権限承認完了チェック（アラート表示削除）
     const finalCheck = checkAndHandlePermissions();
     if (!finalCheck.granted) {
-      // まだ権限が不足している場合のみアラート表示
-      ui.alert(
-        "⚠️ 権限承認未完了",
-        "一部の権限承認が完了していません。\n\n" +
-          "🔄 以下を再実行してください：\n" +
-          "1️⃣ ブラウザをリロード\n" +
-          "2️⃣ メニューから「🔐 権限承認を実行」を再実行\n" +
-          "3️⃣ 承認ダイアログで「許可」をクリック\n\n" +
-          "💡 権限承認後はサイレントで動作します。",
-        ui.ButtonSet.OK
-      );
+      // 権限不足時もアラート表示なし、コンソールログのみ
+      console.log("⚠️ 権限承認未完了: 一部の権限が不足しています");
+      console.log("💡 解決方法: ブラウザリロード → 権限承認再実行");
     } else {
       // 権限承認完了: 最小限の成功メッセージ
       console.log("🎉 権限承認完了: 今後はサイレント動作");
@@ -2255,23 +2206,12 @@ function forcePermissionRequest() {
     return "✅ 権限承認が完了しました";
   } catch (error) {
     console.error("権限承認エラー:", error);
-
-    SpreadsheetApp.getUi().alert(
-      "🔐 権限承認が必要です",
-      "以下の手順で権限を承認してください：\n\n" +
-        "1️⃣ 表示されるダイアログで「許可を確認」をクリック\n" +
-        "2️⃣ Googleアカウントを選択\n" +
-        "3️⃣ 「安全ではないアプリ」の警告が出た場合：\n" +
-        "   ・「詳細」をクリック\n" +
-        "   ・「〜に移動（安全ではないページ）」をクリック\n" +
-        "4️⃣ 「許可」をクリック\n\n" +
-        "✅ 権限承認後の開始手順：\n" +
-        "📋 メニューから「🎨 画像ツール」→「📱 サイドバーを開く」\n\n" +
-        "エラー詳細: " +
-        error.message,
-      SpreadsheetApp.getUi().ButtonSet.OK
+    console.log(
+      "💡 権限承認手順: メニューから「🔐 権限承認を実行」を再実行してください"
     );
+    console.log("💡 承認後の手順: メニューから「📱 サイドバーを開く」");
 
+    // アラート表示を削除、コンソールログのみで対応
     throw error; // エラーを再スローして権限ダイアログを表示
   }
 }
