@@ -1592,16 +1592,17 @@ function onEdit(e) {
       console.log(`🔄 編集検出: 行${row}列${col} - 結合プロンプト更新を開始`);
 
       if (col === 2) {
-        // B列（個別プロンプト）の編集 - 入力の都度必ず実行
+        // 🚀 B列（個別プロンプト）の編集 - 限界突破自動更新版
         const promptValue = range.getValue();
         console.log(`📝 B列入力検出: "${promptValue}" (行${row})`);
 
-        // 💡 改修: B列に何かが入力されたら必ず結合プロンプトを更新
-        // 空文字や削除の場合も含めて処理
+        // 💡 完全自動化: B列に何かが入力されたら即座に結合プロンプト更新
+        console.log(`🚀 限界突破: B列→D列自動更新開始 行${row}`);
+
+        // Step 1: プロンプト処理（入力があった場合）
         if (promptValue !== null && promptValue !== undefined) {
           const promptText = promptValue.toString().trim();
           if (promptText !== "") {
-            // 非空の場合はプロンプト処理も実行
             console.log(`✅ B列プロンプト処理実行: "${promptText}"`);
             handleIndividualPromptInput(sheet, row, promptText);
           } else {
@@ -1611,12 +1612,38 @@ function onEdit(e) {
           }
         }
 
-        // 💡 重要改修: B列入力時は必ず結合プロンプトを更新（即座実行）
-        console.log(`🔄 B列入力による結合プロンプト更新実行: 行${row}`);
+        // Step 2: 即座に結合プロンプト更新
+        console.log(`🔄 即座実行: B列入力→D列結合プロンプト更新 行${row}`);
         updateCombinedPrompt(sheet, row);
+
+        // Step 3: 確実性のための遅延再更新（プロンプト処理完了後）
+        console.log(`🔄 遅延確認: 0.2秒後にD列再更新 行${row}`);
+        Utilities.sleep(200);
+        updateCombinedPrompt(sheet, row);
+
+        // Step 4: 最終確認ログ
+        const finalResult = sheet.getRange(row, 4).getValue();
+        console.log(`✅ B列自動更新完了 行${row}: D列="${finalResult}"`);
       } else if (col === 3) {
-        // C列（共通プロンプト選択）の編集
-        console.log(`📋 C列変更検出: 結合プロンプト更新実行 行${row}`);
+        // C列（共通プロンプト選択）の編集 - 強化版
+        const newValue = range.getValue();
+        console.log(
+          `📋 C列変更検出: "${newValue}" → 結合プロンプト更新実行 行${row}`
+        );
+
+        // 💡 追加デバッグ: 共通プロンプトの値を詳細確認
+        console.log(
+          `🔍 C列詳細確認 - 行${row}: 型=${typeof newValue}, 値="${newValue}"`
+        );
+
+        // 💡 強化修正: C列変更時は0.1秒遅延後に確実更新（プルダウン選択完了を待つ）
+        Utilities.sleep(100);
+        updateCombinedPrompt(sheet, row);
+
+        // 💡 更なる確実性: 直後にもう一度更新（プルダウン値の反映を確実に）
+        Utilities.sleep(50);
+        const finalValue = sheet.getRange(row, 3).getValue();
+        console.log(`🔄 C列最終確認 - 行${row}: "${finalValue}" で再更新`);
         updateCombinedPrompt(sheet, row);
       }
     }
@@ -1718,8 +1745,21 @@ function updateCombinedPrompt(sheet, row) {
     const individualPrompt = sheet.getRange(row, 2).getValue(); // B列：個別プロンプト
     const commonPromptName = sheet.getRange(row, 3).getValue(); // C列：共通プロンプト選択
 
+    // 💡 詳細デバッグ: 結合前の値を確認
+    console.log(
+      `🔍 行${row}結合前: B列="${individualPrompt}" (型:${typeof individualPrompt})`
+    );
+    console.log(
+      `🔍 行${row}結合前: C列="${commonPromptName}" (型:${typeof commonPromptName})`
+    );
+
     // 結合プロンプトを生成
     const combinedPrompt = combinePrompts(individualPrompt, commonPromptName);
+    console.log(
+      `🔄 行${row}結合結果: "${combinedPrompt}" (長さ:${
+        combinedPrompt?.length || 0
+      }文字)`
+    );
 
     // D列に結合プロンプトを設定
     const combinedCell = sheet.getRange(row, 4);
@@ -2868,6 +2908,16 @@ function createStructuredTable() {
     // 共通プロンプト機能を初期設定
     setupCommonPromptValidation();
 
+    // 🚀 限界突破: 全行の結合プロンプト自動初期化
+    try {
+      console.log("🔄 全行の結合プロンプト自動初期化を開始");
+      initializeAllCombinedPrompts(sheet);
+      console.log("✅ 全行の結合プロンプト自動初期化が完了");
+    } catch (initError) {
+      console.error("❌ 結合プロンプト初期化エラー:", initError);
+      // エラーでもメイン機能は続行
+    }
+
     // 🆕 バージョン記録シートも自動作成
     try {
       getOrCreateVersionSheet();
@@ -2997,6 +3047,63 @@ function getCommonPromptOptions() {
     console.error("❌ 共通プロンプト選択肢取得エラー:", error);
     // エラーの場合はデフォルト選択肢のみ返す
     return ["なし"];
+  }
+}
+
+/**
+ * 🚀 全行の結合プロンプト自動初期化（完全自動化）
+ * 構造化テーブル作成後に全行の結合プロンプトを自動設定
+ */
+function initializeAllCombinedPrompts(sheet = null) {
+  try {
+    if (!sheet) {
+      sheet = SpreadsheetApp.getActiveSheet();
+    }
+
+    console.log("🔄 全行結合プロンプト自動初期化開始");
+    let updatedCount = 0;
+    let skippedCount = 0;
+
+    // 2行目から101行目まで全行をチェック
+    for (let row = 2; row <= 101; row++) {
+      try {
+        const individualPrompt = sheet.getRange(row, 2).getValue(); // B列
+        const commonPromptName = sheet.getRange(row, 3).getValue(); // C列
+
+        // B列またはC列に値がある場合のみ結合プロンプトを設定
+        if (
+          (individualPrompt && individualPrompt.toString().trim() !== "") ||
+          (commonPromptName &&
+            commonPromptName.toString().trim() !== "" &&
+            commonPromptName.toString().trim() !== "なし")
+        ) {
+          console.log(
+            `🔄 行${row}結合プロンプト初期化: B="${individualPrompt}" C="${commonPromptName}"`
+          );
+          updateCombinedPrompt(sheet, row);
+          updatedCount++;
+
+          // 10行ごとに進捗表示
+          if (updatedCount % 10 === 0) {
+            console.log(`📊 進捗: ${updatedCount}行更新完了`);
+          }
+        } else {
+          skippedCount++;
+          // 空行は詳細ログなし（スパム防止）
+        }
+      } catch (rowError) {
+        console.error(`❌ 行${row}の結合プロンプト初期化エラー:`, rowError);
+        // 個別行のエラーは続行
+      }
+    }
+
+    console.log(
+      `✅ 全行結合プロンプト自動初期化完了: 更新${updatedCount}行, スキップ${skippedCount}行`
+    );
+    return { updated: updatedCount, skipped: skippedCount };
+  } catch (error) {
+    console.error("❌ 全行結合プロンプト初期化エラー:", error);
+    throw error;
   }
 }
 
