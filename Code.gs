@@ -4079,16 +4079,7 @@ function addToImageLibrary(imageData) {
   console.log("🚨🚨🚨 実行時刻:", new Date().toISOString());
   console.log("🚨🚨🚨 呼び出し元:", new Error().stack);
 
-  // 🔥 SUPER CRITICAL: UI即座通知でユーザーに実行を報告
-  try {
-    SpreadsheetApp.getUi().alert(
-      "🚨 画像ライブラリ転記実行中",
-      "addToImageLibrary関数が実行されました！\n画像転記処理を開始します...",
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-  } catch (uiError) {
-    console.log("UI通知エラー:", uiError);
-  }
+  // UI通知は削除（ユーザーの要求により）
 
   // スプレッドシートに直接ログを書き込み（デバッグ用）
   try {
