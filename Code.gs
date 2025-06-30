@@ -1589,20 +1589,34 @@ function onEdit(e) {
 
     // B列（個別プロンプト）またはC列（共通プロンプト選択）の編集をチェック
     if ((col === 2 || col === 3) && row >= 2) {
-      if (col === 2) {
-        // B列（個別プロンプト）の編集
-        const promptValue = range.getValue();
-        if (
-          promptValue &&
-          typeof promptValue === "string" &&
-          promptValue.trim() !== ""
-        ) {
-          handleIndividualPromptInput(sheet, row, promptValue.trim());
-        }
-      }
+      console.log(`🔄 編集検出: 行${row}列${col} - 結合プロンプト更新を開始`);
 
-      if (col === 2 || col === 3) {
-        // B列またはC列の編集時、結合プロンプトを更新
+      if (col === 2) {
+        // B列（個別プロンプト）の編集 - 入力の都度必ず実行
+        const promptValue = range.getValue();
+        console.log(`📝 B列入力検出: "${promptValue}" (行${row})`);
+
+        // 💡 改修: B列に何かが入力されたら必ず結合プロンプトを更新
+        // 空文字や削除の場合も含めて処理
+        if (promptValue !== null && promptValue !== undefined) {
+          const promptText = promptValue.toString().trim();
+          if (promptText !== "") {
+            // 非空の場合はプロンプト処理も実行
+            console.log(`✅ B列プロンプト処理実行: "${promptText}"`);
+            handleIndividualPromptInput(sheet, row, promptText);
+          } else {
+            console.log(
+              `🧹 B列空欄処理: 行${row}のプロンプトがクリアされました`
+            );
+          }
+        }
+
+        // 💡 重要改修: B列入力時は必ず結合プロンプトを更新（即座実行）
+        console.log(`🔄 B列入力による結合プロンプト更新実行: 行${row}`);
+        updateCombinedPrompt(sheet, row);
+      } else if (col === 3) {
+        // C列（共通プロンプト選択）の編集
+        console.log(`📋 C列変更検出: 結合プロンプト更新実行 行${row}`);
         updateCombinedPrompt(sheet, row);
       }
     }
