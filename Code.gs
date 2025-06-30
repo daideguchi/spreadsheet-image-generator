@@ -283,7 +283,7 @@ function enhancePromptForQuality(originalPrompt) {
 }
 
 /**
- * DALL-E APIを使って画像を生成
+ * DALL-E APIを使って画像を生成（画質選択対応）
  */
 function generateImages(prompts) {
   if (!prompts || prompts.length === 0) {
@@ -295,21 +295,39 @@ function generateImages(prompts) {
   const errors = [];
 
   try {
-    prompts.forEach((prompt, index) => {
+    prompts.forEach((promptData, index) => {
+      // promptDataがオブジェクトかどうかを確認（後方互換性のため）
+      let actualPrompt, quality;
+      if (typeof promptData === "object") {
+        actualPrompt = promptData.prompt;
+        quality = promptData.quality || "high";
+      } else {
+        // 文字列の場合は従来通り（後方互換性）
+        actualPrompt = promptData;
+        quality = "high";
+      }
+
       // スタイル・サイズ判定をtryブロックの外で実行（catchブロックからもアクセス可能）
-      const { size: selectedSize } = analyzePromptForOptimalSettings(prompt);
+      const { size: selectedSize } =
+        analyzePromptForOptimalSettings(actualPrompt);
 
       try {
-        console.log(`画像生成中 ${index + 1}/${prompts.length}: ${prompt}`);
+        console.log(
+          `画像生成中 ${index + 1}/${
+            prompts.length
+          }: ${actualPrompt} (画質: ${quality})`
+        );
 
         // 🚨 プロンプト完全無改変の実現
         // ユーザーのプロンプトを一切改変せずそのまま使用
         // GPT-Image-1の自動改変を防ぐため、パラメーター側で制御
-        const finalPrompt = prompt; // ユーザープロンプトを完全にそのまま使用
+        const finalPrompt = actualPrompt; // ユーザープロンプトを完全にそのまま使用
 
         // デバッグ用ログ：送信されるプロンプトを確認
         console.log(`ユーザープロンプト（完全無改変）: ${finalPrompt}`);
-        console.log(`自動設定パラメーター - サイズ: ${selectedSize}`);
+        console.log(
+          `自動設定パラメーター - サイズ: ${selectedSize}, 画質: ${quality}`
+        );
 
         // プロンプト無改変 + テクニック的パラメーター最適化
         const payload = {
@@ -317,7 +335,7 @@ function generateImages(prompts) {
           n: 1,
           size: selectedSize, // 自動サイズ判定
           model: "gpt-image-1", // 🔥 最新モデル復活（32,000文字対応）
-          quality: "high", // 🔥 最新の品質設定（high/medium/low）
+          quality: quality, // 🎨 行ごとの画質設定を適用（high/medium/low）
           background: "auto", // 🔥 背景自動最適化（新機能）
           output_format: "png", // 🔥 PNG出力（新機能）
           moderation: "auto", // 🔥 モデレーション自動（新機能）
@@ -432,11 +450,11 @@ function generateImages(prompts) {
         // 🔍 GPT-Image-1の内部処理を監視（ユーザー情報提供用）
         const revisedPrompt = imageData.revised_prompt;
         if (revisedPrompt) {
-          console.log(`📝 ユーザー入力プロンプト: ${prompt}`);
+          console.log(`📝 ユーザー入力プロンプト: ${actualPrompt}`);
           console.log(`🤖 GPT-Image-1内部処理版: ${revisedPrompt}`);
 
           // 改変度合いを分析
-          const originalLength = prompt.length;
+          const originalLength = actualPrompt.length;
           const revisedLength = revisedPrompt.length;
           const lengthDiff = Math.abs(revisedLength - originalLength);
           const changeRatio = (lengthDiff / originalLength) * 100;
@@ -462,11 +480,12 @@ function generateImages(prompts) {
         }
 
         results.push({
-          prompt: prompt,
+          prompt: actualPrompt,
           url: imageUrl,
           size: selectedSize, // 画像サイズ情報を追加
           revised_prompt: revisedPrompt || finalPrompt, // 実際に使用されたプロンプト
-          original_prompt: prompt, // 元のプロンプトも保存
+          original_prompt: actualPrompt, // 元のプロンプトも保存
+          quality: quality, // 使用した画質設定も保存
         });
 
         // API制限を考慮した待機時間
@@ -478,17 +497,19 @@ function generateImages(prompts) {
         console.error(`画像${index + 1}の生成に失敗:`, imageError);
         errors.push({
           index: index + 1,
-          prompt: prompt.substring(0, 50) + "...",
+          prompt: actualPrompt.substring(0, 50) + "...",
           error: imageError.message,
+          quality: quality, // エラー時も画質設定を保存
         });
 
         // エラーでも結果に追加（エラー情報付き）
         results.push({
-          prompt: prompt,
+          prompt: actualPrompt,
           url: null,
           size: selectedSize,
           error: imageError.message,
-          original_prompt: prompt,
+          original_prompt: actualPrompt,
+          quality: quality, // エラー時も画質設定を保存
           failed: true,
         });
       }
@@ -708,14 +729,28 @@ function generateImagesFromStructuredTable() {
           return; // この行をスキップ
         }
 
+        // J列から画質設定を取得
+        const qualityCell = sheet.getRange(actualRow, 10); // J列（画質列）
+        let quality = qualityCell.getValue();
+
+        // 画質設定の検証とデフォルト値の設定
+        if (!quality || !["high", "medium", "low"].includes(quality)) {
+          quality = "high"; // デフォルトは高品質
+          qualityCell.setValue("high"); // セルにもデフォルト値を設定
+          console.log(`行${actualRow}: 画質設定が無効のため "high" に設定`);
+        }
+
         console.log(
           `行${actualRow}: 完全プロンプト取得: ${fullPrompt.substring(
             0,
             50
-          )}...`
+          )}..., 画質: ${quality}`
         );
 
-        validPrompts.push(fullPrompt);
+        validPrompts.push({
+          prompt: fullPrompt,
+          quality: quality,
+        });
         promptRows.push(actualRow);
       }
     });
@@ -1343,7 +1378,7 @@ function regenerateSelectedImages() {
     const selectedPrompts = [];
     const selectedRows = [];
 
-    // チェックされた行のプロンプトを収集
+    // チェックされた行のプロンプトと画質設定を収集
     for (let i = 2; i <= lastRow; i++) {
       const checkboxCell = sheet.getRange(i, 9); // I列（チェックボックス）
       const isChecked = checkboxCell.getValue();
@@ -1353,7 +1388,21 @@ function regenerateSelectedImages() {
         const fullPrompt = getFullPrompt(sheet, i);
 
         if (fullPrompt && fullPrompt.trim() !== "") {
-          selectedPrompts.push(fullPrompt.trim());
+          // J列から画質設定を取得
+          const qualityCell = sheet.getRange(i, 10); // J列（画質列）
+          let quality = qualityCell.getValue();
+
+          // 画質設定の検証とデフォルト値の設定
+          if (!quality || !["high", "medium", "low"].includes(quality)) {
+            quality = "high"; // デフォルトは高品質
+            qualityCell.setValue("high"); // セルにもデフォルト値を設定
+            console.log(`行${i}: 再生成時の画質設定が無効のため "high" に設定`);
+          }
+
+          selectedPrompts.push({
+            prompt: fullPrompt.trim(),
+            quality: quality,
+          });
           selectedRows.push(i);
         }
       }
@@ -2741,6 +2790,7 @@ function createStructuredTable() {
       "⏰ 生成日時", // G列: 日時
       "✅ ステータス", // H列: ステータス
       "☑️ 選択", // I列: チェックボックス
+      "🎨 画質", // J列: 画質選択（high/medium/low）
     ];
 
     const headerRange = sheet.getRange(1, 1, 1, headers.length);
@@ -2759,6 +2809,7 @@ function createStructuredTable() {
     sheet.getRange(1, 2).setBackground("#4caf50"); // B列: プロンプト入力（緑）
     sheet.getRange(1, 3).setBackground("#ff9800"); // C列: 共通プロンプト選択（オレンジ）
     sheet.getRange(1, 9).setBackground("#4caf50"); // I列: 選択（緑）
+    sheet.getRange(1, 10).setBackground("#9c27b0"); // J列: 画質選択（紫）
 
     // 自動生成エリア（グレー系）
     sheet.getRange(1, 1).setBackground("#757575"); // A列: 番号（グレー）
@@ -2768,7 +2819,7 @@ function createStructuredTable() {
     sheet.getRange(1, 7).setBackground("#757575"); // G列: 日時（グレー）
     sheet.getRange(1, 8).setBackground("#757575"); // H列: ステータス（グレー）
 
-    // 列幅の最適化（9列構造）- 結合プロンプト列を拡張
+    // 列幅の最適化（10列構造）- 結合プロンプト列を拡張
     sheet.setColumnWidth(1, 60); // A: No.
     sheet.setColumnWidth(2, 250); // B: 個別プロンプト
     sheet.setColumnWidth(3, 150); // C: 共通プロンプト選択
@@ -2778,6 +2829,7 @@ function createStructuredTable() {
     sheet.setColumnWidth(7, 140); // G: 日時
     sheet.setColumnWidth(8, 100); // H: ステータス
     sheet.setColumnWidth(9, 80); // I: 選択
+    sheet.setColumnWidth(10, 100); // J: 画質選択
 
     console.log("ヘッダー行と列幅を設定完了");
 
@@ -2945,6 +2997,28 @@ function createStructuredTable() {
         ); // 📱 視覚改善: 緑色の境界線
         checkboxCell.setNote("☑️ 選択・操作エリア");
 
+        // J列: 画質選択（ユーザー入力エリア）
+        const qualityCell = sheet.getRange(row, 10);
+        qualityCell.setValue("high"); // デフォルト値を高品質に設定
+        qualityCell.setHorizontalAlignment("center");
+        qualityCell.setVerticalAlignment("middle");
+        qualityCell.setFontSize(10);
+        qualityCell.setBackground("#f3e5f5"); // 📱 視覚改善: 入力エリアを明るい紫色に
+        qualityCell.setFontColor("#9c27b0"); // 📱 視覚改善: 選択促進の紫色フォント
+        qualityCell.setBorder(
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          "#9c27b0",
+          SpreadsheetApp.BorderStyle.SOLID
+        ); // 📱 視覚改善: 紫色の境界線
+        qualityCell.setNote(
+          "🎨 画質を選択してください\n🔥 high: 高品質（推奨）\n⚡ medium: 中品質\n💨 low: 低品質（高速）"
+        );
+
         // 行の高さを固定（UX改善 + 結合プロンプト縦幅制限）
         sheet.setRowHeight(row, 50); // 🔧 結合プロンプト省略表示対応で50pxに戻す
 
@@ -2964,6 +3038,9 @@ function createStructuredTable() {
 
     // 共通プロンプト機能を初期設定
     setupCommonPromptValidation();
+
+    // 🎨 画質選択のプルダウン設定
+    setupQualityValidation();
 
     // 🚀 限界突破: 全行の結合プロンプト自動初期化
     try {
@@ -2987,10 +3064,10 @@ function createStructuredTable() {
     // 完了メッセージを下部に追加
     try {
       const messageRow = 103;
-      const messageRange = sheet.getRange(messageRow, 1, 1, 9);
+      const messageRange = sheet.getRange(messageRow, 1, 1, 10);
       messageRange.merge();
       messageRange.setValue(
-        `✨ テーブルを作成しました！\n🟢 緑色・オレンジ色エリア = 入力・操作エリア  |  🔘 グレーエリア = 自動生成・読み取り専用`
+        `✨ テーブルを作成しました！\n🟢 緑色・紫色・オレンジ色エリア = 入力・操作エリア  |  🔘 グレーエリア = 自動生成・読み取り専用`
       );
       messageRange.setBackground("#e8f5e8");
       messageRange.setFontColor("#2e7d32");
@@ -3007,10 +3084,48 @@ function createStructuredTable() {
     }
 
     console.log(`✅ テーブルを作成しました（入力エリア色分け対応）`);
-    return "✅ テーブルを作成しました！🟢緑色・オレンジ色エリアに入力・操作してください。🔘グレーエリアは自動生成されます。";
+    return "✅ テーブルを作成しました！🟢緑色・🟣紫色・🟠オレンジ色エリアに入力・操作してください。🔘グレーエリアは自動生成されます。";
   } catch (error) {
     console.error("構造化テーブル作成エラー:", error);
     throw new Error(`構造化テーブルの作成に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 画質選択のプルダウン設定
+ */
+function setupQualityValidation() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    console.log("画質選択のプルダウン設定を開始");
+
+    // 画質の選択肢を定義
+    const qualityOptions = ["high", "medium", "low"];
+
+    // J列（画質選択）にプルダウンを設定（2-101行目）
+    const validationRange = sheet.getRange(2, 10, 100, 1); // J2:J101
+
+    // データ検証ルールを作成
+    const rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(qualityOptions, true)
+      .setAllowInvalid(false)
+      .setHelpText(
+        "🎨 画質を選択してください\n🔥 high: 高品質（推奨・コスト高）\n⚡ medium: 中品質（バランス）\n💨 low: 低品質（高速・コスト安）"
+      )
+      .build();
+
+    // プルダウンを適用
+    validationRange.setDataValidation(rule);
+
+    console.log(
+      `✅ 画質選択のプルダウンを設定しました（選択肢: ${qualityOptions.length}個）`
+    );
+    console.log("画質選択肢:", qualityOptions);
+  } catch (error) {
+    console.error("画質選択プルダウン設定エラー:", error);
+    // エラーでも処理を継続（初期化を止めない）
+    console.warn("画質プルダウン設定に失敗しましたが、初期化を継続します");
   }
 }
 
