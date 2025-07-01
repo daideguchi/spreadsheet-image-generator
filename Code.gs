@@ -2613,7 +2613,10 @@ function createBackupAndNewTable() {
       console.log("📄 バックアップ対象データなし - 直接初期化実行");
       // データがない場合は直接初期化
       const result = createStructuredTable();
-      return `✅ 新しい構造化テーブルを作成しました！\n\n📋 準備完了:\n• 100行の構造化テーブル\n• プロンプト入力エリア\n• 画像生成機能\n\n🎨 B列にプロンプトを入力して画像生成を開始できます。`;
+      return {
+        message: `✅ 新しい構造化テーブルを作成しました！\n\n📋 準備完了:\n• 100行の構造化テーブル\n• プロンプト入力エリア\n• 画像生成機能\n\n🎨 B列にプロンプトを入力して画像生成を開始できます。`,
+        resetSidebar: true, // 🆕 サイドバーリセットフラグ
+      };
     }
 
     // バックアップシート名を生成
@@ -2631,14 +2634,20 @@ function createBackupAndNewTable() {
     const backupSheet = currentSheet.copyTo(spreadsheet);
     backupSheet.setName(backupName);
 
-    // バックアップシートを一番右に移動
+    // 💡 重要改善: バックアップシートを一番右に移動（入力シートは左にキープ）
     const totalSheets = spreadsheet.getSheets().length;
+    const allSheets = spreadsheet.getSheets();
+    const backupSheetIndex = allSheets.indexOf(backupSheet);
+
+    // バックアップシートのインデックスを取得して一番右に移動
+    spreadsheet.setActiveSheet(backupSheet);
     spreadsheet.moveActiveSheet(totalSheets);
 
-    console.log(`✅ バックアップ完了: ${backupName}`);
+    console.log(`✅ バックアップ完了: ${backupName} (一番右に配置)`);
 
-    // 元のシートに戻る
+    // 💡 重要改善: 元のシートを一番左に移動
     spreadsheet.setActiveSheet(currentSheet);
+    spreadsheet.moveActiveSheet(1); // 一番左（位置1）に移動
 
     // 現在のシートをクリア
     console.log(`🧹 元シートクリア開始`);
@@ -2652,17 +2661,21 @@ function createBackupAndNewTable() {
 
     const successMessage =
       `✅ バックアップが正常に作成されました！\n\n` +
-      `💾 バックアップシート: 「${backupName}」\n` +
-      `🆕 現在のシート: 「${currentSheetName}」（新しい構造化テーブル）\n\n` +
+      `💾 バックアップシート: 「${backupName}」（右端に配置）\n` +
+      `🆕 現在のシート: 「${currentSheetName}」（左端に配置・新テーブル）\n\n` +
       `📋 準備完了:\n` +
       `• 元データは「${backupName}」に安全に保存\n` +
       `• 新しい100行構造化テーブル作成済み\n` +
-      `• プロンプト入力エリア設定済み\n\n` +
+      `• プロンプト入力エリア設定済み\n` +
+      `• シート配置最適化完了\n\n` +
       `🚀 B列にプロンプトを入力して画像生成を開始できます。\n\n` +
-      `💡 バックアップは画面下部のシートタブから確認できます。`;
+      `💡 バックアップは画面下部のシートタブ右端から確認できます。`;
 
-    console.log(`🎉 バックアップ付き初期化完了`);
-    return successMessage;
+    console.log(`🎉 バックアップ付き初期化完了 - シート配置最適化済み`);
+    return {
+      message: successMessage,
+      resetSidebar: true, // 🆕 サイドバーリセットフラグ
+    };
   } catch (error) {
     console.error("🚨 バックアップ作成エラー:", error);
 
@@ -3112,7 +3125,11 @@ function createStructuredTable() {
     }
 
     console.log(`✅ テーブルを作成しました（入力エリア色分け対応）`);
-    return "✅ テーブルを作成しました！🟢緑色・🟣紫色・🟠オレンジ色エリアに入力・操作してください。🔘グレーエリアは自動生成されます。";
+    return {
+      message:
+        "✅ テーブルを作成しました！🟢緑色・🟣紫色・🟠オレンジ色エリアに入力・操作してください。🔘グレーエリアは自動生成されます。",
+      resetSidebar: true, // 🆕 サイドバーリセットフラグ
+    };
   } catch (error) {
     console.error("構造化テーブル作成エラー:", error);
     throw new Error(`構造化テーブルの作成に失敗しました: ${error.message}`);

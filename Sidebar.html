@@ -1093,9 +1093,25 @@
       updateStepIndicator('step1');
       google.script.run
         .withSuccessHandler(function(result) {
-          showResult(result);
+          // 🆕 レスポンス形式の判定（オブジェクトまたは文字列）
+          let message = result;
+          let shouldReset = false;
+          
+          if (typeof result === 'object' && result.message) {
+            message = result.message;
+            shouldReset = result.resetSidebar || false;
+          }
+          
+          showResult(message);
           updateStepIndicator('step2');
           checkSheetState();
+          
+          // 🆕 UX改善: 初期化完了後のサイドバーリセット
+          if (shouldReset) {
+            setTimeout(function() {
+              resetSidebarAfterInitialization();
+            }, 3000); // 3秒後にリセット（メッセージを見せてから）
+          }
         })
         .withFailureHandler(function(error) {
           showResult('バックアップエラー: ' + error.message, true);
@@ -1186,9 +1202,25 @@
       updateStepIndicator('step1');
       google.script.run
         .withSuccessHandler(function(result) {
-          showResult(result);
+          // 🆕 レスポンス形式の判定（オブジェクトまたは文字列）
+          let message = result;
+          let shouldReset = false;
+          
+          if (typeof result === 'object' && result.message) {
+            message = result.message;
+            shouldReset = result.resetSidebar || false;
+          }
+          
+          showResult(message);
           updateStepIndicator('step2');
           checkSheetState();
+          
+          // 🆕 UX改善: 初期化完了後のサイドバーリセット
+          if (shouldReset) {
+            setTimeout(function() {
+              resetSidebarAfterInitialization();
+            }, 3000); // 3秒後にリセット（メッセージを見せてから）
+          }
         })
         .withFailureHandler(function(error) {
           showResult('初期化エラー: ' + error.message, true);
@@ -1234,9 +1266,25 @@
       updateStepIndicator('step2');
       google.script.run
         .withSuccessHandler(function(result) {
-          showResult(result);
+          // 🆕 レスポンス形式の判定（オブジェクトまたは文字列）
+          let message = result;
+          let shouldReset = false;
+          
+          if (typeof result === 'object' && result.message) {
+            message = result.message;
+            shouldReset = result.resetSidebar || false;
+          }
+          
+          showResult(message);
           // 表クリア完了後にボタン状態を再チェック
           checkSheetState();
+          
+          // 🆕 UX改善: 初期化完了後のサイドバーリセット
+          if (shouldReset) {
+            setTimeout(function() {
+              resetSidebarAfterInitialization();
+            }, 3000); // 3秒後にリセット（メッセージを見せてから）
+          }
         })
         .withFailureHandler(function(error) {
           showResult('エラー: ' + error.message, true);
@@ -1953,6 +2001,45 @@
           showErrorMessage('エラー: ' + error.message);
         })
         .updateAllCombinedPrompts();
+    }
+
+    // 🆕 UX改善: 初期化完了後のサイドバーリセット
+    function resetSidebarAfterInitialization() {
+      try {
+        console.log('🔄 初期化完了後のUXリセットを開始');
+        
+        // 1. サイドバーをトップ表示に戻す
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        const container = document.querySelector('.container');
+        if (container) {
+          container.scrollTop = 0;
+        }
+        
+        // 2. ステップインジケーターをリセット
+        updateStepIndicator('step1');
+        
+        // 3. ローディング状態をクリア
+        hideLoading();
+        hideProgressModal();
+        
+        // 4. トップメッセージを表示
+        showTopMessage('✅ 初期化が完了しました！プロンプト入力を開始できます', 'success', 4000);
+        
+        // 5. 新しいシートの状態に合わせてボタン状態を更新
+        setTimeout(function() {
+          checkSheetState();
+          console.log('✅ 初期化完了後のUXリセット完了');
+        }, 500);
+        
+        // 6. 入力シートが左端に移動したことをユーザーに通知
+        setTimeout(function() {
+          showTopMessage('📋 入力シートが左端に配置されました。バックアップは右端にあります', 'info', 3000);
+        }, 5000);
+        
+      } catch (error) {
+        console.error('UXリセットエラー:', error);
+      }
     }
 
     // ✅ 全選択専用機能
