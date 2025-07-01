@@ -517,14 +517,23 @@
 
 ### 今後のタスク
 
+- [x] 🔴 結合プロンプト更新ボタン修正（2025 年 1 月）
+  - ボタンが反応しない問題を緊急解決
+  - JavaScript 関数`updateAllCombinedPrompts()`を Sidebar.html に追加
+  - アラート表示を削除して上部メッセージ表示に統一
+  - 新しい選択機能の JavaScript 関数も追加（selectAllImages・clearAllImageSelection・selectAllLibraryImages・clearAllLibrarySelection）
+  - サイレント動作で UX 改善・処理中メッセージ・成功/エラーメッセージ完備
 - [x] 🔴 選択機能の安全性・UX 改善（2025 年 1 月）
   - ユーザーが「削除」ボタンを「全選択解除」と勘違いして画像を誤削除する問題を完全解決
   - サイドバーボタンの明確化：「☑️ 全選択」と「❌ 全選択解除」を分離表示
   - 削除ボタンを「🗑️ 選択画像を削除」に変更して機能を明確化
   - 専用関数実装：selectAllImages()・clearAllImageSelection()・selectAllLibraryImages()・clearAllLibrarySelection()
-  - ライブラリ選択も同様に分離（「☑️ ライブラリ全選択」「❌ ライブラリ全解除」）
-  - 誤操作防止とユーザーフレンドリーな UX を実現
+    - ライブラリ選択も同様に分離（「☑️ ライブラリ全選択」「❌ ライブラリ全解除」）
+    - 誤操作防止とユーザーフレンドリーな UX を実現
 - [ ] 🟡 GitHub Pages への実際のルールファイル配置
+  - cursor-rules-templates リポジトリの作成
+  - 各種ルールファイルの配置
+  - URL 整合性の確認
 
 ## 重要事項
 

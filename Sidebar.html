@@ -1940,6 +1940,81 @@
         .resetImageLibrary();
     }
     
+    // 🔄 結合プロンプト一括更新機能
+    function updateAllCombinedPrompts() {
+      showTopMessage('🔄 結合プロンプトを一括更新中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result, 4000);
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .updateAllCombinedPrompts();
+    }
+
+    // ✅ 全選択専用機能
+    function selectAllImages() {
+      showTopMessage('☑️ 全選択中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result, 3000);
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .selectAllImages();
+    }
+
+    // ❌ 全選択解除専用機能
+    function clearAllImageSelection() {
+      showTopMessage('❌ 全選択解除中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result, 3000);
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .clearAllImageSelection();
+    }
+
+    // ✅ ライブラリ全選択専用機能
+    function selectAllLibraryImages() {
+      showTopMessage('☑️ ライブラリ全選択中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result, 3000);
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .selectAllLibraryImages();
+    }
+
+    // ❌ ライブラリ全選択解除専用機能
+    function clearAllLibrarySelection() {
+      showTopMessage('❌ ライブラリ全選択解除中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result, 3000);
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .clearAllLibrarySelection();
+    }
+
     // 🔍 ライブラリ診断機能
     function diagnoseLibraryImages() {
       showLoading();

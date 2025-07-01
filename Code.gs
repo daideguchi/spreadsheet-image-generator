@@ -1918,19 +1918,14 @@ function updateAllCombinedPrompts() {
 
     console.log(`🎉 一括更新完了: ${updatedCount}行を更新しました`);
 
-    // 成功メッセージ表示
-    SpreadsheetApp.getUi().alert(
-      "✅ 結合プロンプト一括更新完了",
-      `${updatedCount}行の結合プロンプトを更新しました。\n\nD列をご確認ください。`,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
+    // 🚀 アラート削除：サイレント成功メッセージ
+    console.log("✅ 結合プロンプト一括更新完了 - アラート表示なし");
+    return `✅ 結合プロンプト一括更新完了 - ${updatedCount}行を更新しました`;
   } catch (error) {
     console.error("全行結合プロンプト更新エラー:", error);
-    SpreadsheetApp.getUi().alert(
-      "❌ エラー",
-      `結合プロンプトの一括更新でエラーが発生しました：\n${error.message}`,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
+    // 🚀 アラート削除：コンソールログのみ
+    console.error("❌ 結合プロンプト一括更新でエラーが発生:", error.message);
+    return `❌ エラー: 結合プロンプトの一括更新に失敗しました - ${error.message}`;
   }
 }
 
