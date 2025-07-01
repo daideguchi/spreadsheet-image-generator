@@ -1135,45 +1135,111 @@ function generateImagesAndCreateTable(prompts) {
 
 /**
  * 全選択/解除機能（9列構造対応）
+ * 💡 トグル方式：過半数がチェックされていれば全解除、そうでなければ全選択
  */
 function toggleAllImageSelection() {
   try {
+    console.log("🔄 全選択/解除を開始");
     const sheet = SpreadsheetApp.getActiveSheet();
-    const lastRow = sheet.getLastRow();
+    const dataRange = sheet.getDataRange();
+    const lastRow = dataRange.getLastRow();
 
-    if (lastRow < 2) {
-      return "❌ データがありません";
+    // データ行がない場合は何もしない
+    if (lastRow <= 1) {
+      console.log("⚠️ データ行が存在しません");
+      return;
     }
 
-    // I列（チェックボックス列）のチェック状態を確認
-    const checkboxRange = sheet.getRange(2, 9, lastRow - 1, 1);
+    // I列（チェックボックス列）の現在の状態を確認
+    const checkboxRange = sheet.getRange(2, 9, lastRow - 1, 1); // I列（2行目から最終行まで）
     const checkboxValues = checkboxRange.getValues();
 
-    // 現在の状態を確認（true の数を数える）
-    const checkedCount = checkboxValues
-      .flat()
-      .filter((value) => value === true).length;
-    const totalCount = checkboxValues.length;
+    // チェックされている数をカウント
+    let checkedCount = 0;
+    checkboxValues.forEach((row) => {
+      if (row[0] === true) checkedCount++;
+    });
 
     // 過半数がチェックされていれば全解除、そうでなければ全選択
-    const shouldCheck = checkedCount < totalCount / 2;
+    const shouldSelectAll = checkedCount < checkboxValues.length / 2;
+    const newValues = checkboxValues.map(() => [shouldSelectAll]);
 
-    // 画像が存在する行のみ対象とする
-    for (let i = 2; i <= lastRow; i++) {
-      const imageCell = sheet.getRange(i, 5); // E列（画像列）
-      const imageFormula = imageCell.getFormula();
+    checkboxRange.setValues(newValues);
 
-      if (imageFormula && imageFormula.includes("=IMAGE(")) {
-        const checkboxCell = sheet.getRange(i, 9);
-        checkboxCell.setValue(shouldCheck);
-      }
-    }
+    const action = shouldSelectAll ? "全選択" : "全解除";
+    const emoji = shouldSelectAll ? "✅" : "❌";
+    console.log(
+      `${emoji} ${action}完了 - 対象行数: ${checkboxValues.length}行`
+    );
 
-    const action = shouldCheck ? "選択" : "解除";
-    return `✅ 全画像を${action}しました`;
+    return `${emoji} ${action}完了 - ${checkboxValues.length}行の画像を${action}しました`;
   } catch (error) {
     console.error("全選択/解除エラー:", error);
     throw new Error(`全選択/解除に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 🆕 全選択専用関数
+ * すべての画像を選択状態にします
+ */
+function selectAllImages() {
+  try {
+    console.log("✅ 全選択を開始");
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const dataRange = sheet.getDataRange();
+    const lastRow = dataRange.getLastRow();
+
+    // データ行がない場合は何もしない
+    if (lastRow <= 1) {
+      console.log("⚠️ データ行が存在しません");
+      return "⚠️ データ行が存在しません";
+    }
+
+    // I列（チェックボックス列）をすべてtrueに設定
+    const checkboxRange = sheet.getRange(2, 9, lastRow - 1, 1); // I列（2行目から最終行まで）
+    const checkboxValues = Array(lastRow - 1).fill([true]);
+
+    checkboxRange.setValues(checkboxValues);
+
+    console.log(`✅ 全選択完了 - 対象行数: ${lastRow - 1}行`);
+    return `✅ 全選択完了 - ${lastRow - 1}行の画像をすべて選択しました`;
+  } catch (error) {
+    console.error("全選択エラー:", error);
+    throw new Error(`全選択に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 🆕 全選択解除専用関数
+ * すべての画像の選択を解除します
+ */
+function clearAllImageSelection() {
+  try {
+    console.log("❌ 全選択解除を開始");
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const dataRange = sheet.getDataRange();
+    const lastRow = dataRange.getLastRow();
+
+    // データ行がない場合は何もしない
+    if (lastRow <= 1) {
+      console.log("⚠️ データ行が存在しません");
+      return "⚠️ データ行が存在しません";
+    }
+
+    // I列（チェックボックス列）をすべてfalseに設定
+    const checkboxRange = sheet.getRange(2, 9, lastRow - 1, 1); // I列（2行目から最終行まで）
+    const checkboxValues = Array(lastRow - 1).fill([false]);
+
+    checkboxRange.setValues(checkboxValues);
+
+    console.log(`❌ 全選択解除完了 - 対象行数: ${lastRow - 1}行`);
+    return `❌ 全選択解除完了 - ${
+      lastRow - 1
+    }行の画像の選択をすべて解除しました`;
+  } catch (error) {
+    console.error("全選択解除エラー:", error);
+    throw new Error(`全選択解除に失敗しました: ${error.message}`);
   }
 }
 
@@ -3690,57 +3756,6 @@ function prepareImageRestoration() {
 }
 
 /**
- * 画像削除の確認ダイアログ付き一括削除
- */
-function deleteAllImagesWithConfirmation() {
-  try {
-    const ui = SpreadsheetApp.getUi();
-    const response = ui.alert(
-      "🗑️ 画像一括削除",
-      "すべての画像を削除します。\n\n" +
-        "📋 削除される内容：\n" +
-        "• すべての生成済み画像（D列）\n\n" +
-        "📝 保持される内容：\n" +
-        "• プロンプト（B列・C列）\n" +
-        "• 生成日時（F列）\n" +
-        "• その他すべてのデータ\n\n" +
-        "💡 プロンプトが残っているため、後で再生成可能です。\n\n" +
-        "続行しますか？",
-      ui.ButtonSet.YES_NO
-    );
-
-    if (response === ui.Button.YES) {
-      const result = deleteAllImages();
-
-      // 削除後の整理も実行
-      cleanupAfterImageDeletion();
-      prepareImageRestoration();
-
-      ui.alert(
-        "✅ 削除完了",
-        result +
-          "\n\n" +
-          "🔄 プロンプトが保持されているため、\n" +
-          "「🎨 画像生成」で再生成が可能です。",
-        ui.ButtonSet.OK
-      );
-
-      return result;
-    } else {
-      return "画像削除をキャンセルしました";
-    }
-  } catch (error) {
-    console.error("確認付き画像削除エラー:", error);
-    SpreadsheetApp.getUi().alert(
-      "エラー",
-      "画像削除に失敗しました: " + error.message,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-    throw error;
-  }
-}
-
-/**
  * 画像生成予定枚数を取得（プログレスバー用）
  */
 function getImageGenerationCount() {
@@ -5061,6 +5076,7 @@ function downloadSelectedLibraryImages() {
 
 /**
  * 💡 改善要求: ライブラリの全選択/解除機能
+ * ライブラリシートのH列チェックボックスをトグル
  */
 function toggleAllLibrarySelection() {
   try {
@@ -5068,42 +5084,118 @@ function toggleAllLibrarySelection() {
     const librarySheet = spreadsheet.getSheetByName("画像生成ライブラリ");
 
     if (!librarySheet) {
-      return "❌ 画像生成ライブラリシートが見つかりません";
+      throw new Error("画像生成ライブラリシートが見つかりません");
     }
 
-    const lastRow = librarySheet.getLastRow();
-    if (lastRow < 4) {
+    const dataRange = librarySheet.getDataRange();
+    const lastRow = dataRange.getLastRow();
+
+    if (lastRow <= 1) {
       return "❌ ライブラリにデータがありません";
     }
 
-    // 現在のチェック状態を確認
+    // H列（チェックボックス列）のチェック状態を確認
+    const checkboxRange = librarySheet.getRange(2, 8, lastRow - 1, 1); // H列（2行目から最終行まで）
+    const checkboxValues = checkboxRange.getValues();
+
+    // チェックされている数をカウント
     let checkedCount = 0;
-    let totalCount = 0;
-
-    for (let i = 4; i <= lastRow; i++) {
-      const checkboxCell = librarySheet.getRange(i, 8);
-      const isChecked = checkboxCell.getValue();
-
-      if (isChecked === true) {
-        checkedCount++;
-      }
-      totalCount++;
-    }
+    checkboxValues.forEach((row) => {
+      if (row[0] === true) checkedCount++;
+    });
 
     // 過半数がチェックされていれば全解除、そうでなければ全選択
-    const shouldCheck = checkedCount < totalCount / 2;
+    const shouldSelectAll = checkedCount < checkboxValues.length / 2;
+    const newValues = checkboxValues.map(() => [shouldSelectAll]);
 
-    // 全チェックボックスを更新
-    for (let i = 4; i <= lastRow; i++) {
-      const checkboxCell = librarySheet.getRange(i, 8);
-      checkboxCell.setValue(shouldCheck);
-    }
+    checkboxRange.setValues(newValues);
 
-    const action = shouldCheck ? "選択" : "解除";
-    return `✅ ライブラリの全画像を${action}しました（${totalCount}枚）`;
+    const action = shouldSelectAll ? "全選択" : "全解除";
+    const emoji = shouldSelectAll ? "✅" : "❌";
+    console.log(
+      `${emoji} ライブラリ${action}完了 - 対象行数: ${checkboxValues.length}行`
+    );
+
+    return `${emoji} ライブラリ${action}完了 - ${checkboxValues.length}枚の画像を${action}しました`;
   } catch (error) {
     console.error("ライブラリ全選択エラー:", error);
     throw new Error(`ライブラリの全選択に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 🆕 ライブラリ全選択専用関数
+ * ライブラリのすべての画像を選択状態にします
+ */
+function selectAllLibraryImages() {
+  try {
+    console.log("✅ ライブラリ全選択を開始");
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const librarySheet = spreadsheet.getSheetByName("画像生成ライブラリ");
+
+    if (!librarySheet) {
+      throw new Error("画像生成ライブラリシートが見つかりません");
+    }
+
+    const dataRange = librarySheet.getDataRange();
+    const lastRow = dataRange.getLastRow();
+
+    if (lastRow <= 1) {
+      console.log("⚠️ ライブラリにデータがありません");
+      return "⚠️ ライブラリにデータがありません";
+    }
+
+    // H列（チェックボックス列）をすべてtrueに設定
+    const checkboxRange = librarySheet.getRange(2, 8, lastRow - 1, 1); // H列（2行目から最終行まで）
+    const checkboxValues = Array(lastRow - 1).fill([true]);
+
+    checkboxRange.setValues(checkboxValues);
+
+    console.log(`✅ ライブラリ全選択完了 - 対象行数: ${lastRow - 1}行`);
+    return `✅ ライブラリ全選択完了 - ${
+      lastRow - 1
+    }枚の画像をすべて選択しました`;
+  } catch (error) {
+    console.error("ライブラリ全選択エラー:", error);
+    throw new Error(`ライブラリ全選択に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 🆕 ライブラリ全選択解除専用関数
+ * ライブラリのすべての画像の選択を解除します
+ */
+function clearAllLibrarySelection() {
+  try {
+    console.log("❌ ライブラリ全選択解除を開始");
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const librarySheet = spreadsheet.getSheetByName("画像生成ライブラリ");
+
+    if (!librarySheet) {
+      throw new Error("画像生成ライブラリシートが見つかりません");
+    }
+
+    const dataRange = librarySheet.getDataRange();
+    const lastRow = dataRange.getLastRow();
+
+    if (lastRow <= 1) {
+      console.log("⚠️ ライブラリにデータがありません");
+      return "⚠️ ライブラリにデータがありません";
+    }
+
+    // H列（チェックボックス列）をすべてfalseに設定
+    const checkboxRange = librarySheet.getRange(2, 8, lastRow - 1, 1); // H列（2行目から最終行まで）
+    const checkboxValues = Array(lastRow - 1).fill([false]);
+
+    checkboxRange.setValues(checkboxValues);
+
+    console.log(`❌ ライブラリ全選択解除完了 - 対象行数: ${lastRow - 1}行`);
+    return `❌ ライブラリ全選択解除完了 - ${
+      lastRow - 1
+    }枚の画像の選択をすべて解除しました`;
+  } catch (error) {
+    console.error("ライブラリ全選択解除エラー:", error);
+    throw new Error(`ライブラリ全選択解除に失敗しました: ${error.message}`);
   }
 }
 
@@ -5423,121 +5515,6 @@ function getDeveloperInfo() {
       lastUpdate: null,
       githubLink: null,
     };
-  }
-}
-
-/**
- * 🔥 緊急診断: addToImageLibrary関数の強制実行テスト
- */
-function testAddToImageLibraryForced() {
-  // 🔐 権限チェック最優先実行
-  const permissionResult = showPermissionAlertIfNeeded();
-
-  // 権限が不足している場合はアラート表示済みなので終了
-  if (!permissionResult.success && permissionResult.alerted) {
-    console.log("🔐 権限不足: ライブラリテストをスキップ");
-    return "権限承認が必要です";
-  }
-
-  try {
-    console.log(
-      "🚨 緊急診断: addToImageLibrary強制実行テスト開始（権限チェック済み）"
-    );
-
-    // 事前チェック: Z列をクリア
-    try {
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-      sheet.getRange("Z1:Z10").clearContent();
-      sheet
-        .getRange("Z1")
-        .setValue("🔥 診断テスト開始: " + new Date().toISOString());
-    } catch (clearError) {
-      console.warn("Z列クリアエラー:", clearError);
-    }
-
-    // テスト用データを作成
-    const testImageData = {
-      prompt: "🔥 テスト実行: この画像は診断用テストです",
-      imageUrl: "https://via.placeholder.com/300x300/ff0000/ffffff?text=TEST",
-      aspectRatio: "1:1",
-      status: "🧪 テスト実行",
-      timestamp: new Date(),
-      originalRow: 999,
-      sourceFormula:
-        '=IMAGE("https://via.placeholder.com/300x300/ff0000/ffffff?text=TEST", 1)',
-      sourceSheet: "テスト診断",
-    };
-
-    console.log("🧪 テストデータ作成完了:", JSON.stringify(testImageData));
-
-    // 🔥 実行前の状態確認
-    let librarySheetBefore = null;
-    let lastRowBefore = 0;
-    try {
-      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      librarySheetBefore = spreadsheet.getSheetByName("画像生成ライブラリ");
-      if (librarySheetBefore) {
-        lastRowBefore = librarySheetBefore.getLastRow();
-        console.log(`📊 実行前ライブラリ行数: ${lastRowBefore}`);
-      }
-    } catch (preError) {
-      console.warn("実行前確認エラー:", preError);
-    }
-
-    // 強制実行
-    console.log("🚀 addToImageLibrary関数実行開始...");
-    const result = addToImageLibrary(testImageData);
-    console.log("✅ addToImageLibrary関数実行完了 結果:", result);
-
-    // 🔥 実行後の状態確認
-    let librarySheetAfter = null;
-    let lastRowAfter = 0;
-    let addedRows = 0;
-    try {
-      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      librarySheetAfter = spreadsheet.getSheetByName("画像生成ライブラリ");
-      if (librarySheetAfter) {
-        lastRowAfter = librarySheetAfter.getLastRow();
-        addedRows = lastRowAfter - lastRowBefore;
-        console.log(
-          `📊 実行後ライブラリ行数: ${lastRowAfter} (追加: ${addedRows}行)`
-        );
-      }
-    } catch (postError) {
-      console.warn("実行後確認エラー:", postError);
-    }
-
-    // チェックポイント状況確認
-    let checkpoints = {};
-    try {
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-      checkpoints = {
-        Z1: sheet.getRange("Z1").getValue(),
-        Z2: sheet.getRange("Z2").getValue(),
-        Z3: sheet.getRange("Z3").getValue(),
-        Z4: sheet.getRange("Z4").getValue(),
-        Z5: sheet.getRange("Z5").getValue(),
-      };
-    } catch (cpError) {
-      console.warn("チェックポイント確認エラー:", cpError);
-    }
-
-    // 🚀 アラート削除：詳細結果はコンソールに出力
-    console.log("🧪 診断テスト完了", {
-      result: result ? "成功" : "失敗",
-      beforeRows: lastRowBefore,
-      afterRows: lastRowAfter,
-      addedRows: addedRows,
-      checkpoints: checkpoints,
-    });
-  } catch (error) {
-    console.error("🚨 テスト実行エラー:", error);
-    // 🚀 アラート削除：エラー詳細はコンソールに出力
-    console.error("テスト実行エラー詳細", {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    });
   }
 }
 

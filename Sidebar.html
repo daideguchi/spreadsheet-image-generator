@@ -580,9 +580,14 @@
         <div class="button-section" id="managementSection" style="display: none;">
           <div class="section-title">🛠️ 画像管理</div>
           <div class="button-row">
-            <button class="btn btn-secondary btn-small" onclick="toggleAllImageSelection()">
+            <button class="btn btn-secondary btn-small" onclick="selectAllImages()">
               ☑️ 全選択
             </button>
+            <button class="btn btn-secondary btn-small" onclick="clearAllImageSelection()">
+              ❌ 全選択解除
+            </button>
+          </div>
+          <div class="button-row">
             <button class="btn btn-small" onclick="showDownloadOptions()">
               📥 ダウンロード
             </button>
@@ -592,7 +597,7 @@
           </div>
           <div class="button-row">
             <button class="btn btn-danger btn-small" onclick="deleteSelectedImages()">
-              🗑️ 選択削除
+              🗑️ 選択画像を削除
             </button>
             <!-- 全削除ボタンを削除 -->
           </div>
@@ -602,14 +607,17 @@
         <div class="button-section" id="librarySection">
           <div class="section-title">📚 ライブラリ管理</div>
           <div class="button-row">
-            <button class="btn btn-secondary btn-small" onclick="toggleAllLibrarySelection()">
+            <button class="btn btn-secondary btn-small" onclick="selectAllLibraryImages()">
               ☑️ ライブラリ全選択
             </button>
-            <button class="btn btn-create btn-small" onclick="downloadSelectedLibraryImages()">
-              📥 ライブラリDL
+            <button class="btn btn-secondary btn-small" onclick="clearAllLibrarySelection()">
+              ❌ ライブラリ全解除
             </button>
           </div>
           <div class="button-row">
+            <button class="btn btn-create btn-small" onclick="downloadSelectedLibraryImages()">
+              📥 ライブラリDL
+            </button>
             <button class="btn btn-danger btn-small" onclick="resetLibraryWithConfirmation()">
               🗑️ ライブラリリセット
             </button>
