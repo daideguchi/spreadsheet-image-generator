@@ -1956,26 +1956,13 @@ function updateCombinedPrompt(sheet, row) {
     // D列に結合プロンプトを設定
     const combinedCell = sheet.getRange(row, 4);
 
-    // 🔧 重要：縦幅制限ロジック - 省略表示
-    let displayText = combinedPrompt;
-    const maxLength = 100; // 表示文字数制限
+    // 🎯 省略なし表示：完全なプロンプトをそのまま表示
+    combinedCell.setValue(combinedPrompt || "");
 
-    if (combinedPrompt && combinedPrompt.length > maxLength) {
-      // 長い場合は省略表示
-      displayText = combinedPrompt.substring(0, maxLength) + "...";
-    }
-
-    // 省略表示をセルに設定
-    combinedCell.setValue(displayText);
-
-    // 完全なプロンプトをメモ（ツールチップ）に保存
-    if (combinedPrompt && combinedPrompt.length > maxLength) {
-      combinedCell.setNote(
-        `📄 完全な結合プロンプト:\n${combinedPrompt}\n\n💡 このセルをクリックして全文を確認できます。`
-      );
-    } else {
-      combinedCell.setNote("🤖 自動結合プロンプト（編集不要）");
-    }
+    // ツールチップには結合プロンプトの説明を設定
+    combinedCell.setNote(
+      "🤖 自動結合プロンプト（編集不要）\n💡 B列＋C列の自動結合結果です"
+    );
 
     // 💡 改善要求: 文字はみ出し防止のためのスタイル設定強化
     combinedCell.setBackground("#f5f5f5"); // グレー背景
@@ -2883,7 +2870,7 @@ function createStructuredTable() {
     sheet.setColumnWidth(1, 60); // A: No.
     sheet.setColumnWidth(2, 250); // B: 個別プロンプト
     sheet.setColumnWidth(3, 150); // C: 共通プロンプト選択
-    sheet.setColumnWidth(4, 200); // D: 結合プロンプト（拡張：80→200）
+    sheet.setColumnWidth(4, 300); // D: 結合プロンプト（省略なし表示対応：200→300）
     sheet.setColumnWidth(5, 220); // E: 画像
     sheet.setColumnWidth(6, 100); // F: 比率
     sheet.setColumnWidth(7, 140); // G: 日時
@@ -2949,14 +2936,14 @@ function createStructuredTable() {
           "🎯 共通プロンプトを選択してください\n💡 新しい共通プロンプトは設定シートで追加可能です。"
         );
 
-        // D列: 結合プロンプト（自動生成エリア）- 文字はみ出し防止改善
+        // D列: 結合プロンプト（自動生成エリア）- 完全表示対応
         const combinedCell = sheet.getRange(row, 4);
-        combinedCell.setValue("🔗"); // アイコンのみ表示
-        combinedCell.setHorizontalAlignment("left"); // 📱 改善: 左寄せに変更
-        combinedCell.setVerticalAlignment("middle"); // 💡 改善要求: 垂直配置を中央に変更（文字はみ出し防止）
-        combinedCell.setWrap(true); // 💡 改善要求: テキスト折り返しを有効化（はみ出し防止）
-        combinedCell.setFontSize(8); // 💡 改善要求: フォントサイズをさらに小さく（はみ出し防止）
-        combinedCell.setPadding(2, 2, 2, 2); // 💡 改善要求: パディングを縮小（はみ出し防止）
+        combinedCell.setValue(""); // 空欄（結合時に自動設定）
+        combinedCell.setHorizontalAlignment("left"); // 左寄せ
+        combinedCell.setVerticalAlignment("top"); // 🎯 上寄せに変更（長いテキスト対応）
+        combinedCell.setWrap(true); // テキスト折り返しを有効化
+        combinedCell.setFontSize(10); // 🎯 フォントサイズを10に拡大（見やすさ向上）
+        combinedCell.setPadding(4, 4, 4, 4); // 🎯 パディングを拡大（見やすさ向上）
         combinedCell.setBackground("#eeeeee"); // 📱 視覚改善: 自動生成エリアをグレーアウト
         combinedCell.setFontColor("#757575"); // 📱 視覚改善: フォント色を控えめに
         combinedCell.setBorder(
@@ -2970,7 +2957,7 @@ function createStructuredTable() {
           SpreadsheetApp.BorderStyle.DASHED
         ); // 📱 視覚改善: 破線の境界線
         combinedCell.setNote(
-          "🤖 自動結合プロンプト（編集不要）\n個別プロンプト + 共通プロンプトの結合結果がここに表示されます。\n💡 長い文章もスクロールで確認できます。"
+          "🤖 自動結合プロンプト（編集不要）\n個別プロンプト + 共通プロンプトの結合結果が完全表示されます。\n🎯 省略なし表示：完全なプロンプトをそのまま表示"
         );
 
         // E列: 生成画像（自動生成エリア）
@@ -3060,8 +3047,8 @@ function createStructuredTable() {
         ); // 📱 視覚改善: 緑色の境界線
         checkboxCell.setNote("☑️ 選択・操作エリア");
 
-        // 行の高さを固定（UX改善 + 結合プロンプト縦幅制限）
-        sheet.setRowHeight(row, 50); // 🔧 結合プロンプト省略表示対応で50pxに戻す
+        // 行の高さを固定（結合プロンプト完全表示対応）
+        sheet.setRowHeight(row, 80); // 🎯 結合プロンプト省略なし表示対応で80pxに拡大
 
         // 10行ごとに薄い区切り線を追加
         if (i % 10 === 0) {
