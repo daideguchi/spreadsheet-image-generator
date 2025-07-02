@@ -236,30 +236,63 @@ function getRangeValues(a1Notation) {
 /**
  * サイズ判定のみの最小限解析（GPT-Image-1準拠）
  * プロンプトに基づいてサイズのみを判定し、最新の解像度オプションを使用
+ * 優先度：強制サイズ指定 > 明確なサイズ指定 > 一般的なキーワード判定
  */
-function analyzePromptForOptimalSettings(prompt) {
-  // サイズ判定のみ（最小限の解析）
-  const sizeAnalysis = {
-    portrait: /(portrait|vertical|縦|人物|顔|9:16|縦長|ポートレート)/i.test(
-      prompt
-    ),
-    landscape:
-      /(landscape|horizontal|横|風景|panorama|16:9|横長|ランドスケープ|wide|panoramic|パノラマ|ワイド)/i.test(
+function analyzePromptForOptimalSettings(prompt, forcedSize = null) {
+  // 🔥 明確なサイズ指定を最優先で判定
+  const explicitSizePatterns = {
+    // 明確な横長指定（最優先）
+    explicitHorizontal:
+      /(16:9|16×9|1536x1024|1536×1024|HORIZONTAL|horizontal|LANDSCAPE|landscape|WIDESCREEN|widescreen|WIDE|wide)/i.test(
+        prompt
+      ),
+    // 明確な縦長指定（最優先）
+    explicitVertical:
+      /(9:16|9×16|1024x1536|1024×1536|VERTICAL|vertical|PORTRAIT|portrait|TALL|tall)/i.test(
         prompt
       ),
   };
 
-  // 🔥 GPT-Image-1の新サイズオプション復活
-  let selectedSize = "1024x1024"; // デフォルト（正方形）
+  // 🔥 一般的なキーワード判定（優先度低）
+  const generalPatterns = {
+    // 一般的な縦長キーワード
+    generalPortrait: /(縦|人物|顔|縦長|ポートレート)/i.test(prompt),
+    // 一般的な横長キーワード
+    generalLandscape: /(横|風景|panorama|パノラマ|panoramic)/i.test(prompt),
+  };
 
-  if (sizeAnalysis.portrait) {
-    selectedSize = "1024x1536"; // 縦長（GPT-Image-1対応）
-  } else if (sizeAnalysis.landscape) {
+  // 🔥 GPT-Image-1の新サイズオプション判定（優先度順）
+  let selectedSize = "1024x1024"; // デフォルト（正方形）
+  let reason = "デフォルト（正方形）";
+
+  // 🚀 0. 強制サイズ指定を最優先（どんなプロンプトでも強制適用）
+  if (forcedSize) {
+    selectedSize = forcedSize;
+    reason = `強制サイズ指定: ${forcedSize}`;
+  }
+  // 1. 明確な横長指定を最優先
+  else if (explicitSizePatterns.explicitHorizontal) {
     selectedSize = "1536x1024"; // 横長（GPT-Image-1対応）
+    reason = "明確な横長指定を検出";
+  }
+  // 2. 明確な縦長指定を次に優先
+  else if (explicitSizePatterns.explicitVertical) {
+    selectedSize = "1024x1536"; // 縦長（GPT-Image-1対応）
+    reason = "明確な縦長指定を検出";
+  }
+  // 3. 一般的な横長キーワード
+  else if (generalPatterns.generalLandscape) {
+    selectedSize = "1536x1024"; // 横長（GPT-Image-1対応）
+    reason = "一般的な横長キーワードを検出";
+  }
+  // 4. 一般的な縦長キーワード
+  else if (generalPatterns.generalPortrait) {
+    selectedSize = "1024x1536"; // 縦長（GPT-Image-1対応）
+    reason = "一般的な縦長キーワードを検出";
   }
 
-  // スタイル判定は削除（GPT-Image-1はstyleパラメータなし）
-  console.log(`GPT-Image-1サイズ判定結果: size=${selectedSize}`);
+  // デバッグ用ログ：判定理由を表示
+  console.log(`GPT-Image-1サイズ判定結果: size=${selectedSize} (${reason})`);
   return { size: selectedSize };
 }
 
@@ -284,9 +317,9 @@ function enhancePromptForQuality(originalPrompt) {
 }
 
 /**
- * DALL-E APIを使って画像を生成（画質選択対応）
+ * DALL-E APIを使って画像を生成（画質・サイズ選択対応）
  */
-function generateImages(prompts) {
+function generateImages(prompts, forcedSize = null) {
   if (!prompts || prompts.length === 0) {
     throw new Error("プロンプトが指定されていません");
   }
@@ -309,8 +342,10 @@ function generateImages(prompts) {
       }
 
       // スタイル・サイズ判定をtryブロックの外で実行（catchブロックからもアクセス可能）
-      const { size: selectedSize } =
-        analyzePromptForOptimalSettings(actualPrompt);
+      const { size: selectedSize } = analyzePromptForOptimalSettings(
+        actualPrompt,
+        forcedSize
+      );
 
       try {
         console.log(
@@ -690,9 +725,9 @@ function getAllImageUrls() {
 // createImageTable関数は削除 - createStructuredTableに統合されました
 
 /**
- * B列のプロンプトを検出して画像生成（9列構造対応）
+ * B列のプロンプトを検出して画像生成（9列構造対応・サイズ強制指定対応）
  */
-function generateImagesFromStructuredTable() {
+function generateImagesFromStructuredTable(forcedSize = null) {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
     const lastRow = sheet.getLastRow();
@@ -767,8 +802,15 @@ function generateImagesFromStructuredTable() {
 
     console.log(`${validPrompts.length}個のプロンプトを検出しました`);
 
-    // 画像を生成
-    const imageResults = generateImages(validPrompts);
+    // 🚀 強制サイズ指定ログ
+    if (forcedSize) {
+      console.log(
+        `🔧 強制サイズ指定: ${forcedSize} - プロンプト解析をオーバーライド`
+      );
+    }
+
+    // 画像を生成（強制サイズ指定対応）
+    const imageResults = generateImages(validPrompts, forcedSize);
 
     // 構造化テーブルに結果を配置
     return populateStructuredTable(imageResults, promptRows);
@@ -1504,9 +1546,9 @@ function regenerateSelectedImages() {
 }
 
 /**
- * シート保護機能付き画像生成（プログレスバー対応）
+ * シート保護機能付き画像生成（プログレスバー対応・サイズ強制指定対応）
  */
-function generateImagesFromStructuredTableWithProgress() {
+function generateImagesFromStructuredTableWithProgress(forcedSize = null) {
   let protection = null;
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
@@ -1516,8 +1558,8 @@ function generateImagesFromStructuredTableWithProgress() {
     protection = sheet.protect().setDescription("画像生成中 - 編集禁止");
     protection.setWarningOnly(false);
 
-    // 画像生成処理を実行
-    const result = generateImagesFromStructuredTable();
+    // 画像生成処理を実行（強制サイズ指定対応）
+    const result = generateImagesFromStructuredTable(forcedSize);
 
     return result;
   } catch (error) {
