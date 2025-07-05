@@ -808,6 +808,13 @@
       // setTimeout(smartInitialization, 100);
       // 直接実行に変更
       smartInitialization();
+      
+      // 🔥 画像管理セクション（ダウンロードボタン含む）を強制表示
+      const managementSection = document.getElementById('managementSection');
+      if (managementSection) {
+        managementSection.style.display = 'block';
+        console.log('✅ 画像管理セクション（ダウンロードボタン含む）を表示');
+      }
     });
 
     // 🚀 全ての定期監視を完全削除（動作軽量化）
