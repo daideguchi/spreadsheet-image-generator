@@ -509,9 +509,31 @@ function generateImages(prompts, forcedSize = null, selectedModel = null) {
           throw lastError || new Error("画像生成に失敗しました");
         }
 
-        const data = JSON.parse(response.getContentText());
-        if (!data.data || !data.data[0]) {
-          throw new Error("画像データの取得に失敗しました");
+        let data = null;
+        try {
+          const responseText = response.getContentText();
+          if (!responseText || responseText.trim() === "") {
+            throw new Error("APIレスポンスが空です");
+          }
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          throw new Error(
+            `APIレスポンスの解析に失敗しました: ${parseError.message}`
+          );
+        }
+
+        if (!data) {
+          throw new Error("APIレスポンスが無効です");
+        }
+
+        if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
+          throw new Error(
+            "画像データの取得に失敗しました（データが空または無効）"
+          );
+        }
+
+        if (!data.data[0]) {
+          throw new Error("画像データの最初の要素が無効です");
         }
 
         const imageData = data.data[0];
@@ -1593,6 +1615,7 @@ function regenerateSelectedImages() {
 
 /**
  * シート保護機能付き画像生成（プログレスバー対応・サイズ強制指定対応）
+ * 🚀 バッチ処理対応: 大量画像生成時は自動的にバッチ処理を実行
  */
 function generateImagesFromStructuredTableWithProgress(
   forcedSize = null,
@@ -1607,8 +1630,24 @@ function generateImagesFromStructuredTableWithProgress(
     protection = sheet.protect().setDescription("画像生成中 - 編集禁止");
     protection.setWarningOnly(false);
 
-    // 画像生成処理を実行（強制サイズ指定・モデル選択対応）
-    const result = generateImagesFromStructuredTable(forcedSize, selectedModel);
+    // 🎯 画像数を事前カウントしてバッチ処理を判定
+    const imageCount = getImageGenerationCount();
+    console.log(`📊 生成予定画像数: ${imageCount}枚`);
+
+    let result;
+    if (imageCount <= 8) {
+      // 少数の場合：通常処理
+      console.log("🔄 通常処理を実行");
+      result = generateImagesFromStructuredTable(forcedSize, selectedModel);
+    } else {
+      // 多数の場合：バッチ処理
+      console.log(`🚀 バッチ処理を実行 (${imageCount}枚)`);
+      result = generateImagesFromStructuredTableBatch(
+        forcedSize,
+        selectedModel,
+        imageCount
+      );
+    }
 
     return result;
   } catch (error) {
@@ -1624,6 +1663,220 @@ function generateImagesFromStructuredTableWithProgress(
         console.error("シート保護解除エラー:", removeError);
       }
     }
+  }
+}
+
+/**
+ * 🚀 バッチ処理対応の大量画像生成（Google Apps Script 6分制限対応）
+ * 15枚以上の画像でも安定動作するよう、分割処理を実装
+ */
+function generateImagesFromStructuredTableBatch(
+  forcedSize = null,
+  selectedModel = null,
+  totalImages = 0
+) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      throw new Error("プロンプトが入力されていません");
+    }
+
+    // 🎯 スマートバッチサイズ決定
+    let batchSize;
+    if (totalImages <= 15) {
+      batchSize = 5; // 小バッチ
+    } else if (totalImages <= 30) {
+      batchSize = 6; // 中バッチ
+    } else {
+      batchSize = 8; // 大バッチ
+    }
+
+    console.log(`🚀 バッチ処理開始: ${totalImages}枚 → ${batchSize}枚ずつ処理`);
+
+    // B列からプロンプトを取得
+    const promptRange = sheet.getRange(2, 2, Math.min(lastRow - 1, 100), 1);
+    const promptValues = promptRange.getValues();
+
+    const validPrompts = [];
+    const promptRows = [];
+
+    // 有効なプロンプトを収集
+    promptValues.forEach((row, index) => {
+      const prompt = row[0];
+      const actualRow = index + 2;
+
+      if (prompt && typeof prompt === "string" && prompt.trim() !== "") {
+        // 既存画像チェック
+        const existingImageCell = sheet.getRange(actualRow, 5);
+        const existingImage = existingImageCell.getFormula();
+
+        if (existingImage && existingImage.includes("=IMAGE(")) {
+          console.log(`行${actualRow}は既に画像が生成済みのためスキップ`);
+          return;
+        }
+
+        const fullPrompt = getFullPrompt(sheet, actualRow);
+        if (!fullPrompt) {
+          console.log(`行${actualRow}: プロンプトが取得できませんでした`);
+          return;
+        }
+
+        // 画質設定を取得（安全チェック強化）
+        const qualityCell = sheet.getRange(actualRow, 8);
+        let qualityValue = null;
+
+        try {
+          qualityValue = qualityCell.getValue();
+        } catch (cellError) {
+          console.error(`行${actualRow}のH列取得エラー:`, cellError);
+          qualityValue = null;
+        }
+
+        let quality = null;
+        try {
+          quality = parseQualityValue(qualityValue);
+        } catch (parseError) {
+          console.error(`行${actualRow}の画質値解析エラー:`, parseError);
+          quality = null;
+        }
+
+        if (!quality || !["high", "medium", "low"].includes(quality)) {
+          quality = "high";
+          try {
+            qualityCell.setValue(formatQualityDisplay("high"));
+          } catch (setCellError) {
+            console.error(`行${actualRow}の画質設定エラー:`, setCellError);
+            // エラーでも続行
+          }
+        }
+
+        validPrompts.push({
+          prompt: fullPrompt,
+          quality: quality,
+        });
+        promptRows.push(actualRow);
+      }
+    });
+
+    if (validPrompts.length === 0) {
+      throw new Error("有効なプロンプトが見つかりません");
+    }
+
+    console.log(`📊 実際の処理数: ${validPrompts.length}枚`);
+    console.log(`⚙️ バッチサイズ: ${batchSize}枚`);
+
+    // 🎯 バッチ処理実行
+    const allResults = [];
+    let processedCount = 0;
+    const totalBatches = Math.ceil(validPrompts.length / batchSize);
+
+    for (let i = 0; i < validPrompts.length; i += batchSize) {
+      const batchPrompts = validPrompts.slice(i, i + batchSize);
+      const batchRows = promptRows.slice(i, i + batchSize);
+
+      const batchNumber = Math.floor(i / batchSize) + 1;
+
+      console.log(
+        `🔄 バッチ${batchNumber}/${totalBatches}: ${batchPrompts.length}枚処理中`
+      );
+
+      // G列に進捗表示
+      batchRows.forEach((row) => {
+        const timeCell = sheet.getRange(row, 7);
+        timeCell.setValue(`🔄 バッチ${batchNumber}/${totalBatches}`);
+        timeCell.setBackground("#fff3e0");
+        timeCell.setFontColor("#ef6c00");
+      });
+
+      try {
+        // バッチ単位で画像生成
+        const batchResults = generateImages(
+          batchPrompts,
+          forcedSize,
+          selectedModel
+        );
+
+        // 結果を即座に配置（安全チェック強化）
+        let batchResult = null;
+        try {
+          if (
+            batchResults &&
+            Array.isArray(batchResults) &&
+            batchResults.length > 0
+          ) {
+            batchResult = populateStructuredTable(batchResults, batchRows);
+          } else {
+            console.warn(`バッチ${batchNumber}: 結果が空または無効`);
+          }
+        } catch (populateError) {
+          console.error(`バッチ${batchNumber}の結果配置エラー:`, populateError);
+          // 配置エラーでも続行
+        }
+
+        // 結果を集積（null/undefinedチェック強化）
+        if (batchResults && Array.isArray(batchResults)) {
+          allResults.push(...batchResults);
+          const successfulResults = batchResults.filter((r) => r && !r.failed);
+          processedCount += successfulResults.length;
+        } else {
+          console.warn(`バッチ${batchNumber}: 結果が配列でない`);
+        }
+
+        console.log(
+          `✅ バッチ${batchNumber}完了: ${
+            batchResults.filter((r) => !r.failed).length
+          }枚成功`
+        );
+
+        // バッチ間の待機時間（API制限対応）
+        if (i + batchSize < validPrompts.length) {
+          console.log("⏳ 次のバッチまで2秒待機...");
+          Utilities.sleep(2000);
+        }
+      } catch (batchError) {
+        console.error(`❌ バッチ${batchNumber}でエラー:`, batchError);
+
+        // エラーが発生したバッチの行にエラー表示
+        batchRows.forEach((row) => {
+          const imageCell = sheet.getRange(row, 5);
+          imageCell.setValue("❌ バッチエラー");
+          imageCell.setBackground("#ffebee");
+          imageCell.setFontColor("#d32f2f");
+          imageCell.setNote(`バッチ処理エラー: ${batchError.message}`);
+        });
+
+        // 他のバッチは続行
+        continue;
+      }
+    }
+
+    // 最終結果（安全チェック強化）
+    let successCount = 0;
+    let failureCount = 0;
+
+    if (allResults && Array.isArray(allResults)) {
+      successCount = allResults.filter((r) => r && !r.failed).length;
+      failureCount = allResults.filter((r) => r && r.failed).length;
+    } else {
+      console.error("最終結果が配列でない:", allResults);
+    }
+
+    console.log(
+      `🎯 バッチ処理完了: ${totalBatches}バッチ処理, 成功${successCount}枚, 失敗${failureCount}枚`
+    );
+
+    if (successCount === 0) {
+      return `❌ すべてのバッチが失敗しました。時間をおいてから再試行してください。`;
+    } else if (failureCount === 0) {
+      return `✅ ${successCount}枚の画像をバッチ処理で生成完了！（${totalBatches}バッチ処理）`;
+    } else {
+      return `⚠️ バッチ処理完了: 成功${successCount}枚、失敗${failureCount}枚\n${totalBatches}バッチで分割処理しました。`;
+    }
+  } catch (error) {
+    console.error("バッチ処理エラー:", error);
+    throw new Error(`バッチ処理に失敗しました: ${error.message}`);
   }
 }
 

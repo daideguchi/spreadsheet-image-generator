@@ -642,10 +642,10 @@
         <div class="button-section" id="managementSection" style="display: none;">
           <div class="section-title">🛠️ 画像管理</div>
           <div class="button-row">
-            <button class="btn btn-secondary btn-small" onclick="selectAllImages()">
+            <button class="btn btn-secondary btn-small" onclick="selectAllImagesUI()">
               ☑️ 全選択
             </button>
-            <button class="btn btn-secondary btn-small" onclick="clearAllImageSelection()">
+            <button class="btn btn-secondary btn-small" onclick="clearAllImageSelectionUI()">
               ❌ 全選択解除
             </button>
           </div>
@@ -669,10 +669,10 @@
         <div class="button-section" id="librarySection">
           <div class="section-title">📚 ライブラリ管理</div>
           <div class="button-row">
-            <button class="btn btn-secondary btn-small" onclick="selectAllLibraryImages()">
+            <button class="btn btn-secondary btn-small" onclick="selectAllLibraryImagesUI()">
               ☑️ ライブラリ全選択
             </button>
-            <button class="btn btn-secondary btn-small" onclick="clearAllLibrarySelection()">
+            <button class="btn btn-secondary btn-small" onclick="clearAllLibrarySelectionUI()">
               ❌ ライブラリ全解除
             </button>
           </div>
@@ -916,16 +916,34 @@
     }
 
     function startProgressWithImageCount(imageCount) {
-      // 🔧 **プログレスバー詳細ステップ分割**: 均等で快適な進捗表示
-      const steps = [
-        { inc: 12, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 800 },
-        { inc: 12, text: 'DALL-E APIに接続中...', duration: 800 },
-        { inc: 12, text: 'API認証を確認中...', duration: 800 },
-        { inc: 12, text: `画像生成リクエスト送信中... (${imageCount}枚)`, duration: 800 },
-        { inc: 28, text: `画像を生成中... (${imageCount}枚)`, duration: Math.max(1500, imageCount * 800) }, // 均等化
-        { inc: 12, text: '生成結果を受信中...', duration: 800 },
-        { inc: 12, text: 'シートに配置中...', duration: 800 }
-      ];
+      // 🚀 バッチ処理対応プログレスバー
+      const batchCount = Math.ceil(imageCount / (imageCount > 15 ? 6 : 5));
+      const isBatchMode = imageCount > 8;
+      
+      let steps;
+      if (isBatchMode) {
+        // バッチ処理モード
+        steps = [
+          { inc: 10, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 600 },
+          { inc: 10, text: 'DALL-E APIに接続中...', duration: 600 },
+          { inc: 10, text: 'API認証を確認中...', duration: 600 },
+          { inc: 15, text: `バッチ処理を開始... (${batchCount}バッチ予定)`, duration: 800 },
+          { inc: 40, text: `バッチ画像生成中... (${imageCount}枚を${batchCount}バッチで処理)`, duration: Math.max(2000, batchCount * 1000) },
+          { inc: 10, text: 'バッチ結果を統合中...', duration: 600 },
+          { inc: 5, text: 'シートに配置中...', duration: 600 }
+        ];
+      } else {
+        // 通常処理モード
+        steps = [
+          { inc: 12, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 800 },
+          { inc: 12, text: 'DALL-E APIに接続中...', duration: 800 },
+          { inc: 12, text: 'API認証を確認中...', duration: 800 },
+          { inc: 12, text: `画像生成リクエスト送信中... (${imageCount}枚)`, duration: 800 },
+          { inc: 28, text: `画像を生成中... (${imageCount}枚)`, duration: Math.max(1500, imageCount * 800) },
+          { inc: 12, text: '生成結果を受信中...', duration: 800 },
+          { inc: 12, text: 'シートに配置中...', duration: 800 }
+        ];
+      }
 
       let progress = 0;
       let stepIdx = 0;
@@ -1339,8 +1357,30 @@
         .withFailureHandler(function(error) {
           hideProgressModal();
           hideTopMessage();
-          showErrorMessage('❌ 画像生成エラー: ' + error.message);
-          showResult('エラー: ' + error.message, true);
+          
+          // 🔧 エラーハンドリング強化
+          let errorMessage = '❌ 画像生成エラー: ';
+          if (error && error.message) {
+            errorMessage += error.message;
+          } else if (typeof error === 'string') {
+            errorMessage += error;
+          } else {
+            errorMessage += '不明なエラーが発生しました。';
+          }
+          
+          // 🎯 特定のエラーパターンに対する対処法を追加
+          if (errorMessage.includes('画質を選択してください')) {
+            errorMessage += '\n\n💡 対処法: H列（画質）が正しく設定されているか確認してください。';
+          } else if (errorMessage.includes('6分')) {
+            errorMessage += '\n\n💡 対処法: 大量の画像は自動的にバッチ処理されます。しばらくお待ちください。';
+          } else if (errorMessage.includes('レート制限')) {
+            errorMessage += '\n\n💡 対処法: 1分後に再試行してください。';
+          } else if (errorMessage.includes('プロンプトが入力されていません')) {
+            errorMessage += '\n\n💡 対処法: B列にプロンプトを入力してください。';
+          }
+          
+          showErrorMessage(errorMessage);
+          showResult(errorMessage, true);
         })
         .generateImagesFromStructuredTableWithProgress(forcedSize, selectedModel);
     }
@@ -2127,7 +2167,7 @@
     }
 
     // ✅ 全選択専用機能
-    function selectAllImages() {
+    function selectAllImagesUI() {
       showTopMessage('☑️ 全選択中...', 'processing');
       google.script.run
         .withSuccessHandler(function(result) {
@@ -2142,7 +2182,7 @@
     }
 
     // ❌ 全選択解除専用機能
-    function clearAllImageSelection() {
+    function clearAllImageSelectionUI() {
       showTopMessage('❌ 全選択解除中...', 'processing');
       google.script.run
         .withSuccessHandler(function(result) {
@@ -2157,7 +2197,7 @@
     }
 
     // ✅ ライブラリ全選択専用機能
-    function selectAllLibraryImages() {
+    function selectAllLibraryImagesUI() {
       showTopMessage('☑️ ライブラリ全選択中...', 'processing');
       google.script.run
         .withSuccessHandler(function(result) {
@@ -2172,7 +2212,7 @@
     }
 
     // ❌ ライブラリ全選択解除専用機能
-    function clearAllLibrarySelection() {
+    function clearAllLibrarySelectionUI() {
       showTopMessage('❌ ライブラリ全選択解除中...', 'processing');
       google.script.run
         .withSuccessHandler(function(result) {
