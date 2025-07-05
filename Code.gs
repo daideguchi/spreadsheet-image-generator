@@ -319,7 +319,7 @@ function enhancePromptForQuality(originalPrompt) {
 /**
  * DALL-E APIを使って画像を生成（画質・サイズ選択対応）
  */
-function generateImages(prompts, forcedSize = null) {
+function generateImages(prompts, forcedSize = null, selectedModel = null) {
   if (!prompts || prompts.length === 0) {
     throw new Error("プロンプトが指定されていません");
   }
@@ -328,17 +328,50 @@ function generateImages(prompts, forcedSize = null) {
   const results = [];
   const errors = [];
 
+  // 🎯 モデル選択のデフォルト設定（コスト効率重視）
+  const model = selectedModel || "dall-e-3"; // デフォルトはコスト効率の良いDALL-E 3
+
+  // 🔥 モデル別設定
+  const modelConfigs = {
+    "dall-e-3": {
+      endpoint: "https://api.openai.com/v1/images/generations",
+      defaultQuality: "standard", // standard/hd (DALL-E 3は低コスト)
+      supportedQualities: ["standard", "hd"],
+      costPerImage: "$0.02-$0.08", // 低コスト
+      description: "DALL-E 3 (推奨・低コスト)",
+    },
+    "gpt-image-1": {
+      endpoint: "https://api.openai.com/v1/images/generations",
+      defaultQuality: "high", // high/medium/low
+      supportedQualities: ["high", "medium", "low"],
+      costPerImage: "$2-$10", // 高コスト
+      description: "GPT-Image-1 (高品質・高コスト)",
+    },
+  };
+
+  const config = modelConfigs[model] || modelConfigs["dall-e-3"];
+
   try {
     prompts.forEach((promptData, index) => {
       // promptDataがオブジェクトかどうかを確認（後方互換性のため）
       let actualPrompt, quality;
       if (typeof promptData === "object") {
         actualPrompt = promptData.prompt;
-        quality = promptData.quality || "high";
+        quality = promptData.quality || config.defaultQuality;
       } else {
         // 文字列の場合は従来通り（後方互換性）
         actualPrompt = promptData;
-        quality = "high";
+        quality = config.defaultQuality;
+      }
+
+      // 🔧 品質設定をモデル別に調整
+      if (model === "dall-e-3") {
+        // DALL-E 3の場合：high/medium/low → standard/hd に変換
+        if (quality === "high") {
+          quality = "hd";
+        } else {
+          quality = "standard";
+        }
       }
 
       // スタイル・サイズ判定をtryブロックの外で実行（catchブロックからもアクセス可能）
@@ -349,10 +382,11 @@ function generateImages(prompts, forcedSize = null) {
 
       try {
         console.log(
-          `画像生成中 ${index + 1}/${
-            prompts.length
-          }: ${actualPrompt} (画質: ${quality})`
+          `🎨 画像生成中 ${index + 1}/${prompts.length}: ${actualPrompt}`
         );
+        console.log(`📱 モデル: ${model} (${config.description})`);
+        console.log(`🎯 品質: ${quality}, サイズ: ${selectedSize}`);
+        console.log(`💰 推定コスト: ${config.costPerImage}`);
 
         // 🚨 プロンプト完全無改変の実現
         // ユーザーのプロンプトを一切改変せずそのまま使用
@@ -365,17 +399,32 @@ function generateImages(prompts, forcedSize = null) {
           `自動設定パラメーター - サイズ: ${selectedSize}, 画質: ${quality}`
         );
 
-        // プロンプト無改変 + テクニック的パラメーター最適化
-        const payload = {
-          prompt: finalPrompt, // ユーザープロンプトを完全にそのまま使用
-          n: 1,
-          size: selectedSize, // 自動サイズ判定
-          model: "gpt-image-1", // 🔥 最新モデル復活（32,000文字対応）
-          quality: quality, // 🎨 行ごとの画質設定を適用（high/medium/low）
-          background: "auto", // 🔥 背景自動最適化（新機能）
-          output_format: "png", // 🔥 PNG出力（新機能）
-          moderation: "auto", // 🔥 モデレーション自動（新機能）
-        };
+        // 🔥 モデル別ペイロード作成
+        let payload;
+
+        if (model === "dall-e-3") {
+          // DALL-E 3用ペイロード
+          payload = {
+            model: "dall-e-3",
+            prompt: finalPrompt,
+            n: 1,
+            size: selectedSize,
+            quality: quality, // standard/hd
+            style: "natural", // DALL-E 3の新機能
+          };
+        } else {
+          // GPT-Image-1用ペイロード（従来通り）
+          payload = {
+            prompt: finalPrompt,
+            n: 1,
+            size: selectedSize,
+            model: "gpt-image-1",
+            quality: quality, // high/medium/low
+            background: "auto",
+            output_format: "png",
+            moderation: "auto",
+          };
+        }
 
         // リトライ機能付きAPIリクエスト
         let response;
@@ -386,29 +435,25 @@ function generateImages(prompts, forcedSize = null) {
           try {
             console.log(`画像${index + 1}: 試行${attempt}/${maxRetries}`);
 
-            response = UrlFetchApp.fetch(
-              "https://api.openai.com/v1/images/generations",
-              {
-                method: "POST",
-                contentType: "application/json",
-                headers: {
-                  Authorization: `Bearer ${apiKey}`,
-                  "Content-Type": "application/json",
-                  // テクニック的最適化ヘッダー設定
-                  "User-Agent": "SpreadsheetImageGenerator/2.0",
-                  Accept: "application/json",
-                  "Accept-Language": "en,ja;q=0.9", // 多言語対応
-                },
-                payload: JSON.stringify(payload),
-                muteHttpExceptions: true, // 詳細なエラー情報を取得
-              }
-            );
+            response = UrlFetchApp.fetch(config.endpoint, {
+              method: "POST",
+              contentType: "application/json",
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+                "User-Agent": "SpreadsheetImageGenerator/2.0",
+                Accept: "application/json",
+                "Accept-Language": "en,ja;q=0.9",
+              },
+              payload: JSON.stringify(payload),
+              muteHttpExceptions: true,
+            });
 
             const responseCode = response.getResponseCode();
             const responseText = response.getContentText();
 
             if (responseCode === 200) {
-              console.log(`画像${index + 1}: 生成成功`);
+              console.log(`画像${index + 1}: 生成成功 (${model})`);
               break; // 成功したらループを抜ける
             } else if (responseCode === 500) {
               // 500エラーの場合はリトライ
@@ -469,27 +514,34 @@ function generateImages(prompts, forcedSize = null) {
           throw new Error("画像データの取得に失敗しました");
         }
 
-        // 🔥 GPT-Image-1はbase64レスポンスのみ
         const imageData = data.data[0];
         let imageUrl;
 
-        if (imageData.b64_json) {
-          // base64データをData URLに変換
-          imageUrl = `data:image/png;base64,${imageData.b64_json}`;
-        } else if (imageData.url) {
-          // 従来のURL形式（フォールバック）
-          imageUrl = imageData.url;
+        // 🔥 モデル別レスポンス処理
+        if (model === "gpt-image-1") {
+          // GPT-Image-1はbase64レスポンス
+          if (imageData.b64_json) {
+            imageUrl = `data:image/png;base64,${imageData.b64_json}`;
+          } else if (imageData.url) {
+            imageUrl = imageData.url;
+          } else {
+            throw new Error("画像データの形式が不正です");
+          }
         } else {
-          throw new Error("画像データの形式が不正です");
+          // DALL-E 3はURL形式
+          if (imageData.url) {
+            imageUrl = imageData.url;
+          } else {
+            throw new Error("画像URLの取得に失敗しました");
+          }
         }
 
-        // 🔍 GPT-Image-1の内部処理を監視（ユーザー情報提供用）
+        // 🔍 プロンプト改変の分析（GPT-Image-1の場合）
         const revisedPrompt = imageData.revised_prompt;
-        if (revisedPrompt) {
+        if (revisedPrompt && model === "gpt-image-1") {
           console.log(`📝 ユーザー入力プロンプト: ${actualPrompt}`);
           console.log(`🤖 GPT-Image-1内部処理版: ${revisedPrompt}`);
 
-          // 改変度合いを分析
           const originalLength = actualPrompt.length;
           const revisedLength = revisedPrompt.length;
           const lengthDiff = Math.abs(revisedLength - originalLength);
@@ -500,19 +552,6 @@ function generateImages(prompts, forcedSize = null) {
               1
             )}% (${lengthDiff}文字差)`
           );
-
-          // 情報提供としての分析
-          if (changeRatio > 50) {
-            console.log(
-              `📈 GPT-Image-1が大幅に内部処理を行いました: ${changeRatio.toFixed(
-                1
-              )}%`
-            );
-          } else if (changeRatio > 20) {
-            console.log(`📊 GPT-Image-1が中程度の内部処理を行いました`);
-          } else {
-            console.log(`✅ GPT-Image-1の内部処理は最小限でした`);
-          }
         }
 
         results.push({
@@ -727,7 +766,10 @@ function getAllImageUrls() {
 /**
  * B列のプロンプトを検出して画像生成（9列構造対応・サイズ強制指定対応）
  */
-function generateImagesFromStructuredTable(forcedSize = null) {
+function generateImagesFromStructuredTable(
+  forcedSize = null,
+  selectedModel = null
+) {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
     const lastRow = sheet.getLastRow();
@@ -809,8 +851,12 @@ function generateImagesFromStructuredTable(forcedSize = null) {
       );
     }
 
-    // 画像を生成（強制サイズ指定対応）
-    const imageResults = generateImages(validPrompts, forcedSize);
+    // 画像を生成（強制サイズ指定・モデル選択対応）
+    const imageResults = generateImages(
+      validPrompts,
+      forcedSize,
+      selectedModel
+    );
 
     // 構造化テーブルに結果を配置
     return populateStructuredTable(imageResults, promptRows);
@@ -1548,7 +1594,10 @@ function regenerateSelectedImages() {
 /**
  * シート保護機能付き画像生成（プログレスバー対応・サイズ強制指定対応）
  */
-function generateImagesFromStructuredTableWithProgress(forcedSize = null) {
+function generateImagesFromStructuredTableWithProgress(
+  forcedSize = null,
+  selectedModel = null
+) {
   let protection = null;
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
@@ -1558,8 +1607,8 @@ function generateImagesFromStructuredTableWithProgress(forcedSize = null) {
     protection = sheet.protect().setDescription("画像生成中 - 編集禁止");
     protection.setWarningOnly(false);
 
-    // 画像生成処理を実行（強制サイズ指定対応）
-    const result = generateImagesFromStructuredTable(forcedSize);
+    // 画像生成処理を実行（強制サイズ指定・モデル選択対応）
+    const result = generateImagesFromStructuredTable(forcedSize, selectedModel);
 
     return result;
   } catch (error) {

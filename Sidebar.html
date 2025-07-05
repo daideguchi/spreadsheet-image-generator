@@ -613,6 +613,15 @@
             🔄 結合プロンプト更新
           </button>
 
+          <!-- 🎯 モデル選択機能 -->
+          <div class="size-selector-container">
+            <label for="modelSelector" class="size-label">🤖 生成モデル (コスト重要)</label>
+            <select id="modelSelector" class="size-selector" title="コスト効率を重視してモデルを選択してください">
+              <option value="dall-e-3">💚 DALL-E 3 (推奨・低コスト $0.02-$0.08)</option>
+              <option value="gpt-image-1">💸 GPT-Image-1 (高品質・高コスト $2-$10)</option>
+            </select>
+          </div>
+
           <!-- 🎯 サイズ選択機能 -->
           <div class="size-selector-container">
             <label for="sizeSelector" class="size-label">📐 画像サイズ (強制指定)</label>
@@ -728,6 +737,19 @@
       checkSheetState();
       // 定期的にシート状態をチェック（3秒間隔で適度な監視）
       setInterval(checkSheetState, 3000);
+      
+      // 🎯 モデル選択時のコスト警告機能
+      const modelSelector = document.getElementById('modelSelector');
+      if (modelSelector) {
+        modelSelector.addEventListener('change', function() {
+          const selectedModel = this.value;
+          if (selectedModel === 'gpt-image-1') {
+            showTopMessage('💸 警告: GPT-Image-1は高コストです (1枚$2-$10)。大量生成時はDALL-E 3を推奨します。', 'warning', 8000);
+          } else {
+            showTopMessage('💚 DALL-E 3選択: コスト効率の良いモデルです (1枚$0.02-$0.08)', 'success', 4000);
+          }
+        });
+      }
     });
 
     // 必要最小限のイベントで状態をチェック
@@ -1288,17 +1310,22 @@
         return;
       }
 
+      // 🎯 モデル選択値を取得
+      const modelSelector = document.getElementById('modelSelector');
+      const selectedModel = modelSelector.value || null;
+      
       // 🎯 サイズ選択値を取得
       const sizeSelector = document.getElementById('sizeSelector');
       const forcedSize = sizeSelector.value || null;
       
-      // デバッグログ: 選択されたサイズを表示
+      // デバッグログ: 選択されたモデルとサイズを表示
+      console.log(`🤖 選択モデル: ${selectedModel || 'dall-e-3 (デフォルト)'}`);
       if (forcedSize) {
         console.log(`🔧 強制サイズ指定: ${forcedSize}`);
-        showProcessingMessage(`🎨 画像生成開始中... (強制サイズ: ${forcedSize})`);
+        showProcessingMessage(`🎨 画像生成開始中... (モデル: ${selectedModel || 'DALL-E 3'}, サイズ: ${forcedSize})`);
       } else {
         console.log('🤖 自動サイズ判定モード');
-        showProcessingMessage('🎨 画像生成を開始しています... (自動サイズ判定)');
+        showProcessingMessage(`🎨 画像生成を開始しています... (モデル: ${selectedModel || 'DALL-E 3'}, 自動サイズ判定)`);
       }
 
       showLoading();
@@ -1323,7 +1350,7 @@
           showErrorMessage('❌ 画像生成エラー: ' + error.message);
           showResult('エラー: ' + error.message, true);
         })
-        .generateImagesFromStructuredTableWithProgress(forcedSize);
+        .generateImagesFromStructuredTableWithProgress(forcedSize, selectedModel);
     }
 
     function createTableOnly() {
