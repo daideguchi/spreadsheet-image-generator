@@ -751,64 +751,40 @@
 
     // 🔥 動作軽量化：初回のみ実行する軽量版
     function checkSheetStateOnce() {
-      google.script.run
-        .withSuccessHandler(function(state) {
-          const { isEmpty, hasPrompt, hasImages } = state;
-          const setupBtn = document.getElementById('setupBtn');
-          const generateBtn = document.getElementById('generateBtn');
-          const managementSection = document.getElementById('managementSection');
-          const backupBtn = document.getElementById('backupBtn');
-
-          // 🚀 強制的に全ボタンを有効化（動作軽量化）
-          setupBtn.disabled = false;
-          setupBtn.classList.remove('disabled');
-          setupBtn.title = '構造化テーブルを作成します';
-
-          generateBtn.disabled = false;
-          generateBtn.classList.remove('disabled');
-          generateBtn.title = '';
-
-          managementSection.style.display = 'block'; // 常に表示
-          
-          if (backupBtn) {
-            backupBtn.style.display = 'inline-block'; // 常に表示
-          }
-          
-          console.log('✅ 初回状態確認完了（軽量化モード）');
-        })
-        .withFailureHandler(function(error) {
-          console.log('⚠️ 状態確認エラー（軽量化モード）:', error);
-          // エラーでも全ボタンを有効化
-          forceEnableAllButtons();
-        })
-        .getSheetState();
+      console.log('🔥 初回状態確認（軽量化モード）');
+      
+      // 🔥 軽量化：Google Scripts通信を削除し、直接ボタンを有効化
+      setTimeout(() => {
+        forceEnableAllButtons();
+        console.log('✅ 初回状態確認完了（軽量化モード）');
+      }, 100);
     }
 
-    // 🚀 強制的に全ボタンを有効化（フォールバック）
+    // 🔥 checkSheetState関数を完全無効化（動作軽量化）
+    function checkSheetState() {
+      // 🔥 完全無効化 - Google Scripts通信を一切行わない
+      return;
+    }
+
+    // 🔥 forceEnableAllButtons関数を追加（初回のみ実行）
     function forceEnableAllButtons() {
-      const setupBtn = document.getElementById('setupBtn');
-      const generateBtn = document.getElementById('generateBtn');
+      console.log('🔥 全ボタンを強制有効化（軽量化モード）');
+      
+      // 全ボタンを強制的に有効化
+      const buttons = ['setupBtn', 'generateBtn', 'backupBtn', 'restoreBtn'];
+      buttons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('disabled');
+          btn.title = '';
+        }
+      });
+      
+      // 管理セクションを表示
       const managementSection = document.getElementById('managementSection');
-      const backupBtn = document.getElementById('backupBtn');
-
-      if (setupBtn) {
-        setupBtn.disabled = false;
-        setupBtn.classList.remove('disabled');
-        setupBtn.title = '構造化テーブルを作成します';
-      }
-
-      if (generateBtn) {
-        generateBtn.disabled = false;
-        generateBtn.classList.remove('disabled');
-        generateBtn.title = '';
-      }
-
       if (managementSection) {
         managementSection.style.display = 'block';
-      }
-
-      if (backupBtn) {
-        backupBtn.style.display = 'inline-block';
       }
     }
 
