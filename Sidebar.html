@@ -724,11 +724,12 @@
   </div>
 
   <script>
-    // サイドバー読み込み時にボタンの有効/無効を判定
+    // 🔥 動作軽量化：定期監視を完全停止
     window.addEventListener('load', () => {
-      checkSheetState();
-      // 定期的にシート状態をチェック（3秒間隔で適度な監視）
-      setInterval(checkSheetState, 3000);
+      // 初回のみ状態確認（定期監視は削除）
+      setTimeout(() => {
+        checkSheetStateOnce();
+      }, 500);
       
       // 🎯 モデル選択時のコスト警告機能
       const modelSelector = document.getElementById('modelSelector');
@@ -744,17 +745,12 @@
       }
     });
 
-    // 必要最小限のイベントで状態をチェック
-    window.addEventListener('focus', checkSheetState);
-    
-    // ページの可視性が変わった時（他のタブから戻った時など）
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
-        checkSheetState();
-      }
-    });
+    // 🚀 全ての定期監視を完全削除（動作軽量化）
+    // window.addEventListener('focus', checkSheetState); // 削除
+    // document.addEventListener('visibilitychange', checkSheetState); // 削除
 
-    function checkSheetState() {
+    // 🔥 動作軽量化：初回のみ実行する軽量版
+    function checkSheetStateOnce() {
       google.script.run
         .withSuccessHandler(function(state) {
           const { isEmpty, hasPrompt, hasImages } = state;
@@ -763,31 +759,63 @@
           const managementSection = document.getElementById('managementSection');
           const backupBtn = document.getElementById('backupBtn');
 
+          // 🚀 強制的に全ボタンを有効化（動作軽量化）
           setupBtn.disabled = false;
           setupBtn.classList.remove('disabled');
           setupBtn.title = '構造化テーブルを作成します';
 
-          if (!hasPrompt) {
-            generateBtn.disabled = true;
-            generateBtn.classList.add('disabled');
-            generateBtn.title = 'プロンプトを入力してください';
-          } else {
-            generateBtn.disabled = false;
-            generateBtn.classList.remove('disabled');
-            generateBtn.title = '';
-          }
+          generateBtn.disabled = false;
+          generateBtn.classList.remove('disabled');
+          generateBtn.title = '';
 
-          managementSection.style.display = hasImages ? 'block' : 'none';
+          managementSection.style.display = 'block'; // 常に表示
           
-          // バックアップボタンの表示制御（コンテンツがある時のみ表示）
           if (backupBtn) {
-            backupBtn.style.display = (hasPrompt || hasImages) ? 'inline-block' : 'none';
+            backupBtn.style.display = 'inline-block'; // 常に表示
           }
+          
+          console.log('✅ 初回状態確認完了（軽量化モード）');
         })
         .withFailureHandler(function(error) {
-          console.error('シート状態取得エラー:', error);
+          console.log('⚠️ 状態確認エラー（軽量化モード）:', error);
+          // エラーでも全ボタンを有効化
+          forceEnableAllButtons();
         })
         .getSheetState();
+    }
+
+    // 🚀 強制的に全ボタンを有効化（フォールバック）
+    function forceEnableAllButtons() {
+      const setupBtn = document.getElementById('setupBtn');
+      const generateBtn = document.getElementById('generateBtn');
+      const managementSection = document.getElementById('managementSection');
+      const backupBtn = document.getElementById('backupBtn');
+
+      if (setupBtn) {
+        setupBtn.disabled = false;
+        setupBtn.classList.remove('disabled');
+        setupBtn.title = '構造化テーブルを作成します';
+      }
+
+      if (generateBtn) {
+        generateBtn.disabled = false;
+        generateBtn.classList.remove('disabled');
+        generateBtn.title = '';
+      }
+
+      if (managementSection) {
+        managementSection.style.display = 'block';
+      }
+
+      if (backupBtn) {
+        backupBtn.style.display = 'inline-block';
+      }
+    }
+
+    // 🔥 旧checkSheetState関数を削除（動作軽量化）
+    function checkSheetState() {
+      // 何もしない（軽量化のため無効化）
+      console.log('🔥 checkSheetState呼び出しを無効化（軽量化モード）');
     }
 
     // 下部の処理表示を上部固定メッセージに統一
