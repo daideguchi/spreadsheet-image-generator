@@ -272,28 +272,70 @@ function analyzePromptForOptimalSettings(prompt, forcedSize = null) {
   }
   // 1. 明確な横長指定を最優先
   else if (explicitSizePatterns.explicitHorizontal) {
-    selectedSize = "1792x1024"; // 横長（DALL-E 3対応）
+    selectedSize = "1536x1024"; // 横長（正しいサイズ）
     reason = "明確な横長指定を検出";
   }
   // 2. 明確な縦長指定を次に優先
   else if (explicitSizePatterns.explicitVertical) {
-    selectedSize = "1024x1792"; // 縦長（DALL-E 3対応）
+    selectedSize = "1024x1536"; // 縦長（正しいサイズ）
     reason = "明確な縦長指定を検出";
   }
   // 3. 一般的な横長キーワード
   else if (generalPatterns.generalLandscape) {
-    selectedSize = "1792x1024"; // 横長（DALL-E 3対応）
+    selectedSize = "1536x1024"; // 横長（正しいサイズ）
     reason = "一般的な横長キーワードを検出";
   }
   // 4. 一般的な縦長キーワード
   else if (generalPatterns.generalPortrait) {
-    selectedSize = "1024x1792"; // 縦長（DALL-E 3対応）
+    selectedSize = "1024x1536"; // 縦長（正しいサイズ）
     reason = "一般的な縦長キーワードを検出";
   }
 
   // デバッグ用ログ：判定理由を表示
   console.log(`GPT-Image-1サイズ判定結果: size=${selectedSize} (${reason})`);
   return { size: selectedSize };
+}
+
+/**
+ * 画像サイズの有効性を検証し、無効な場合は安全なサイズに修正
+ */
+function validateImageSize(size) {
+  // サポートされているサイズ一覧（OpenAI APIの正式サポート値）
+  const supportedSizes = ["1024x1024", "1024x1536", "1536x1024", "auto"];
+
+  // undefinedやnullの場合はデフォルトサイズ
+  if (!size) {
+    console.log("🔧 サイズが未指定のため1024x1024（正方形）に設定");
+    return "1024x1024";
+  }
+
+  // 文字列に変換して検証
+  const sizeStr = String(size).trim();
+
+  // 無効なサイズの自動修正マッピング
+  const sizeFixMap = {
+    "1792x1024": "1536x1024", // 横長の修正
+    "1024x1792": "1024x1536", // 縦長の修正
+    "512x512": "1024x1024", // 古いサイズの修正
+    "256x256": "1024x1024", // 古いサイズの修正
+  };
+
+  // 自動修正が必要な場合
+  if (sizeFixMap[sizeStr]) {
+    const fixedSize = sizeFixMap[sizeStr];
+    console.log(`🔧 無効サイズ自動修正: ${sizeStr} → ${fixedSize}`);
+    return fixedSize;
+  }
+
+  // サポートされているサイズの場合はそのまま
+  if (supportedSizes.includes(sizeStr)) {
+    console.log(`✅ サイズ検証OK: ${sizeStr}`);
+    return sizeStr;
+  }
+
+  // それ以外は全てデフォルトサイズに修正
+  console.log(`🔧 未対応サイズのため1024x1024に修正: ${sizeStr}`);
+  return "1024x1024";
 }
 
 /**
@@ -375,10 +417,13 @@ function generateImages(prompts, forcedSize = null, selectedModel = null) {
       }
 
       // スタイル・サイズ判定をtryブロックの外で実行（catchブロックからもアクセス可能）
-      const { size: selectedSize } = analyzePromptForOptimalSettings(
+      const { size: rawSize } = analyzePromptForOptimalSettings(
         actualPrompt,
         forcedSize
       );
+
+      // 🔧 サイズの安全性検証と自動修正
+      const selectedSize = validateImageSize(rawSize);
 
       try {
         console.log(
@@ -873,10 +918,13 @@ function generateImagesFromStructuredTable(
       );
     }
 
+    // 🔧 強制サイズの安全検証
+    const safeForcedSize = forcedSize ? validateImageSize(forcedSize) : null;
+
     // 画像を生成（強制サイズ指定・モデル選択対応）
     const imageResults = generateImages(
       validPrompts,
-      forcedSize,
+      safeForcedSize,
       selectedModel
     );
 
@@ -1791,10 +1839,15 @@ function generateImagesFromStructuredTableBatch(
       });
 
       try {
+        // 🔧 バッチ処理でも強制サイズを安全検証
+        const safeForcedSize = forcedSize
+          ? validateImageSize(forcedSize)
+          : null;
+
         // バッチ単位で画像生成
         const batchResults = generateImages(
           batchPrompts,
-          forcedSize,
+          safeForcedSize,
           selectedModel
         );
 
