@@ -793,19 +793,21 @@
             modelSelector._listenerAdded = true;
           }
           
-          // 60秒タイムアウト強制終了
-          setTimeout(() => {
-            emergencyResetSidebar();
-            console.log('⏰ 60秒タイムアウト: 智的監視終了');
-          }, 60000);
+          // 60秒タイムアウト強制終了 - 無効化
+          // setTimeout(() => {
+          //   emergencyResetSidebar();
+          //   console.log('⏰ 60秒タイムアウト: 智的監視終了');
+          // }, 60000);
           
         } catch (error) {
           console.log('🔥 智的監視エラー（無視）:', error);
         }
       }
       
-      // 智的監視の安全実行
-      setTimeout(smartInitialization, 100);
+      // 智的監視の安全実行 - 無効化
+      // setTimeout(smartInitialization, 100);
+      // 直接実行に変更
+      smartInitialization();
     });
 
     // 🚀 全ての定期監視を完全削除（動作軽量化）
@@ -862,12 +864,12 @@
       messageDiv.className = `top-message ${type}`;
       messageDiv.style.display = 'block';
       
-      // 自動非表示（処理中メッセージ以外）
-      if (type !== 'processing') {
-        setTimeout(() => {
-          hideTopMessage();
-        }, duration);
-      }
+      // 自動非表示（処理中メッセージ以外）- 無効化
+      // if (type !== 'processing') {
+      //   setTimeout(() => {
+      //     hideTopMessage();
+      //   }, duration);
+      // }
     }
 
     function hideTopMessage() {
@@ -1039,7 +1041,8 @@
           if (stepIdx >= steps.length) {
             updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
           } else {
-            setTimeout(executeStep, 100); // 次のステップへ
+            // setTimeout(executeStep, 100); // 次のステップへ - 無効化
+            executeStep(); // 直接実行
           }
         }
       }
@@ -1049,9 +1052,10 @@
 
     function completeImageGeneration() {
       updateProgress(100, '✅ 画像生成が完了しました！', '完了');
-      setTimeout(() => {
-        hideProgressModal();
-      }, 1500);
+      // setTimeout(() => {
+      //   hideProgressModal();
+      // }, 1500);
+      hideProgressModal(); // 直接実行
     }
 
     // ZIP作成用のプログレス表示
@@ -1257,12 +1261,12 @@
           updateStepIndicator('step2');
           // checkSheetState(); // 完全無効化 - 動作軽量化
           
-          // 🆕 UX改善: 初期化完了後のサイドバーリセット
-          if (shouldReset) {
-            setTimeout(function() {
-              resetSidebarAfterInitialization();
-            }, 3000); // 3秒後にリセット（メッセージを見せてから）
-          }
+          // 🆕 UX改善: 初期化完了後のサイドバーリセット - 無効化
+          // if (shouldReset) {
+          //   setTimeout(function() {
+          //     resetSidebarAfterInitialization();
+          //   }, 3000); // 3秒後にリセット（メッセージを見せてから）
+          // }
         })
         .withFailureHandler(function(error) {
           showResult('バックアップエラー: ' + error.message, true);
@@ -1366,12 +1370,12 @@
           updateStepIndicator('step2');
           // checkSheetState(); // 完全無効化 - 動作軽量化
           
-          // 🆕 UX改善: 初期化完了後のサイドバーリセット
-          if (shouldReset) {
-            setTimeout(function() {
-              resetSidebarAfterInitialization();
-            }, 3000); // 3秒後にリセット（メッセージを見せてから）
-          }
+          // 🆕 UX改善: 初期化完了後のサイドバーリセット - 無効化
+          // if (shouldReset) {
+          //   setTimeout(function() {
+          //     resetSidebarAfterInitialization();
+          //   }, 3000); // 3秒後にリセット（メッセージを見せてから）
+          // }
         })
         .withFailureHandler(function(error) {
           showResult('初期化エラー: ' + error.message, true);
@@ -1411,14 +1415,13 @@
       google.script.run
         .withSuccessHandler(function(result) {
           updateProgress(100, '✅ 画像生成が完了しました！', '完了');
-          setTimeout(() => {
-            hideProgressModal();
-            hideTopMessage();
-            showSuccessMessage('✅ 画像生成が完了しました！');
-            showResult(result);
-            // 画像生成完了後にボタン状態を再チェック
-            // checkSheetState(); // 完全無効化 - 動作軽量化
-          }, 1500);
+          // setTimeout無効化 - 直接実行
+          hideProgressModal();
+          hideTopMessage();
+          showSuccessMessage('✅ 画像生成が完了しました！');
+          showResult(result);
+          // 画像生成完了後にボタン状態を再チェック
+          // checkSheetState(); // 完全無効化 - 動作軽量化
         })
         .withFailureHandler(function(error) {
           hideProgressModal();
@@ -1473,12 +1476,12 @@
           // 表クリア完了後にボタン状態を再チェック
           // checkSheetState(); // 完全無効化 - 動作軽量化
           
-          // 🆕 UX改善: 初期化完了後のサイドバーリセット
-          if (shouldReset) {
-            setTimeout(function() {
-              resetSidebarAfterInitialization();
-            }, 3000); // 3秒後にリセット（メッセージを見せてから）
-          }
+          // 🆕 UX改善: 初期化完了後のサイドバーリセット - 無効化
+          // if (shouldReset) {
+          //   setTimeout(function() {
+          //     resetSidebarAfterInitialization();
+          //   }, 3000); // 3秒後にリセット（メッセージを見せてから）
+          // }
         })
         .withFailureHandler(function(error) {
           showResult('エラー: ' + error.message, true);
@@ -2220,16 +2223,18 @@
         // 4. トップメッセージを表示
         showTopMessage('✅ 初期化が完了しました！プロンプト入力を開始できます', 'success', 4000);
         
-        // 5. 新しいシートの状態に合わせてボタン状態を更新
-        setTimeout(function() {
-          // checkSheetState(); // 完全無効化 - 動作軽量化
-          console.log('✅ 初期化完了後のUXリセット完了');
-        }, 500);
+        // 5. 新しいシートの状態に合わせてボタン状態を更新 - 無効化
+        // setTimeout(function() {
+        //   // checkSheetState(); // 完全無効化 - 動作軽量化
+        //   console.log('✅ 初期化完了後のUXリセット完了');
+        // }, 500);
+        console.log('✅ 初期化完了後のUXリセット完了');
         
-        // 6. 入力シートが左端に移動したことをユーザーに通知
-        setTimeout(function() {
-          showTopMessage('📋 入力シートが左端に配置されました。バックアップは右端にあります', 'info', 3000);
-        }, 5000);
+        // 6. 入力シートが左端に移動したことをユーザーに通知 - 無効化
+        // setTimeout(function() {
+        //   showTopMessage('📋 入力シートが左端に配置されました。バックアップは右端にあります', 'info', 3000);
+        // }, 5000);
+        showTopMessage('📋 入力シートが左端に配置されました。バックアップは右端にあります', 'info', 3000);
         
       } catch (error) {
         console.error('UXリセットエラー:', error);
