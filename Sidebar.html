@@ -618,7 +618,7 @@
             <label for="modelSelector" class="size-label">🤖 生成モデル</label>
             <select id="modelSelector" class="size-selector" title="画像生成に使用するモデルを選択してください">
               <option value="dall-e-3">DALL-E 3 ($0.02-$0.08)</option>
-              <option value="gpt-image-1">GPT-Image-1 ($2-$10)</option>
+              <option value="gpt-image-1" selected>GPT-Image-1 ($2-$10) 【デフォルト】</option>
             </select>
           </div>
 
@@ -735,10 +735,10 @@
       if (modelSelector) {
         modelSelector.addEventListener('change', function() {
           const selectedModel = this.value;
-          if (selectedModel === 'gpt-image-1') {
-            showTopMessage('GPT-Image-1を選択しました (1枚$2-$10)', 'info', 4000);
+          if (selectedModel === 'dall-e-3') {
+            showTopMessage('DALL-E 3を選択しました (1枚$0.02-$0.08) - コスト効率重視', 'success', 4000);
           } else {
-            showTopMessage('DALL-E 3を選択しました (1枚$0.02-$0.08)', 'success', 4000);
+            showTopMessage('GPT-Image-1を選択しました (1枚$2-$10) - 高品質重視', 'info', 4000);
           }
         });
       }

@@ -371,7 +371,7 @@ function generateImages(prompts, forcedSize = null, selectedModel = null) {
   const errors = [];
 
   // 🎯 モデル選択のデフォルト設定
-  const model = selectedModel || "dall-e-3"; // デフォルトはDALL-E 3
+  const model = selectedModel || "gpt-image-1"; // デフォルトはGPT-Image-1
 
   // 🔥 モデル別設定
   const modelConfigs = {
