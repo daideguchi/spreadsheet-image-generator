@@ -615,21 +615,21 @@
 
           <!-- 🎯 モデル選択機能 -->
           <div class="size-selector-container">
-            <label for="modelSelector" class="size-label">🤖 生成モデル (コスト重要)</label>
-            <select id="modelSelector" class="size-selector" title="コスト効率を重視してモデルを選択してください">
-              <option value="dall-e-3">💚 DALL-E 3 (推奨・低コスト $0.02-$0.08)</option>
-              <option value="gpt-image-1">💸 GPT-Image-1 (高品質・高コスト $2-$10)</option>
+            <label for="modelSelector" class="size-label">🤖 生成モデル</label>
+            <select id="modelSelector" class="size-selector" title="画像生成に使用するモデルを選択してください">
+              <option value="dall-e-3">DALL-E 3 ($0.02-$0.08)</option>
+              <option value="gpt-image-1">GPT-Image-1 ($2-$10)</option>
             </select>
           </div>
 
           <!-- 🎯 サイズ選択機能 -->
           <div class="size-selector-container">
-            <label for="sizeSelector" class="size-label">📐 画像サイズ (強制指定)</label>
+            <label for="sizeSelector" class="size-label">📐 画像サイズ</label>
             <select id="sizeSelector" class="size-selector" title="選択したサイズが最優先で適用されます">
               <option value="">🤖 自動判定 (プロンプト解析)</option>
               <option value="1024x1024">🟩 正方形 (1024×1024)</option>
-              <option value="1536x1024">📐 横長 (1536×1024)</option>
-              <option value="1024x1536">📱 縦長 (1024×1536)</option>
+              <option value="1792x1024">📐 横長 (1792×1024)</option>
+              <option value="1024x1792">📱 縦長 (1024×1792)</option>
             </select>
           </div>
           
@@ -736,9 +736,9 @@
         modelSelector.addEventListener('change', function() {
           const selectedModel = this.value;
           if (selectedModel === 'gpt-image-1') {
-            showTopMessage('💸 警告: GPT-Image-1は高コストです (1枚$2-$10)。大量生成時はDALL-E 3を推奨します。', 'warning', 8000);
+            showTopMessage('GPT-Image-1を選択しました (1枚$2-$10)', 'info', 4000);
           } else {
-            showTopMessage('💚 DALL-E 3選択: コスト効率の良いモデルです (1枚$0.02-$0.08)', 'success', 4000);
+            showTopMessage('DALL-E 3を選択しました (1枚$0.02-$0.08)', 'success', 4000);
           }
         });
       }
@@ -1371,12 +1371,16 @@
           // 🎯 特定のエラーパターンに対する対処法を追加
           if (errorMessage.includes('画質を選択してください')) {
             errorMessage += '\n\n💡 対処法: H列（画質）が正しく設定されているか確認してください。';
-          } else if (errorMessage.includes('6分')) {
+          } else if (errorMessage.includes('6分') || errorMessage.includes('実行時間')) {
             errorMessage += '\n\n💡 対処法: 大量の画像は自動的にバッチ処理されます。しばらくお待ちください。';
           } else if (errorMessage.includes('レート制限')) {
             errorMessage += '\n\n💡 対処法: 1分後に再試行してください。';
           } else if (errorMessage.includes('プロンプトが入力されていません')) {
             errorMessage += '\n\n💡 対処法: B列にプロンプトを入力してください。';
+          } else if (errorMessage.includes('Invalid value:') && errorMessage.includes('size')) {
+            errorMessage += '\n\n💡 対処法: 画像サイズが無効です。1024x1024、1792x1024、1024x1792のいずれかを使用してください。';
+          } else if (errorMessage.includes('バッチエラー')) {
+            errorMessage += '\n\n💡 対処法: バッチ処理でエラーが発生しました。画像数を減らして再試行してください。';
           }
           
           showErrorMessage(errorMessage);

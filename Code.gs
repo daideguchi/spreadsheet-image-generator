@@ -272,22 +272,22 @@ function analyzePromptForOptimalSettings(prompt, forcedSize = null) {
   }
   // 1. 明確な横長指定を最優先
   else if (explicitSizePatterns.explicitHorizontal) {
-    selectedSize = "1536x1024"; // 横長（GPT-Image-1対応）
+    selectedSize = "1792x1024"; // 横長（DALL-E 3対応）
     reason = "明確な横長指定を検出";
   }
   // 2. 明確な縦長指定を次に優先
   else if (explicitSizePatterns.explicitVertical) {
-    selectedSize = "1024x1536"; // 縦長（GPT-Image-1対応）
+    selectedSize = "1024x1792"; // 縦長（DALL-E 3対応）
     reason = "明確な縦長指定を検出";
   }
   // 3. 一般的な横長キーワード
   else if (generalPatterns.generalLandscape) {
-    selectedSize = "1536x1024"; // 横長（GPT-Image-1対応）
+    selectedSize = "1792x1024"; // 横長（DALL-E 3対応）
     reason = "一般的な横長キーワードを検出";
   }
   // 4. 一般的な縦長キーワード
   else if (generalPatterns.generalPortrait) {
-    selectedSize = "1024x1536"; // 縦長（GPT-Image-1対応）
+    selectedSize = "1024x1792"; // 縦長（DALL-E 3対応）
     reason = "一般的な縦長キーワードを検出";
   }
 
@@ -328,24 +328,24 @@ function generateImages(prompts, forcedSize = null, selectedModel = null) {
   const results = [];
   const errors = [];
 
-  // 🎯 モデル選択のデフォルト設定（コスト効率重視）
-  const model = selectedModel || "dall-e-3"; // デフォルトはコスト効率の良いDALL-E 3
+  // 🎯 モデル選択のデフォルト設定
+  const model = selectedModel || "dall-e-3"; // デフォルトはDALL-E 3
 
   // 🔥 モデル別設定
   const modelConfigs = {
     "dall-e-3": {
       endpoint: "https://api.openai.com/v1/images/generations",
-      defaultQuality: "standard", // standard/hd (DALL-E 3は低コスト)
+      defaultQuality: "standard", // standard/hd
       supportedQualities: ["standard", "hd"],
-      costPerImage: "$0.02-$0.08", // 低コスト
-      description: "DALL-E 3 (推奨・低コスト)",
+      costPerImage: "$0.02-$0.08",
+      description: "DALL-E 3",
     },
     "gpt-image-1": {
       endpoint: "https://api.openai.com/v1/images/generations",
       defaultQuality: "high", // high/medium/low
       supportedQualities: ["high", "medium", "low"],
-      costPerImage: "$2-$10", // 高コスト
-      description: "GPT-Image-1 (高品質・高コスト)",
+      costPerImage: "$2-$10",
+      description: "GPT-Image-1",
     },
   };
 
@@ -386,7 +386,7 @@ function generateImages(prompts, forcedSize = null, selectedModel = null) {
         );
         console.log(`📱 モデル: ${model} (${config.description})`);
         console.log(`🎯 品質: ${quality}, サイズ: ${selectedSize}`);
-        console.log(`💰 推定コスト: ${config.costPerImage}`);
+        console.log(`💵 コスト: ${config.costPerImage}`);
 
         // 🚨 プロンプト完全無改変の実現
         // ユーザーのプロンプトを一切改変せずそのまま使用
@@ -1840,12 +1840,27 @@ function generateImagesFromStructuredTableBatch(
 
         // エラーが発生したバッチの行にエラー表示
         batchRows.forEach((row) => {
-          const imageCell = sheet.getRange(row, 5);
-          imageCell.setValue("❌ バッチエラー");
-          imageCell.setBackground("#ffebee");
-          imageCell.setFontColor("#d32f2f");
-          imageCell.setNote(`バッチ処理エラー: ${batchError.message}`);
+          try {
+            const imageCell = sheet.getRange(row, 5);
+            imageCell.setValue("❌ バッチエラー");
+            imageCell.setBackground("#ffebee");
+            imageCell.setFontColor("#d32f2f");
+            imageCell.setNote(`バッチ処理エラー: ${batchError.message}`);
+          } catch (cellError) {
+            console.error(`行${row}への エラー表示設定失敗:`, cellError);
+          }
         });
+
+        // バッチエラーでも結果に追加（エラー情報付き）
+        for (let j = 0; j < batchRows.length; j++) {
+          allResults.push({
+            prompt: batchPrompts[j]?.prompt || "不明",
+            url: null,
+            size: null,
+            error: batchError.message,
+            failed: true,
+          });
+        }
 
         // 他のバッチは続行
         continue;
