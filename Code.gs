@@ -527,10 +527,26 @@ function generateImages(prompts, forcedSize = null, selectedModel = null) {
                 continue;
               }
             } else {
-              // その他のエラー
-              lastError = new Error(
-                `API エラー: ${responseCode}\n応答: ${responseText}`
-              );
+              // その他のエラー - より分かりやすいメッセージに変更
+              let userFriendlyError = `API エラー: ${responseCode}\n応答: ${responseText}`;
+
+              // 🎯 モデレーションエラーの特別処理
+              if (responseText && responseText.includes("moderation_blocked")) {
+                userFriendlyError = `🚫 コンテンツがAIのガイドラインに適合しません\n\n【対処法】\n• プロンプトから不適切な表現を削除してください\n• 暴力的・性的・危険な内容は生成できません\n• より一般的で健全な表現に変更してください\n\n【元のエラー】\nmoderation_blocked (OpenAIのセーフティシステム)`;
+              } else if (
+                responseText &&
+                responseText.includes("safety system")
+              ) {
+                userFriendlyError = `🛡️ セーフティシステムによりブロックされました\n\n【対処法】\n• プロンプトの表現を見直してください\n• より安全で一般的な内容に変更してください\n• 具体的すぎる危険な表現は避けてください`;
+              } else if (responseCode === 400) {
+                userFriendlyError = `❌ リクエストエラー (400)\n\n【よくある原因】\n• プロンプトが長すぎる可能性があります\n• 不適切な文字や記号が含まれています\n• サイズ設定に問題があります\n\n【対処法】\n• プロンプトを短くしてください\n• 特殊文字を削除してください\n• サイズ設定を確認してください`;
+              } else if (responseCode === 429) {
+                userFriendlyError = `⏱️ API使用制限に達しました (429)\n\n【対処法】\n• 少し時間をおいてから再実行してください\n• 同時生成枚数を減らしてください\n• OpenAIアカウントの使用量を確認してください`;
+              } else if (responseCode === 500) {
+                userFriendlyError = `🔧 OpenAIサーバーエラー (500)\n\n【対処法】\n• 少し時間をおいてから再実行してください\n• OpenAIのサービス状況を確認してください\n• 問題が続く場合はOpenAIサポートにお問い合わせください`;
+              }
+
+              lastError = new Error(userFriendlyError);
               console.error(`画像${index + 1}: ${lastError.message}`);
               break; // リトライしない
             }
@@ -967,13 +983,31 @@ function populateStructuredTable(imageResults, promptRows) {
           "#f44336",
           SpreadsheetApp.BorderStyle.DASHED
         ); // 📱 視覚改善: エラー用赤色破線
-        // エラーメッセージ
+        // エラーメッセージ - よりユーザーフレンドリーに改善
         const maxErrorLength = 5000;
-        let errorMessage = `❌ 自動生成エラー:\n${result.error}\n\n再生成するには、この行を選択して「🔄 再生成」ボタンをクリックしてください。`;
+        let errorMessage;
+
+        // 🎯 モデレーションエラーの特別表示
+        if (
+          result.error &&
+          result.error.includes("コンテンツがAIのガイドラインに適合しません")
+        ) {
+          errorMessage = `🚫 画像生成できませんでした\n\n【理由】\nプロンプトがOpenAIのガイドラインに適合しません\n\n【解決方法】\n✅ 不適切な表現を削除\n✅ より一般的で健全な内容に変更\n✅ 暴力的・性的・危険な表現を避ける\n\n【再生成手順】\n1. このセルのプロンプトを修正\n2. 行を選択\n3. 「🔄 再生成」ボタンをクリック`;
+        } else if (
+          result.error &&
+          result.error.includes("セーフティシステム")
+        ) {
+          errorMessage = `🛡️ セーフティチェックでブロック\n\n【解決方法】\n✅ プロンプトをより安全な表現に変更\n✅ 具体的すぎる危険な表現を避ける\n✅ 一般的で建設的な内容に修正\n\n【再生成手順】\n1. プロンプトを修正\n2. 行を選択して「🔄 再生成」`;
+        } else if (result.error && result.error.includes("使用制限")) {
+          errorMessage = `⏱️ API使用制限エラー\n\n【解決方法】\n✅ 少し時間をおいて再実行\n✅ 同時生成枚数を減らす\n✅ OpenAIアカウントの使用量確認\n\n【再生成手順】\n5-10分後に「🔄 再生成」をお試しください`;
+        } else {
+          errorMessage = `❌ 画像生成エラー\n\n【エラー詳細】\n${result.error}\n\n【再生成手順】\n1. プロンプトを確認・修正\n2. この行を選択\n3. 「🔄 再生成」ボタンをクリック`;
+        }
+
         if (errorMessage.length > maxErrorLength) {
           errorMessage =
             errorMessage.substring(0, maxErrorLength - 100) +
-            "\n[エラーメッセージが長すぎるため省略...]";
+            "\n[メッセージが長すぎるため省略...]";
         }
         imageCell.setNote(errorMessage);
 
