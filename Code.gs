@@ -3989,6 +3989,48 @@ function updateSheetCommonPromptDropdown(targetSheet) {
 }
 
 /**
+ * 選択された行を完全削除（行全体を削除）
+ */
+function deleteSelectedRows() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastRow = sheet.getLastRow();
+    const deletedRows = [];
+    const rowsToDelete = [];
+
+    // チェックされた行を検索（逆順で処理）
+    for (let i = lastRow; i >= 2; i--) {
+      // I列のチェックボックスを確認
+      const checkboxValue = sheet.getRange(i, 9).getValue();
+      if (checkboxValue === true) {
+        // B列からプロンプトを取得（ログ用）
+        const promptText = sheet.getRange(i, 2).getValue();
+        if (promptText) {
+          deletedRows.push(promptText.toString().substring(0, 50) + "...");
+        }
+        rowsToDelete.push(i);
+      }
+    }
+
+    if (rowsToDelete.length === 0) {
+      return "⚠️ 削除する行が選択されていません\n\n💡 対処方法:\n1️⃣ チェックボックス（I列）で削除したい行を選択\n2️⃣ 「☑️ 全選択」で全行を選択\n3️⃣ 再度「🗑️ 選択行を削除」をクリック\n\n🎯 選択した行が完全に削除されます";
+    }
+
+    // 行を削除（逆順で処理）
+    rowsToDelete.forEach((rowIndex) => {
+      sheet.deleteRow(rowIndex);
+    });
+
+    const deleteCount = rowsToDelete.length;
+    console.log(`${deleteCount}行を削除:`, deletedRows);
+    return `✅ ${deleteCount}行を完全に削除しました！\n削除された行はデータから完全に除去されています。`;
+  } catch (error) {
+    console.error("選択行削除エラー:", error);
+    throw new Error(`選択行の削除に失敗しました: ${error.message}`);
+  }
+}
+
+/**
  * 選択された画像のみ削除（他のデータは保持）
  */
 function deleteSelectedImages() {

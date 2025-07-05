@@ -658,9 +658,9 @@
             </button>
           </div>
           <div class="button-row">
-            <button class="btn btn-danger btn-small" onclick="deleteSelectedImages()">
-              🗑️ 選択画像を削除
-            </button>
+                              <button class="btn btn-danger btn-small" onclick="deleteSelectedRows()">
+                    🗑️ 選択行を削除
+                  </button>
             <!-- 全削除ボタンを削除 -->
           </div>
         </div>
@@ -943,27 +943,40 @@
           
           updateProgress(progress, step.text, `ステップ ${currentStepNumber}/${steps.length}`);
           
-          const progressInterval = setInterval(() => {
-            currentUpdate++;
-            progress += progressPerUpdate;
-            
-            if (progress > 95) progress = 95;
-            if (currentUpdate >= totalUpdates) {
-              progress = Math.min(targetProgress, 95);
-              clearInterval(progressInterval);
-              stepIdx++;
-              
-              // 最後のステップの場合は95%で待機（サーバー処理完了を待つ）
-              if (stepIdx >= steps.length) {
-                updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
-              } else {
-                setTimeout(executeStep, 100); // 次のステップへ
-              }
-            }
-            
-            // 固定されたステップ番号を使用
-            updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
-          }, updateInterval);
+          // 🔥🔥🔥 setInterval完全無効化（動作軽量化）🔥🔥🔥
+          // const progressInterval = setInterval(() => {
+          //   currentUpdate++;
+          //   progress += progressPerUpdate;
+          //   
+          //   if (progress > 95) progress = 95;
+          //   if (currentUpdate >= totalUpdates) {
+          //     progress = Math.min(targetProgress, 95);
+          //     clearInterval(progressInterval);
+          //     stepIdx++;
+          //     
+          //     // 最後のステップの場合は95%で待機（サーバー処理完了を待つ）
+          //     if (stepIdx >= steps.length) {
+          //       updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
+          //     } else {
+          //       setTimeout(executeStep, 100); // 次のステップへ
+          //     }
+          //   }
+          //   
+          //   // 固定されたステップ番号を使用
+          //   updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          // }, updateInterval);
+          
+          // 直接進捗更新（setInterval無効化）
+          progress = Math.min(targetProgress, 95);
+          updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          stepIdx++;
+          
+          // 最後のステップの場合は95%で待機（サーバー処理完了を待つ）
+          if (stepIdx >= steps.length) {
+            updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
+          } else {
+            setTimeout(executeStep, 100); // 次のステップへ
+          }
         }
       }
       
@@ -1007,25 +1020,37 @@
           
           updateProgress(progress, step.text, `ステップ ${currentStepNumber}/${steps.length}`);
           
-          const progressInterval = setInterval(() => {
-            currentUpdate++;
-            progress += progressPerUpdate;
-            
-            if (progress > 95) progress = 95;
-            if (currentUpdate >= totalUpdates) {
-              progress = Math.min(targetProgress, 95);
-              clearInterval(progressInterval);
-              stepIdx++;
-              
-              if (stepIdx >= steps.length) {
-                updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
-              } else {
-                setTimeout(executeStep, 100);
-              }
-            }
-            
-            updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
-          }, updateInterval);
+          // 🔥🔥🔥 setInterval完全無効化（動作軽量化）🔥🔥🔥
+          // const progressInterval = setInterval(() => {
+          //   currentUpdate++;
+          //   progress += progressPerUpdate;
+          //   
+          //   if (progress > 95) progress = 95;
+          //   if (currentUpdate >= totalUpdates) {
+          //     progress = Math.min(targetProgress, 95);
+          //     clearInterval(progressInterval);
+          //     stepIdx++;
+          //     
+          //     if (stepIdx >= steps.length) {
+          //       updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
+          //     } else {
+          //       setTimeout(executeStep, 100);
+          //     }
+          //   }
+          //   
+          //   updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          // }, updateInterval);
+          
+          // 直接進捗更新（setInterval無効化）
+          progress = Math.min(targetProgress, 95);
+          updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          stepIdx++;
+          
+          if (stepIdx >= steps.length) {
+            updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
+          } else {
+            setTimeout(executeStep, 100);
+          }
         }
       }
       
@@ -1166,7 +1191,7 @@
           
           showResult(message);
           updateStepIndicator('step2');
-          checkSheetState();
+          // checkSheetState(); // 完全無効化 - 動作軽量化
           
           // 🆕 UX改善: 初期化完了後のサイドバーリセット
           if (shouldReset) {
@@ -1275,7 +1300,7 @@
           
           showResult(message);
           updateStepIndicator('step2');
-          checkSheetState();
+          // checkSheetState(); // 完全無効化 - 動作軽量化
           
           // 🆕 UX改善: 初期化完了後のサイドバーリセット
           if (shouldReset) {
@@ -1328,7 +1353,7 @@
             showSuccessMessage('✅ 画像生成が完了しました！');
             showResult(result);
             // 画像生成完了後にボタン状態を再チェック
-            checkSheetState();
+            // checkSheetState(); // 完全無効化 - 動作軽量化
           }, 1500);
         })
         .withFailureHandler(function(error) {
@@ -1382,7 +1407,7 @@
           
           showResult(message);
           // 表クリア完了後にボタン状態を再チェック
-          checkSheetState();
+          // checkSheetState(); // 完全無効化 - 動作軽量化
           
           // 🆕 UX改善: 初期化完了後のサイドバーリセット
           if (shouldReset) {
@@ -1862,20 +1887,20 @@
         .regenerateSelectedImagesWithProgress();
     }
 
-    function deleteSelectedImages() {
-      showTopMessage('🗑️ 選択画像を削除中...', 'processing');
+    function deleteSelectedRows() {
+      showTopMessage('🗑️ 選択行を削除中...', 'processing');
       google.script.run
         .withSuccessHandler(function(result) {
           hideTopMessage();
           showSuccessMessage(result);
           // 削除完了後にボタン状態を再チェック
-          checkSheetState();
+          // checkSheetState(); // 完全無効化 - 動作軽量化
         })
         .withFailureHandler(function(error) {
           hideTopMessage();
           showErrorMessage('エラー: ' + error.message);
         })
-        .deleteSelectedImages();
+        .deleteSelectedRows();
     }
 
     function deleteAllImagesWithConfirmation() {
@@ -1884,7 +1909,7 @@
         .withSuccessHandler(function(result) {
           showResult(result);
           // 削除完了後にボタン状態を再チェック
-          checkSheetState();
+          // checkSheetState(); // 完全無効化 - 動作軽量化
         })
         .withFailureHandler(function(error) {
           showResult('エラー: ' + error.message, true);
@@ -1899,7 +1924,7 @@
           hideTopMessage();
           showSuccessMessage(result);
           // バックアップ完了後にボタン状態を再チェック
-          checkSheetState();
+          // checkSheetState(); // 完全無効化 - 動作軽量化
         })
         .withFailureHandler(function(error) {
           hideTopMessage();
@@ -2133,7 +2158,7 @@
         
         // 5. 新しいシートの状態に合わせてボタン状態を更新
         setTimeout(function() {
-          checkSheetState();
+          // checkSheetState(); // 完全無効化 - 動作軽量化
           console.log('✅ 初期化完了後のUXリセット完了');
         }, 500);
         
