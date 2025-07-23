@@ -1,0 +1,2348 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <title>🎨 DALL-E 画像生成ツール</title>
+  <style>
+    body {
+      font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* 🚨 上部固定メッセージエリア */
+    .top-message {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 10000;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+      animation: slideDown 0.3s ease-out;
+      max-width: calc(100vw - 24px);
+    }
+
+    .top-message.success {
+      background: linear-gradient(135deg, rgba(76, 175, 80, 0.95) 0%, rgba(139, 195, 74, 0.95) 100%);
+      color: white;
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .top-message.error {
+      background: linear-gradient(135deg, rgba(244, 67, 54, 0.95) 0%, rgba(229, 57, 53, 0.95) 100%);
+      color: white;
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .top-message.warning {
+      background: linear-gradient(135deg, rgba(255, 193, 7, 0.95) 0%, rgba(255, 152, 0, 0.95) 100%);
+      color: #333;
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .top-message.info {
+      background: linear-gradient(135deg, rgba(33, 150, 243, 0.95) 0%, rgba(30, 136, 229, 0.95) 100%);
+      color: white;
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .top-message.processing {
+      background: linear-gradient(135deg, rgba(156, 39, 176, 0.95) 0%, rgba(123, 31, 162, 0.95) 100%);
+      color: white;
+      border-color: rgba(255,255,255,0.4);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.95; }
+      50% { opacity: 1; }
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    h2 {
+      color: #1a73e8;
+      margin: 0 0 20px 0;
+      font-size: 22px;
+      text-align: center;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .step-indicator {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding: 0 8px;
+    }
+
+    .step {
+      flex: 1;
+      text-align: center;
+      position: relative;
+    }
+
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 15px;
+      right: -50%;
+      width: 100%;
+      height: 2px;
+      background-color: #e0e0e0;
+      z-index: 1;
+    }
+
+    .step.active:not(:last-child)::after {
+      background-color: #1a73e8;
+    }
+
+    .step-number {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%);
+      color: #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 6px;
+      font-weight: bold;
+      font-size: 12px;
+      position: relative;
+      z-index: 2;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .step.active .step-number {
+      background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+    }
+
+    .step-text {
+      font-size: 11px;
+      color: #666;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    .step.active .step-text {
+      color: #1a73e8;
+      font-weight: bold;
+    }
+
+    .instructions {
+      background: linear-gradient(135deg, rgba(255, 243, 224, 0.9) 0%, rgba(255, 248, 225, 0.9) 100%);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      color: #ef6c00;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      line-height: 1.5;
+      backdrop-filter: blur(5px);
+    }
+
+    /* 🎯 サイズ選択UI */
+    .size-selector-container {
+      margin-bottom: 16px;
+      padding: 16px;
+      background: linear-gradient(135deg, rgba(26, 115, 232, 0.08) 0%, rgba(67, 133, 244, 0.08) 100%);
+      border-radius: 12px;
+      border: 1px solid rgba(26, 115, 232, 0.2);
+    }
+
+    .size-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a73e8;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .size-selector {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid rgba(26, 115, 232, 0.3);
+      border-radius: 8px;
+      background: white;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .size-selector:hover {
+      border-color: #1a73e8;
+      box-shadow: 0 2px 8px rgba(26, 115, 232, 0.15);
+    }
+
+    .size-selector:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 16px 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+      width: 100%;
+      margin-bottom: 12px;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.25);
+      letter-spacing: 0.3px;
+      position: relative;
+      overflow: hidden;
+      text-transform: uppercase;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
+      background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    }
+
+    .btn:active {
+      transform: translateY(-1px) scale(0.98);
+      transition: all 0.1s;
+    }
+
+    .btn-setup {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      font-size: 16px;
+      font-weight: 800;
+      box-shadow: 0 8px 25px rgba(240, 147, 251, 0.3);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .btn-setup:hover {
+      background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+      box-shadow: 0 15px 35px rgba(240, 147, 251, 0.5);
+      transform: translateY(-4px) scale(1.03);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      box-shadow: 0 6px 20px rgba(17, 153, 142, 0.25);
+    }
+
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, #38ef7d 0%, #11998e 100%);
+      box-shadow: 0 12px 30px rgba(17, 153, 142, 0.4);
+    }
+
+    .btn-create {
+      background: linear-gradient(135deg, #ff6a00 0%, #ee0979 100%);
+      box-shadow: 0 6px 20px rgba(255, 106, 0, 0.25);
+    }
+
+    .btn-create:hover {
+      background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+      box-shadow: 0 12px 30px rgba(255, 106, 0, 0.4);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+      color: white;
+      box-shadow: 0 6px 20px rgba(229, 62, 62, 0.25);
+    }
+
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #c53030 0%, #b91c1c 100%);
+      box-shadow: 0 12px 30px rgba(229, 62, 62, 0.4);
+    }
+
+    /* ボタン無効化スタイル */
+    .btn:disabled,
+    .btn.disabled {
+      background: linear-gradient(135deg, #cccccc 0%, #999999 100%) !important;
+      color: #666666 !important;
+      cursor: not-allowed !important;
+      transform: none !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+      opacity: 0.6;
+    }
+
+    .btn:disabled::before,
+    .btn.disabled::before {
+      display: none;
+    }
+
+    .btn:disabled:hover,
+    .btn.disabled:hover {
+      transform: none !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+      background: linear-gradient(135deg, #cccccc 0%, #999999 100%) !important;
+    }
+
+    .button-group {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ボタンセクション */
+    .button-section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1a73e8;
+      margin-bottom: 8px;
+      padding: 4px 8px;
+      background: rgba(26, 115, 232, 0.1);
+      border-radius: 6px;
+      text-align: center;
+      border: 1px solid rgba(26, 115, 232, 0.2);
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+    }
+
+    .btn-small {
+      flex: 1;
+      padding: 12px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    /* 🚀 UX改善：下部表示削除（上部メッセージ表示に統一） */
+
+    /* プログレスバーモーダル */
+    .progress-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 999999;
+      backdrop-filter: blur(8px);
+      pointer-events: all;
+    }
+
+    .progress-container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 50px;
+      border-radius: 24px;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
+      text-align: center;
+      min-width: 500px;
+      max-width: 600px;
+      width: 90vw;
+      max-height: 80vh;
+      overflow: auto;
+      z-index: 1000000;
+    }
+
+    .progress-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: #1a73e8;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #1a73e8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 24px;
+      background: #e0e0e0;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 30px 0;
+      box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #1a73e8, #4285f4, #34a853);
+      border-radius: 10px;
+      transition: width 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .progress-text {
+      font-size: 20px;
+      color: #333;
+      margin: 15px 0;
+      font-weight: 600;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-step {
+      font-size: 16px;
+      color: #666;
+      margin: 10px 0;
+      font-weight: 500;
+    }
+
+    .progress-warning {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      border: 2px solid #ffc107;
+      color: #856404;
+      padding: 20px;
+      border-radius: 16px;
+      margin-top: 30px;
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+    }
+
+    .progress-warning-icon {
+      font-size: 24px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    /* レスポンシブ対応 */
+    @media (max-width: 768px) {
+      .progress-container {
+        min-width: 300px;
+        width: 95vw;
+        padding: 30px 20px;
+        max-height: 90vh;
+      }
+
+      .progress-title {
+        font-size: 24px;
+        margin-bottom: 20px;
+        gap: 10px;
+      }
+
+      .progress-spinner {
+        width: 40px;
+        height: 40px;
+        border-width: 4px;
+      }
+
+      .progress-text {
+        font-size: 18px;
+        margin: 12px 0;
+      }
+
+      .progress-step {
+        font-size: 14px;
+        margin: 8px 0;
+      }
+
+      .progress-warning {
+        padding: 15px;
+        font-size: 14px;
+        margin-top: 20px;
+        gap: 10px;
+      }
+
+      .progress-warning-icon {
+        font-size: 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .progress-container {
+        min-width: 280px;
+        width: 98vw;
+        padding: 25px 15px;
+      }
+
+      .progress-title {
+        font-size: 20px;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .progress-text {
+        font-size: 16px;
+      }
+
+      .progress-step {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 🚨 上部固定メッセージエリア -->
+    <div id="topMessage" class="top-message" style="display: none;">
+      <div id="topMessageContent"></div>
+    </div>
+    
+    <div class="card">
+      <h2>🎨 DALL-E 画像生成</h2>
+      
+      <div class="step-indicator">
+        <div class="step active" id="step1">
+          <div class="step-number">1</div>
+          <div class="step-text">セットアップ</div>
+        </div>
+        <div class="step" id="step2">
+          <div class="step-number">2</div>
+          <div class="step-text">プロンプト<br>入力</div>
+        </div>
+        <div class="step" id="step3">
+          <div class="step-number">3</div>
+          <div class="step-text">画像生成</div>
+        </div>
+      </div>
+
+      <div class="instructions">
+        <div id="instruction-text">
+          <strong>🚀 簡単3ステップ:</strong><br>
+          <strong>1️⃣</strong> 表を初期化 → <strong>2️⃣</strong> プロンプト・画質入力 → <strong>3️⃣</strong> 画像生成
+        </div>
+      </div>
+
+      <div class="button-group">
+        <!-- 基本操作グループ -->
+        <div class="button-section">
+          <div class="section-title">📋 基本操作</div>
+          <button class="btn btn-setup" id="setupBtn" onclick="executeSetupWithBackup()" title="データを安全にバックアップしてから初期化します">
+            🔧 表を初期化
+          </button>
+          
+          <button class="btn btn-warning" onclick="updateAllCombinedPrompts()" title="全行の結合プロンプト（D列）を一括更新します">
+            🔄 結合プロンプト更新
+          </button>
+
+          <!-- 🎯 モデル選択機能 -->
+          <div class="size-selector-container">
+            <label for="modelSelector" class="size-label">🤖 生成モデル</label>
+            <select id="modelSelector" class="size-selector" title="画像生成に使用するモデルを選択してください">
+              <option value="dall-e-3">DALL-E 3 ($0.02-$0.08)</option>
+              <option value="gpt-image-1" selected>GPT-Image-1 ($2-$10) 【デフォルト】</option>
+            </select>
+          </div>
+
+          <!-- 🎯 サイズ選択機能 -->
+          <div class="size-selector-container">
+            <label for="sizeSelector" class="size-label">📐 画像サイズ</label>
+            <select id="sizeSelector" class="size-selector" title="選択したサイズが最優先で適用されます">
+              <option value="">🤖 自動判定 (プロンプト解析)</option>
+              <option value="1024x1024">🟩 正方形 (1024×1024)</option>
+              <option value="1536x1024">📐 横長 (1536×1024)</option>
+              <option value="1024x1536">📱 縦長 (1024×1536)</option>
+            </select>
+          </div>
+          
+          <button class="btn" id="generateBtn" onclick="generateFromStructuredTable()" title="プロンプトを入力してください">
+            🎨 画像生成
+          </button>
+        </div>
+
+        <!-- 管理操作グループ（画像生成後に表示） -->
+        <div class="button-section" id="managementSection" style="display: none;">
+          <div class="section-title">🛠️ 画像管理</div>
+          <div class="button-row">
+            <button class="btn btn-secondary btn-small" onclick="selectAllImagesUI()">
+              ☑️ 全選択
+            </button>
+            <button class="btn btn-secondary btn-small" onclick="clearAllImageSelectionUI()">
+              ❌ 全選択解除
+            </button>
+          </div>
+          <div class="button-row">
+            <button class="btn btn-small" onclick="showDownloadOptions()">
+              📥 ダウンロード
+            </button>
+            <button class="btn btn-small" onclick="regenerateSelectedImages()">
+              🔄 再生成
+            </button>
+          </div>
+          <div class="button-row">
+                              <button class="btn btn-danger btn-small" onclick="deleteSelectedRows()">
+                    🗑️ 選択行を削除
+                  </button>
+            <!-- 全削除ボタンを削除 -->
+          </div>
+        </div>
+
+        <!-- ライブラリ操作グループ（💡 改善要求: ライブラリダウンロード機能追加） -->
+        <div class="button-section" id="librarySection">
+          <div class="section-title">📚 ライブラリ管理</div>
+          <div class="button-row">
+            <button class="btn btn-secondary btn-small" onclick="selectAllLibraryImagesUI()">
+              ☑️ ライブラリ全選択
+            </button>
+            <button class="btn btn-secondary btn-small" onclick="clearAllLibrarySelectionUI()">
+              ❌ ライブラリ全解除
+            </button>
+          </div>
+          <div class="button-row">
+            <button class="btn btn-create btn-small" onclick="downloadSelectedLibraryImages()">
+              📥 ライブラリDL
+            </button>
+            <button class="btn btn-danger btn-small" onclick="resetLibraryWithConfirmation()">
+              🗑️ ライブラリリセット
+            </button>
+          </div>
+        </div>
+
+        <!-- その他操作グループ -->
+        <div class="button-section">
+          <div class="section-title">⚙️ その他</div>
+          <div class="button-row">
+            <button class="btn btn-secondary btn-small" id="backupBtn" onclick="createBackup()" style="display: none;">
+              💾 バックアップ
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 下部の処理表示を削除 - 上部固定メッセージで統一 -->
+    </div>
+  </div>
+
+  <!-- プログレスバーモーダル -->
+  <div class="progress-modal" id="progressModal">
+    <div class="progress-container">
+      <div class="progress-title">
+        <div class="progress-spinner"></div>
+        <span id="progressTitle">🎨 画像生成中...</span>
+      </div>
+      
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+      </div>
+      
+      <div class="progress-text" id="progressText">準備中...</div>
+      <div class="progress-step" id="progressStep">ステップ 1/9</div>
+      
+      <div class="progress-warning">
+        <span class="progress-warning-icon">⚠️</span>
+        <span>画像生成中はシートの編集ができません。しばらくお待ちください。</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 🔥🔥🔥 監視システム完全根絶（限界突破版）🔥🔥🔥
+    // window.addEventListener('load', () => {
+    //   // 🚨 完全無効化 - Google内部監視システム連鎖反応を根絶
+    //   setTimeout(() => {
+    //     checkSheetStateOnce();
+    //   }, 500);
+    // });
+    
+    // 🔥 緊急停止システム: 全Interval強制停止
+    function forceStopAllIntervals() {
+      console.log('🚨 緊急停止システム実行中...');
+      // window レベルの全 Interval を強制停止（1-1000番）
+      for (let i = 1; i <= 1000; i++) {
+        clearInterval(i);
+        clearTimeout(i);
+      }
+      console.log('✅ 全 Interval/Timeout 強制停止完了');
+    }
+    
+    // 🔥 緊急リセット: サイドバー完全リセット機能
+    function emergencyResetSidebar() {
+      try {
+        forceStopAllIntervals();
+        forceEnableAllButtons();
+        console.log('🚨 緊急サイドバーリセット完了');
+      } catch (error) {
+        console.log('🔥 緊急リセット中にエラー（無視）:', error);
+      }
+    }
+    
+    // 🎯 モデル選択機能（軽量化版 - イベントリスナー最小化）
+    document.addEventListener('DOMContentLoaded', function() {
+      // 60秒タイムアウト付き智的監視（1回のみ）
+      let executionCount = 0;
+      const maxExecutions = 1;
+      
+      function smartInitialization() {
+        if (executionCount >= maxExecutions) {
+          console.log('🛡️ 実行制限: 智的監視は1回のみ実行');
+          return;
+        }
+        
+        executionCount++;
+        
+        try {
+          // モデル選択時のコスト警告（デバウンス機能付き）
+          const modelSelector = document.getElementById('modelSelector');
+          if (modelSelector && !modelSelector._listenerAdded) {
+            let lastExecution = 0;
+            const debounceTime = 5000; // 5秒デバウンス
+            
+            modelSelector.addEventListener('change', function() {
+              const now = Date.now();
+              if (now - lastExecution < debounceTime) {
+                console.log('🛡️ デバウンス: モデル変更通知をスキップ');
+                return;
+              }
+              lastExecution = now;
+              
+              const selectedModel = this.value;
+              if (selectedModel === 'dall-e-3') {
+                showTopMessage('DALL-E 3を選択しました (1枚$0.02-$0.08) - コスト効率重視', 'success', 4000);
+              } else {
+                showTopMessage('GPT-Image-1を選択しました (1枚$2-$10) - 高品質重視', 'info', 4000);
+              }
+            });
+            modelSelector._listenerAdded = true;
+          }
+          
+          // 60秒タイムアウト強制終了 - 無効化
+          // setTimeout(() => {
+          //   emergencyResetSidebar();
+          //   console.log('⏰ 60秒タイムアウト: 智的監視終了');
+          // }, 60000);
+          
+        } catch (error) {
+          console.log('🔥 智的監視エラー（無視）:', error);
+        }
+      }
+      
+      // 智的監視の安全実行 - 無効化
+      // setTimeout(smartInitialization, 100);
+      // 直接実行に変更
+      smartInitialization();
+      
+      // 🔥 画像管理セクション（ダウンロードボタン含む）を強制表示
+      const managementSection = document.getElementById('managementSection');
+      if (managementSection) {
+        managementSection.style.display = 'block';
+        console.log('✅ 画像管理セクション（ダウンロードボタン含む）を表示');
+      }
+    });
+
+    // 🚀 全ての定期監視を完全削除（動作軽量化）
+    // window.addEventListener('focus', checkSheetState); // 削除
+    // document.addEventListener('visibilitychange', checkSheetState); // 削除
+
+    // 🔥 動作軽量化：初回のみ実行する軽量版
+    // 🔥🔥🔥 checkSheetStateOnce完全削除（監視システム根絶）🔥🔥🔥
+    // function checkSheetStateOnce() {
+    //   console.log('🔥 初回状態確認（軽量化モード）');
+    //   
+    //   // 🔥 軽量化：Google Scripts通信を削除し、直接ボタンを有効化
+    //   setTimeout(() => {
+    //     forceEnableAllButtons();
+    //     console.log('✅ 初回状態確認完了（軽量化モード）');
+    //   }, 100);
+    // }
+
+    // 🔥🔥🔥 checkSheetState関数を完全削除（監視システム根絶）🔥🔥🔥
+    // function checkSheetState() {
+    //   // 🔥 完全無効化 - 何もしない（軽量化のため）
+    //   console.log('🔥 checkSheetState呼び出しを無効化（軽量化モード）');
+    //   return;
+    // }
+
+    // 下部の処理表示を上部固定メッセージに統一
+    function showLoading() {
+      showTopMessage('🔄 処理中...', 'processing');
+    }
+
+    function hideLoading() {
+      hideTopMessage();
+    }
+
+    function showResult(message, isError = false) {
+      hideTopMessage();
+      // 🚀 UX改善：全て上部メッセージ表示に統一
+      if (isError) {
+        showTopMessage(message, 'error', 6000);
+      } else {
+        showTopMessage(message, 'success', 4000);
+      }
+    }
+
+    // 🚨 上部固定メッセージ表示関数
+    function showTopMessage(message, type = 'info', duration = 5000) {
+      const messageDiv = document.getElementById('topMessage');
+      const contentDiv = document.getElementById('topMessageContent');
+      
+      // メッセージ内容を設定
+      contentDiv.textContent = message;
+      
+      // タイプに応じてクラスを設定
+      messageDiv.className = `top-message ${type}`;
+      messageDiv.style.display = 'block';
+      
+      // 自動非表示（処理中メッセージ以外）- 無効化
+      // if (type !== 'processing') {
+      //   setTimeout(() => {
+      //     hideTopMessage();
+      //   }, duration);
+      // }
+    }
+
+    function hideTopMessage() {
+      const messageDiv = document.getElementById('topMessage');
+      messageDiv.style.display = 'none';
+    }
+
+    // 処理中メッセージの便利関数
+    function showProcessingMessage(message) {
+      showTopMessage(message, 'processing');
+    }
+
+    function showSuccessMessage(message, duration = 3000) {
+      showTopMessage(message, 'success', duration);
+    }
+
+    function showErrorMessage(message, duration = 5000) {
+      showTopMessage(message, 'error', duration);
+    }
+
+    function showWarningMessage(message, duration = 4000) {
+      showTopMessage(message, 'warning', duration);
+    }
+
+    function updateStepIndicator(currentStep) {
+      const steps = ['step1', 'step2', 'step3'];
+      steps.forEach(step => {
+        document.getElementById(step).classList.remove('active');
+      });
+      if (document.getElementById(currentStep)) {
+        document.getElementById(currentStep).classList.add('active');
+      }
+    }
+
+    // プログレスバー制御関数
+    function showProgressModal() {
+      const modal = document.getElementById('progressModal');
+      modal.style.display = 'block';
+      
+      // 確実に最前面に表示
+      modal.style.position = 'fixed';
+      modal.style.top = '0';
+      modal.style.left = '0';
+      modal.style.width = '100vw';
+      modal.style.height = '100vh';
+      modal.style.zIndex = '999999';
+      
+      // ページスクロールを無効化
+      document.body.style.overflow = 'hidden';
+      
+      updateProgress(0, '準備中...', 'ステップ 1/9');
+    }
+
+    function hideProgressModal() {
+      const modal = document.getElementById('progressModal');
+      modal.style.display = 'none';
+      
+      // ページスクロールを復元
+      document.body.style.overflow = 'auto';
+    }
+
+    function updateProgress(percentage, text, step) {
+      document.getElementById('progressBar').style.width = percentage + '%';
+      document.getElementById('progressText').textContent = text;
+      document.getElementById('progressStep').textContent = step;
+    }
+
+    function setProgressTitle(title) {
+      document.getElementById('progressTitle').textContent = title;
+    }
+
+    // 画像生成専用の進捗管理（改良版）
+    function startImageGenerationProgress() {
+      showProgressModal();
+      setProgressTitle('🎨 画像生成中...');
+      
+      // まず画像枚数を取得
+      google.script.run
+        .withSuccessHandler(function(imageCount) {
+          startProgressWithImageCount(imageCount);
+        })
+        .withFailureHandler(function(error) {
+          // エラーの場合はデフォルト進捗を開始
+          startProgressWithImageCount(1);
+        })
+        .getImageGenerationCount();
+    }
+
+    function startProgressWithImageCount(imageCount) {
+      // 🚀 バッチ処理対応プログレスバー
+      const batchCount = Math.ceil(imageCount / (imageCount > 15 ? 6 : 5));
+      const isBatchMode = imageCount > 8;
+      
+      let steps;
+      if (isBatchMode) {
+        // バッチ処理モード
+        steps = [
+          { inc: 10, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 600 },
+          { inc: 10, text: 'DALL-E APIに接続中...', duration: 600 },
+          { inc: 10, text: 'API認証を確認中...', duration: 600 },
+          { inc: 15, text: `バッチ処理を開始... (${batchCount}バッチ予定)`, duration: 800 },
+          { inc: 40, text: `バッチ画像生成中... (${imageCount}枚を${batchCount}バッチで処理)`, duration: Math.max(2000, batchCount * 1000) },
+          { inc: 10, text: 'バッチ結果を統合中...', duration: 600 },
+          { inc: 5, text: 'シートに配置中...', duration: 600 }
+        ];
+      } else {
+        // 通常処理モード
+        steps = [
+          { inc: 12, text: `プロンプトを解析中... (${imageCount}枚予定)`, duration: 800 },
+          { inc: 12, text: 'DALL-E APIに接続中...', duration: 800 },
+          { inc: 12, text: 'API認証を確認中...', duration: 800 },
+          { inc: 12, text: `画像生成リクエスト送信中... (${imageCount}枚)`, duration: 800 },
+          { inc: 28, text: `画像を生成中... (${imageCount}枚)`, duration: Math.max(1500, imageCount * 800) },
+          { inc: 12, text: '生成結果を受信中...', duration: 800 },
+          { inc: 12, text: 'シートに配置中...', duration: 800 }
+        ];
+      }
+
+      let progress = 0;
+      let stepIdx = 0;
+      updateProgress(progress, '開始しています...', '');
+
+      function executeStep() {
+        if (stepIdx < steps.length) {
+          const step = steps[stepIdx];
+          const targetProgress = progress + step.inc;
+          
+          // 🔧 **スムーズな進捗表示**: 段階的に進捗を更新
+          const startProgress = progress;
+          const progressDuration = step.duration;
+          const updateInterval = 100; // 100msごとに更新
+          const totalUpdates = progressDuration / updateInterval;
+          const progressPerUpdate = step.inc / totalUpdates;
+          
+          let currentUpdate = 0;
+          const currentStepNumber = stepIdx + 1; // 現在のステップ番号を固定
+          
+          updateProgress(progress, step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          
+          // 🔥🔥🔥 setInterval完全無効化（動作軽量化）🔥🔥🔥
+          // const progressInterval = setInterval(() => {
+          //   currentUpdate++;
+          //   progress += progressPerUpdate;
+          //   
+          //   if (progress > 95) progress = 95;
+          //   if (currentUpdate >= totalUpdates) {
+          //     progress = Math.min(targetProgress, 95);
+          //     clearInterval(progressInterval);
+          //     stepIdx++;
+          //     
+          //     // 最後のステップの場合は95%で待機（サーバー処理完了を待つ）
+          //     if (stepIdx >= steps.length) {
+          //       updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
+          //     } else {
+          //       setTimeout(executeStep, 100); // 次のステップへ
+          //     }
+          //   }
+          //   
+          //   // 固定されたステップ番号を使用
+          //   updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          // }, updateInterval);
+          
+          // 直接進捗更新（setInterval無効化）
+          progress = Math.min(targetProgress, 95);
+          updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          stepIdx++;
+          
+          // 最後のステップの場合は95%で待機（サーバー処理完了を待つ）
+          if (stepIdx >= steps.length) {
+            updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
+          } else {
+            // setTimeout(executeStep, 100); // 次のステップへ - 無効化
+            executeStep(); // 直接実行
+          }
+        }
+      }
+      
+      executeStep();
+    }
+
+    function completeImageGeneration() {
+      updateProgress(100, '✅ 画像生成が完了しました！', '完了');
+      // setTimeout(() => {
+      //   hideProgressModal();
+      // }, 1500);
+      hideProgressModal(); // 直接実行
+    }
+
+    // ZIP作成用のプログレス表示
+    function startZipCreationProgress() {
+      const steps = [
+        { inc: 15, text: '選択画像を確認中...', duration: 500 },
+        { inc: 25, text: 'ZIPフォルダを作成中...', duration: 800 },
+        { inc: 40, text: '画像をダウンロード中...', duration: 2000 },
+        { inc: 15, text: 'ZIPフォルダに保存中...', duration: 1000 },
+        { inc: 5, text: '共有設定を適用中...', duration: 400 }
+      ];
+
+      let progress = 0;
+      let stepIdx = 0;
+      updateProgress(progress, '準備中...', '');
+
+      function executeStep() {
+        if (stepIdx < steps.length) {
+          const step = steps[stepIdx];
+          const targetProgress = progress + step.inc;
+          
+          const startProgress = progress;
+          const progressDuration = step.duration;
+          const updateInterval = 100;
+          const totalUpdates = progressDuration / updateInterval;
+          const progressPerUpdate = step.inc / totalUpdates;
+          
+          let currentUpdate = 0;
+          const currentStepNumber = stepIdx + 1;
+          
+          updateProgress(progress, step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          
+          // 🔥🔥🔥 setInterval完全無効化（動作軽量化）🔥🔥🔥
+          // const progressInterval = setInterval(() => {
+          //   currentUpdate++;
+          //   progress += progressPerUpdate;
+          //   
+          //   if (progress > 95) progress = 95;
+          //   if (currentUpdate >= totalUpdates) {
+          //     progress = Math.min(targetProgress, 95);
+          //     clearInterval(progressInterval);
+          //     stepIdx++;
+          //     
+          //     if (stepIdx >= steps.length) {
+          //       updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
+          //     } else {
+          //       setTimeout(executeStep, 100);
+          //     }
+          //   }
+          //   
+          //   updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          // }, updateInterval);
+          
+          // 直接進捗更新（setInterval無効化）
+          progress = Math.min(targetProgress, 95);
+          updateProgress(Math.round(progress), step.text, `ステップ ${currentStepNumber}/${steps.length}`);
+          stepIdx++;
+          
+          if (stepIdx >= steps.length) {
+            updateProgress(95, '最終処理中...', `ステップ ${steps.length}/${steps.length}`);
+          } else {
+            setTimeout(executeStep, 100);
+          }
+        }
+      }
+      
+      executeStep();
+    }
+
+    // 💡 緊急修正: 安全なバックアップ付き初期化
+    function executeSetupWithBackup() {
+      // データ確認モーダルを表示
+      showDataProtectionModal();
+    }
+    
+    // 💡 緊急修正: データ保護確認モーダル
+    function showDataProtectionModal() {
+      // まずシート状態を確認
+      google.script.run
+        .withSuccessHandler(function(hasData) {
+          if (hasData) {
+            // データがある場合はバックアップ確認
+            showBackupConfirmationModal();
+          } else {
+            // データがない場合は直接初期化
+            proceedWithDirectInitialization();
+          }
+        })
+        .withFailureHandler(function(error) {
+          // エラーの場合は安全側に倒してバックアップ確認
+          showBackupConfirmationModal();
+        })
+        .checkForAnyData();
+    }
+    
+    // 💡 緊急修正: バックアップ確認モーダル
+    function showBackupConfirmationModal() {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.8); z-index: 999999; display: flex;
+        align-items: center; justify-content: center;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">💾</div>
+            <h3 style="margin: 0; color: #1976d2; font-size: 20px; font-weight: bold;">データ保護確認</h3>
+          </div>
+          
+          <div style="background: #e8f5e8; border: 2px solid #4caf50; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <div style="color: #2e7d32; font-weight: bold; margin-bottom: 12px;">✅ 既存データが検出されました</div>
+            <div style="color: #388e3c; font-size: 14px; line-height: 1.6;">
+              <strong>安全な初期化方法：</strong><br>
+              1️⃣ <strong>バックアップ付き初期化</strong>（推奨）<br>
+              　　→ 現在のデータをバックアップシートに保存してから初期化<br><br>
+              2️⃣ <strong>直接初期化</strong>（危険）<br>
+              　　→ バックアップなしで即座に初期化<br><br>
+              3️⃣ <strong>キャンセル</strong><br>
+              　　→ データを保持したまま操作をキャンセル
+            </div>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button onclick="executeBackupAndInit()" style="
+              padding: 16px; border: none; background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); 
+              color: white; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(76, 175, 80, 0.4)'" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)'">
+              💾 バックアップ付き初期化（推奨）
+            </button>
+            <button onclick="executeDangerousInit()" style="
+              padding: 12px; border: 2px solid #ff9800; background: white; 
+              color: #f57c00; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='#fff3e0'" onmouseout="this.style.background='white'">
+              ⚠️ 直接初期化（バックアップなし）
+            </button>
+            <button onclick="cancelDataProtection()" style="
+              padding: 12px; border: 2px solid #ccc; background: white; 
+              color: #666; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='white'">
+              ❌ キャンセル
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      document.body.style.overflow = 'hidden';
+      
+      // グローバル関数として定義
+      window.executeBackupAndInit = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.executeBackupAndInit;
+        delete window.executeDangerousInit;
+        delete window.cancelDataProtection;
+        
+        // バックアップ付き初期化を実行
+        proceedWithBackupInitialization();
+      };
+      
+      window.executeDangerousInit = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.executeBackupAndInit;
+        delete window.executeDangerousInit;
+        delete window.cancelDataProtection;
+        
+        // 危険な確認モーダルを表示
+        showDangerousInitModal();
+      };
+      
+      window.cancelDataProtection = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.executeBackupAndInit;
+        delete window.executeDangerousInit;
+        delete window.cancelDataProtection;
+      };
+    }
+    
+    // 💡 緊急修正: バックアップ付き初期化の実行
+    function proceedWithBackupInitialization() {
+      showLoading();
+      updateStepIndicator('step1');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          // 🆕 レスポンス形式の判定（オブジェクトまたは文字列）
+          let message = result;
+          let shouldReset = false;
+          
+          if (typeof result === 'object' && result.message) {
+            message = result.message;
+            shouldReset = result.resetSidebar || false;
+          }
+          
+          showResult(message);
+          updateStepIndicator('step2');
+          // checkSheetState(); // 完全無効化 - 動作軽量化
+          
+          // 🆕 UX改善: 初期化完了後のサイドバーリセット - 無効化
+          // if (shouldReset) {
+          //   setTimeout(function() {
+          //     resetSidebarAfterInitialization();
+          //   }, 3000); // 3秒後にリセット（メッセージを見せてから）
+          // }
+        })
+        .withFailureHandler(function(error) {
+          showResult('バックアップエラー: ' + error.message, true);
+        })
+        .createBackupAndNewTable();
+    }
+    
+    // 💡 緊急修正: 危険な直接初期化の確認モーダル
+    function showDangerousInitModal() {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.9); z-index: 999999; display: flex;
+        align-items: center; justify-content: center;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+            <h3 style="margin: 0; color: #d32f2f; font-size: 20px; font-weight: bold;">最終確認：データ消失</h3>
+          </div>
+          
+          <div style="background: #ffebee; border: 2px solid #f44336; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <div style="color: #c62828; font-weight: bold; margin-bottom: 12px;">🚨 バックアップなしで初期化を実行します</div>
+            <div style="color: #d32f2f; font-size: 14px; line-height: 1.6;">
+              <strong>完全に削除される内容：</strong><br>
+              • 全てのプロンプト<br>
+              • 生成済みの全画像<br>
+              • ライブラリのデータ<br>
+              • その他の全データ<br><br>
+              <strong style="color: #b71c1c;">❌ この操作は完全に取り消せません</strong>
+            </div>
+          </div>
+          
+          <div style="text-align: center; color: #424242; font-size: 14px; margin-bottom: 24px;">
+            本当にバックアップなしで初期化を実行しますか？
+          </div>
+          
+          <div style="display: flex; gap: 12px;">
+            <button onclick="cancelDangerousInit()" style="
+              flex: 1; padding: 14px; border: 2px solid #4caf50; background: white; 
+              color: #388e3c; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='#e8f5e8'" onmouseout="this.style.background='white'">
+              💾 戻ってバックアップ
+            </button>
+            <button onclick="confirmDangerousInit()" style="
+              flex: 1; padding: 14px; border: none; background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); 
+              color: white; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s; box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(244, 67, 54, 0.4)'" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(244, 67, 54, 0.3)'">
+              🔴 強制実行
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      document.body.style.overflow = 'hidden';
+      
+      // グローバル関数として定義
+      window.cancelDangerousInit = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.cancelDangerousInit;
+        delete window.confirmDangerousInit;
+        
+        // バックアップ確認モーダルに戻る
+        showBackupConfirmationModal();
+      };
+      
+      window.confirmDangerousInit = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.cancelDangerousInit;
+        delete window.confirmDangerousInit;
+        
+        // 危険な直接初期化を実行
+        proceedWithDirectInitialization();
+      };
+    }
+
+    // 💡 緊急修正: 直接初期化（データなしの場合）
+    function proceedWithDirectInitialization() {
+      showLoading();
+      updateStepIndicator('step1');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          // 🆕 レスポンス形式の判定（オブジェクトまたは文字列）
+          let message = result;
+          let shouldReset = false;
+          
+          if (typeof result === 'object' && result.message) {
+            message = result.message;
+            shouldReset = result.resetSidebar || false;
+          }
+          
+          showResult(message);
+          updateStepIndicator('step2');
+          // checkSheetState(); // 完全無効化 - 動作軽量化
+          
+          // 🆕 UX改善: 初期化完了後のサイドバーリセット - 無効化
+          // if (shouldReset) {
+          //   setTimeout(function() {
+          //     resetSidebarAfterInitialization();
+          //   }, 3000); // 3秒後にリセット（メッセージを見せてから）
+          // }
+        })
+        .withFailureHandler(function(error) {
+          showResult('初期化エラー: ' + error.message, true);
+        })
+        .createStructuredTable();
+    }
+
+    function generateFromStructuredTable() {
+      // ボタンが無効化されている場合は処理しない
+      const generateBtn = document.getElementById('generateBtn');
+      if (generateBtn.disabled) {
+        return;
+      }
+
+      // 🎯 モデル選択値を取得
+      const modelSelector = document.getElementById('modelSelector');
+      const selectedModel = modelSelector.value || null;
+      
+      // 🎯 サイズ選択値を取得
+      const sizeSelector = document.getElementById('sizeSelector');
+      const forcedSize = sizeSelector.value || null;
+      
+      // デバッグログ: 選択されたモデルとサイズを表示
+      console.log(`🤖 選択モデル: ${selectedModel || 'dall-e-3 (デフォルト)'}`);
+      if (forcedSize) {
+        console.log(`🔧 強制サイズ指定: ${forcedSize}`);
+        showProcessingMessage(`🎨 画像生成開始中... (モデル: ${selectedModel || 'DALL-E 3'}, サイズ: ${forcedSize})`);
+      } else {
+        console.log('🤖 自動サイズ判定モード');
+        showProcessingMessage(`🎨 画像生成を開始しています... (モデル: ${selectedModel || 'DALL-E 3'}, 自動サイズ判定)`);
+      }
+
+      showLoading();
+      updateStepIndicator('step3');
+      startImageGenerationProgress();
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          updateProgress(100, '✅ 画像生成が完了しました！', '完了');
+          // setTimeout無効化 - 直接実行
+          hideProgressModal();
+          hideTopMessage();
+          showSuccessMessage('✅ 画像生成が完了しました！');
+          showResult(result);
+          // 画像生成完了後にボタン状態を再チェック
+          // checkSheetState(); // 完全無効化 - 動作軽量化
+        })
+        .withFailureHandler(function(error) {
+          hideProgressModal();
+          hideTopMessage();
+          
+          // 🔧 エラーハンドリング強化
+          let errorMessage = '❌ 画像生成エラー: ';
+          if (error && error.message) {
+            errorMessage += error.message;
+          } else if (typeof error === 'string') {
+            errorMessage += error;
+          } else {
+            errorMessage += '不明なエラーが発生しました。';
+          }
+          
+          // 🎯 特定のエラーパターンに対する対処法を追加
+          if (errorMessage.includes('画質を選択してください')) {
+            errorMessage += '\n\n💡 対処法: H列（画質）が正しく設定されているか確認してください。';
+          } else if (errorMessage.includes('6分') || errorMessage.includes('実行時間')) {
+            errorMessage += '\n\n💡 対処法: 大量の画像は自動的にバッチ処理されます。しばらくお待ちください。';
+          } else if (errorMessage.includes('レート制限')) {
+            errorMessage += '\n\n💡 対処法: 1分後に再試行してください。';
+          } else if (errorMessage.includes('プロンプトが入力されていません')) {
+            errorMessage += '\n\n💡 対処法: B列にプロンプトを入力してください。';
+          } else if (errorMessage.includes('Invalid value:') && errorMessage.includes('size')) {
+            errorMessage += '\n\n💡 対処法: 画像サイズが無効です。\n・1024x1024（正方形）\n・1536x1024（横長）\n・1024x1536（縦長）\nのいずれかを使用してください。\n\n🔧 この問題は自動修正されました。ブラウザを更新して再試行してください。';
+          } else if (errorMessage.includes('バッチエラー')) {
+            errorMessage += '\n\n💡 対処法: バッチ処理でエラーが発生しました。画像数を減らして再試行してください。';
+          }
+          
+          showErrorMessage(errorMessage);
+          showResult(errorMessage, true);
+        })
+        .generateImagesFromStructuredTableWithProgress(forcedSize, selectedModel);
+    }
+
+    function createTableOnly() {
+      showLoading();
+      updateStepIndicator('step2');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          // 🆕 レスポンス形式の判定（オブジェクトまたは文字列）
+          let message = result;
+          let shouldReset = false;
+          
+          if (typeof result === 'object' && result.message) {
+            message = result.message;
+            shouldReset = result.resetSidebar || false;
+          }
+          
+          showResult(message);
+          // 表クリア完了後にボタン状態を再チェック
+          // checkSheetState(); // 完全無効化 - 動作軽量化
+          
+          // 🆕 UX改善: 初期化完了後のサイドバーリセット - 無効化
+          // if (shouldReset) {
+          //   setTimeout(function() {
+          //     resetSidebarAfterInitialization();
+          //   }, 3000); // 3秒後にリセット（メッセージを見せてから）
+          // }
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .createStructuredTable();
+    }
+
+    function toggleAllImageSelection() {
+      showTopMessage('☑️ 選択状態を切り替え中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result, 2000);
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .toggleAllImageSelection();
+    }
+
+    function showDownloadOptions() {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.5); z-index: 999999; display: flex;
+        align-items: center; justify-content: center;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 20px; padding: 32px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 12px;">📥</div>
+            <h3 style="margin: 0; color: #1a73e8; font-size: 24px; font-weight: bold;">ダウンロード方法を選択</h3>
+            <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">お好みの方法で画像をダウンロードできます</p>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <button class="btn btn-secondary" onclick="downloadToDrive(); closeModal();" style="width: 100%; padding: 20px; text-align: left; position: relative;">
+              <div style="display: flex; align-items: center; gap: 16px;">
+                <span style="font-size: 24px;">📁</span>
+                <div>
+                  <div style="font-weight: bold; font-size: 16px;">Google Driveに保存</div>
+                  <small style="display: block; font-size: 12px; opacity: 0.8; margin-top: 4px;">クラウドに保存、リンク共有が可能</small>
+                </div>
+              </div>
+            </button>
+            
+            
+            <button class="btn" onclick="downloadZip(); closeModal();" style="width: 100%; padding: 20px; text-align: left; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; position: relative;">
+              <div style="display: flex; align-items: center; gap: 16px;">
+                <span style="font-size: 24px;">📦</span>
+                <div>
+                  <div style="font-weight: bold; font-size: 16px;">ZIPでまとめてダウンロード</div>
+                  <small style="display: block; font-size: 12px; opacity: 0.9; margin-top: 4px;">全画像を1つのフォルダにまとめて保存</small>
+                </div>
+              </div>
+            </button>
+            
+            <div style="border-top: 1px solid #eee; margin: 8px 0; padding-top: 16px;">
+              <button class="btn" onclick="closeModal();" style="width: 100%; background: #f5f5f5; color: #666; border: 2px solid #ddd;">
+                ❌ キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      window.closeModal = () => {
+        document.body.removeChild(modal);
+        delete window.closeModal;
+        delete window.downloadToDrive;
+        delete window.downloadZip;
+      };
+      
+      window.downloadToDrive = () => {
+        showTopMessage('📁 Googleドライブに保存中...', 'processing');
+        google.script.run
+          .withSuccessHandler(function(result) {
+            hideTopMessage();
+            showSuccessMessage(result, 5000);
+          })
+          .withFailureHandler(function(error) {
+            hideTopMessage();
+            showErrorMessage('エラー: ' + error.message);
+          })
+          .downloadSelectedImagesToDrive();
+      };
+      
+      
+      window.downloadZip = () => {
+        // プログレスバーモーダルを表示
+        showProgressModal();
+        setProgressTitle('📦 ZIP作成中...');
+        startZipCreationProgress();
+        
+        google.script.run
+          .withSuccessHandler(function(result) {
+            hideProgressModal();
+            if (result.error) {
+              showErrorMessage(result.error);
+              return;
+            }
+            
+            if (result.success && result.imageFiles) {
+              // ローカルZIPダウンロードを実行
+              createAndDownloadZip(result.zipFileName, result.imageFiles, result.imageCount);
+            } else {
+              showErrorMessage('❌ ZIPファイルの作成に失敗しました');
+            }
+          })
+          .withFailureHandler(function(error) {
+            hideProgressModal();
+            showErrorMessage('エラー: ' + error.message);
+          })
+          .downloadSelectedImagesAsZip();
+      };
+    }
+    
+    
+    
+    function showImagePreview() {
+      showTopMessage('👁️ 画像プレビューを読み込み中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(previewData) {
+          hideTopMessage();
+          if (previewData.length === 0) {
+            showErrorMessage('❌ 表示する画像がありません');
+            return;
+          }
+          
+          const modal = document.createElement('div');
+          modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.9); z-index: 999999; display: flex;
+            align-items: center; justify-content: center; overflow: auto;
+          `;
+          
+          const gallery = previewData.map((img, i) => `
+            <div style="text-align: center; margin: 16px;">
+              <img src="${img.url}" style="max-width: 300px; max-height: 300px; border-radius: 8px;">
+              <p style="color: white; margin: 8px 0; font-size: 12px;">${img.prompt.substring(0, 50)}...</p>
+            </div>
+          `).join('');
+          
+          modal.innerHTML = `
+            <div style="background: white; border-radius: 16px; padding: 24px; max-width: 90vw; max-height: 90vh; overflow: auto;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; color: #1a73e8;">👁️ 画像プレビュー (${previewData.length}枚)</h3>
+                <button onclick="closePreview()" style="background: #ccc; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer;">✕</button>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                ${gallery}
+              </div>
+            </div>
+          `;
+          
+          document.body.appendChild(modal);
+          
+          window.closePreview = () => {
+            document.body.removeChild(modal);
+            delete window.closePreview;
+          };
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .getAllImagePreviewData();
+    }
+
+    // ローカルZIPファイル作成とダウンロード
+    function createAndDownloadZip(zipFileName, imageFiles, imageCount) {
+      try {
+        showTopMessage('📦 ZIPファイル作成中...', 'processing');
+        
+        console.log('ZIP作成開始:', {
+          fileName: zipFileName,
+          fileCount: imageFiles.length,
+          files: imageFiles.map(f => ({ name: f.filename, size: f.data.length }))
+        });
+        
+        // ZIP作成（PKZIP互換）
+        const zipData = createZipData(imageFiles);
+        const blob = new Blob([zipData], { type: 'application/zip' });
+        
+        console.log('ZIP作成完了:', {
+          zipSize: blob.size,
+          zipDataLength: zipData.length
+        });
+        
+        // File System Access APIを使用してファイル保存ダイアログを表示
+        if (window.showSaveFilePicker) {
+          // モダンブラウザの場合
+          saveFileWithPicker(blob, zipFileName, imageCount);
+        } else {
+          // フォールバック：自動ダウンロード
+          downloadBlob(blob, zipFileName);
+          showSuccessMessage(`✅ ZIPダウンロード完了！\n${imageCount}枚の画像を保存`, 4000);
+        }
+      } catch (error) {
+        console.error('ZIP作成エラー:', error);
+        showErrorMessage('❌ ZIPファイル作成に失敗しました: ' + error.message);
+      }
+    }
+
+    // File System Access APIを使用したファイル保存
+    async function saveFileWithPicker(blob, filename, imageCount) {
+      try {
+        const fileHandle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{
+            description: 'ZIPアーカイブ',
+            accept: { 'application/zip': ['.zip'] }
+          }]
+        });
+        
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        
+        showSuccessMessage(`✅ ZIPダウンロード完了！\n${imageCount}枚の画像を保存\n📁 保存先: ${filename}`, 5000);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('ファイル保存エラー:', error);
+          // フォールバック
+          downloadBlob(blob, filename);
+          showSuccessMessage(`✅ ZIPダウンロード完了！\n${imageCount}枚の画像を保存`, 4000);
+        }
+      }
+    }
+
+    // フォールバック：従来のダウンロード方式
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // ZIP作成（Windows互換形式）
+    function createZipData(imageFiles) {
+      const files = [];
+      let offset = 0;
+      
+      // 現在の日時をDOS形式に変換
+      const now = new Date();
+      const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1));
+      const dosDate = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate());
+      
+      // 各ファイルのローカルヘッダとデータを作成
+      for (const file of imageFiles) {
+        const filenameBytes = new TextEncoder().encode(file.filename);
+        const fileData = base64ToUint8Array(file.data);
+        const crc32 = calculateCRC32(fileData);
+        
+        // ローカルファイルヘッダ（30バイト + ファイル名）
+        const localHeader = new Uint8Array(30 + filenameBytes.length);
+        const view = new DataView(localHeader.buffer);
+        
+        // ローカルファイルヘッダシグネチャ
+        view.setUint32(0, 0x04034b50, true);
+        // 展開に必要なバージョン（2.0）
+        view.setUint16(4, 20, true);
+        // 汎用ビットフラグ
+        view.setUint16(6, 0, true);
+        // 圧縮方式（0 = 無圧縮）
+        view.setUint16(8, 0, true);
+        // 最終更新時刻（DOS形式）
+        view.setUint16(10, dosTime, true);
+        // 最終更新日付（DOS形式）
+        view.setUint16(12, dosDate, true);
+        // CRC-32
+        view.setUint32(14, crc32, true);
+        // 圧縮サイズ
+        view.setUint32(18, fileData.length, true);
+        // 非圧縮サイズ
+        view.setUint32(22, fileData.length, true);
+        // ファイル名の長さ
+        view.setUint16(26, filenameBytes.length, true);
+        // 拡張フィールドの長さ
+        view.setUint16(28, 0, true);
+        
+        // ファイル名をコピー
+        localHeader.set(filenameBytes, 30);
+        
+        files.push({
+          localHeader: localHeader,
+          data: fileData,
+          filename: filenameBytes,
+          crc32: crc32,
+          offset: offset,
+          dosTime: dosTime,
+          dosDate: dosDate
+        });
+        
+        offset += localHeader.length + fileData.length;
+      }
+      
+      const centralDirStart = offset;
+      
+      // セントラルディレクトリレコードを作成
+      const centralDirRecords = [];
+      for (const file of files) {
+        const centralDirRecord = new Uint8Array(46 + file.filename.length);
+        const view = new DataView(centralDirRecord.buffer);
+        
+        // セントラルディレクトリファイルヘッダシグネチャ
+        view.setUint32(0, 0x02014b50, true);
+        // 作成したバージョン（MS-DOS）
+        view.setUint16(4, 0x0014, true);  // 2.0, MS-DOS
+        // 展開に必要なバージョン
+        view.setUint16(6, 20, true);
+        // 汎用ビットフラグ
+        view.setUint16(8, 0, true);
+        // 圧縮方式
+        view.setUint16(10, 0, true);
+        // 最終更新時刻
+        view.setUint16(12, file.dosTime, true);
+        // 最終更新日付
+        view.setUint16(14, file.dosDate, true);
+        // CRC-32
+        view.setUint32(16, file.crc32, true);
+        // 圧縮サイズ
+        view.setUint32(20, file.data.length, true);
+        // 非圧縮サイズ
+        view.setUint32(24, file.data.length, true);
+        // ファイル名の長さ
+        view.setUint16(28, file.filename.length, true);
+        // 拡張フィールドの長さ
+        view.setUint16(30, 0, true);
+        // ファイルコメントの長さ
+        view.setUint16(32, 0, true);
+        // ディスク番号開始
+        view.setUint16(34, 0, true);
+        // 内部ファイル属性（バイナリファイル）
+        view.setUint16(36, 0, true);
+        // 外部ファイル属性（MS-DOS互換）
+        view.setUint32(38, 0, true);  // 通常ファイル
+        // ローカルファイルヘッダの相対オフセット
+        view.setUint32(42, file.offset, true);
+        
+        // ファイル名をコピー
+        centralDirRecord.set(file.filename, 46);
+        
+        centralDirRecords.push(centralDirRecord);
+        offset += centralDirRecord.length;
+      }
+      
+      const centralDirSize = offset - centralDirStart;
+      
+      // End of Central Directory Record
+      const endRecord = new Uint8Array(22);
+      const endView = new DataView(endRecord.buffer);
+      
+      // End of Central Directory シグネチャ
+      endView.setUint32(0, 0x06054b50, true);
+      // このディスクの番号
+      endView.setUint16(4, 0, true);
+      // Central Directoryが開始するディスクの番号
+      endView.setUint16(6, 0, true);
+      // このディスクのCentral Directoryレコード数
+      endView.setUint16(8, files.length, true);
+      // Central Directoryレコードの総数
+      endView.setUint16(10, files.length, true);
+      // Central Directoryのサイズ
+      endView.setUint32(12, centralDirSize, true);
+      // Central Directoryの開始オフセット
+      endView.setUint32(16, centralDirStart, true);
+      // ZIPファイルコメントの長さ
+      endView.setUint16(20, 0, true);
+      
+      // 全体を結合
+      const totalSize = offset + 22;
+      const zipData = new Uint8Array(totalSize);
+      let pos = 0;
+      
+      // ローカルファイルヘッダとデータを追加
+      for (const file of files) {
+        zipData.set(file.localHeader, pos);
+        pos += file.localHeader.length;
+        zipData.set(file.data, pos);
+        pos += file.data.length;
+      }
+      
+      // セントラルディレクトリレコードを追加
+      for (const record of centralDirRecords) {
+        zipData.set(record, pos);
+        pos += record.length;
+      }
+      
+      // End of Central Directory Recordを追加
+      zipData.set(endRecord, pos);
+      
+      return zipData;
+    }
+
+    // Base64をUint8Arrayに変換
+    function base64ToUint8Array(base64) {
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    // CRC32計算
+    function calculateCRC32(data) {
+      const crcTable = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let j = 0; j < 8; j++) {
+          c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        }
+        crcTable[i] = c;
+      }
+      
+      let crc = 0xFFFFFFFF;
+      for (let i = 0; i < data.length; i++) {
+        crc = crcTable[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+      }
+      return crc ^ 0xFFFFFFFF;
+    }
+
+    function regenerateSelectedImages() {
+      showTopMessage('🔄 選択画像の再生成を開始...', 'processing');
+      
+      // 選択画像再生成専用の進捗
+      showProgressModal();
+      setProgressTitle('🔄 選択画像を再生成中...');
+      
+      // まず選択された画像枚数を取得
+      google.script.run
+        .withSuccessHandler(function(selectedCount) {
+          if (selectedCount > 0) {
+            startProgressWithImageCount(selectedCount);
+          } else {
+            hideProgressModal();
+            hideTopMessage();
+            showErrorMessage('選択された画像がありません');
+            return;
+          }
+        })
+        .withFailureHandler(function(error) {
+          hideProgressModal();
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+          return;
+        })
+        .getSelectedImageCount();
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          completeImageGeneration();
+          hideTopMessage();
+          showSuccessMessage(result);
+        })
+        .withFailureHandler(function(error) {
+          hideProgressModal();
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .regenerateSelectedImagesWithProgress();
+    }
+
+    function deleteSelectedRows() {
+      showTopMessage('🗑️ 選択行を削除中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result);
+          // 削除完了後にボタン状態を再チェック
+          // checkSheetState(); // 完全無効化 - 動作軽量化
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .deleteSelectedRows();
+    }
+
+    function deleteAllImagesWithConfirmation() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+          // 削除完了後にボタン状態を再チェック
+          // checkSheetState(); // 完全無効化 - 動作軽量化
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .deleteAllImagesWithConfirmation();
+    }
+
+    function createBackup() {
+      showTopMessage('💾 バックアップを作成中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result);
+          // バックアップ完了後にボタン状態を再チェック
+          // checkSheetState(); // 完全無効化 - 動作軽量化
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .createBackupAndNewTable();
+    }
+
+    // 🔥 ライブラリ管理機能の改善：入力シートでの混乱を解決
+    function toggleAllLibrarySelection() {
+      // まず現在のシートがライブラリシートかチェック
+      google.script.run
+        .withSuccessHandler(function(isLibrarySheet) {
+          if (!isLibrarySheet) {
+            // 入力シートの場合：ライブラリシートに移動してから実行
+            showResult('📚 ライブラリシートに移動して操作を実行します...', false);
+            google.script.run
+              .withSuccessHandler(function(result) {
+                showResult(result);
+              })
+              .withFailureHandler(function(error) {
+                showResult('エラー: ' + error.message, true);
+              })
+              .switchToLibraryAndToggleSelection();
+          } else {
+            // ライブラリシートの場合：直接実行
+            showLoading();
+            google.script.run
+              .withSuccessHandler(function(result) {
+                showResult(result);
+              })
+              .withFailureHandler(function(error) {
+                showResult('エラー: ' + error.message, true);
+              })
+              .toggleAllLibrarySelection();
+          }
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .isCurrentSheetLibrary();
+    }
+
+    function downloadSelectedLibraryImages() {
+      // まず現在のシートがライブラリシートかチェック
+      google.script.run
+        .withSuccessHandler(function(isLibrarySheet) {
+          if (!isLibrarySheet) {
+            // 入力シートの場合：ライブラリシートに移動してから実行
+            showResult('📚 ライブラリシートに移動してダウンロードを実行します...', false);
+            google.script.run
+              .withSuccessHandler(function(result) {
+                showResult(result);
+              })
+              .withFailureHandler(function(error) {
+                showResult('エラー: ' + error.message, true);
+              })
+              .switchToLibraryAndDownload();
+          } else {
+            // ライブラリシートの場合：直接実行
+            showLoading();
+            google.script.run
+              .withSuccessHandler(function(result) {
+                showResult(result);
+              })
+              .withFailureHandler(function(error) {
+                showResult('エラー: ' + error.message, true);
+              })
+              .downloadSelectedLibraryImages();
+          }
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .isCurrentSheetLibrary();
+    }
+
+    // 🔥 ライブラリリセット機能（入力シート対応改善）
+    function resetLibraryWithConfirmation() {
+      // まず現在のシートがライブラリシートかチェック
+      google.script.run
+        .withSuccessHandler(function(isLibrarySheet) {
+          if (!isLibrarySheet) {
+            // 入力シートの場合：ライブラリシートに移動してから実行
+            showResult('📚 ライブラリシートに移動してリセット操作を実行します...', false);
+            google.script.run
+              .withSuccessHandler(function() {
+                // ライブラリシートに移動後、確認モーダルを表示
+                showLibraryResetModal();
+              })
+              .withFailureHandler(function(error) {
+                showResult('エラー: ' + error.message, true);
+              })
+              .switchToLibrarySheet();
+          } else {
+            // ライブラリシートの場合：直接確認モーダルを表示
+            showLibraryResetModal();
+          }
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .isCurrentSheetLibrary();
+    }
+    
+    // 💡 改善要求: ライブラリリセットの確認モーダル実装
+    function showLibraryResetModal() {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.7); z-index: 999999; display: flex;
+        align-items: center; justify-content: center;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📚</div>
+            <h3 style="margin: 0; color: #d32f2f; font-size: 20px; font-weight: bold;">ライブラリリセットの確認</h3>
+          </div>
+          
+          <div style="background: #fff3e0; border: 2px solid #ff9800; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <div style="color: #ef6c00; font-weight: bold; margin-bottom: 12px;">🚨 ライブラリをリセットすると、全ての生成履歴が失われます！</div>
+            <div style="color: #e65100; font-size: 14px; line-height: 1.6;">
+              <strong>削除される内容：</strong><br>
+              • 過去の全ての画像生成記録<br>
+              • プロンプト履歴<br>
+              • 生成日時情報<br>
+              • その他の全てのライブラリデータ<br><br>
+              <strong style="color: #d32f2f;">⚠️ この操作は取り消せません</strong><br>
+              <strong style="color: #2e7d32;">✅ 新しい空白のライブラリが作成されます</strong>
+            </div>
+          </div>
+          
+          <div style="text-align: center; color: #424242; font-size: 14px; margin-bottom: 24px;">
+            本当にライブラリをリセットしますか？
+          </div>
+          
+          <div style="display: flex; gap: 12px;">
+            <button onclick="cancelLibraryReset()" style="
+              flex: 1; padding: 14px; border: 2px solid #ccc; background: white; 
+              color: #666; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='white'">
+              ❌ キャンセル
+            </button>
+            <button onclick="confirmLibraryReset()" style="
+              flex: 1; padding: 14px; border: none; background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); 
+              color: white; border-radius: 8px; cursor: pointer; font-weight: bold;
+              transition: all 0.2s; box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(244, 67, 54, 0.4)'" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(244, 67, 54, 0.3)'">
+              🗑️ リセット実行
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      document.body.style.overflow = 'hidden'; // スクロール防止
+      
+      // グローバル関数として定義
+      window.cancelLibraryReset = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.cancelLibraryReset;
+        delete window.confirmLibraryReset;
+      };
+      
+      window.confirmLibraryReset = () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = 'auto';
+        delete window.cancelLibraryReset;
+        delete window.confirmLibraryReset;
+        
+        // 実際のリセット処理を実行
+        proceedWithLibraryReset();
+      };
+    }
+    
+    // 💡 改善要求: 確認後の実際のライブラリリセット処理
+    function proceedWithLibraryReset() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showResult(result);
+        })
+        .withFailureHandler(function(error) {
+          showResult('エラー: ' + error.message, true);
+        })
+        .resetImageLibrary();
+    }
+    
+    // 🔄 結合プロンプト一括更新機能
+    function updateAllCombinedPrompts() {
+      showTopMessage('🔄 結合プロンプトを一括更新中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result, 4000);
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .updateAllCombinedPrompts();
+    }
+
+    // 🆕 UX改善: 初期化完了後のサイドバーリセット
+    function resetSidebarAfterInitialization() {
+      try {
+        console.log('🔄 初期化完了後のUXリセットを開始');
+        
+        // 1. サイドバーをトップ表示に戻す
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        const container = document.querySelector('.container');
+        if (container) {
+          container.scrollTop = 0;
+        }
+        
+        // 2. ステップインジケーターをリセット
+        updateStepIndicator('step1');
+        
+        // 3. ローディング状態をクリア
+        hideLoading();
+        hideProgressModal();
+        
+        // 4. トップメッセージを表示
+        showTopMessage('✅ 初期化が完了しました！プロンプト入力を開始できます', 'success', 4000);
+        
+        // 5. 新しいシートの状態に合わせてボタン状態を更新 - 無効化
+        // setTimeout(function() {
+        //   // checkSheetState(); // 完全無効化 - 動作軽量化
+        //   console.log('✅ 初期化完了後のUXリセット完了');
+        // }, 500);
+        console.log('✅ 初期化完了後のUXリセット完了');
+        
+        // 6. 入力シートが左端に移動したことをユーザーに通知 - 無効化
+        // setTimeout(function() {
+        //   showTopMessage('📋 入力シートが左端に配置されました。バックアップは右端にあります', 'info', 3000);
+        // }, 5000);
+        showTopMessage('📋 入力シートが左端に配置されました。バックアップは右端にあります', 'info', 3000);
+        
+      } catch (error) {
+        console.error('UXリセットエラー:', error);
+      }
+    }
+
+    // ✅ 全選択専用機能
+    function selectAllImagesUI() {
+      showTopMessage('☑️ 全選択中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result, 3000);
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .selectAllImages();
+    }
+
+    // ❌ 全選択解除専用機能
+    function clearAllImageSelectionUI() {
+      showTopMessage('❌ 全選択解除中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result, 3000);
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .clearAllImageSelection();
+    }
+
+    // ✅ ライブラリ全選択専用機能
+    function selectAllLibraryImagesUI() {
+      showTopMessage('☑️ ライブラリ全選択中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result, 3000);
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .selectAllLibraryImages();
+    }
+
+    // ❌ ライブラリ全選択解除専用機能
+    function clearAllLibrarySelectionUI() {
+      showTopMessage('❌ ライブラリ全選択解除中...', 'processing');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideTopMessage();
+          showSuccessMessage(result, 3000);
+        })
+        .withFailureHandler(function(error) {
+          hideTopMessage();
+          showErrorMessage('エラー: ' + error.message);
+        })
+        .clearAllLibrarySelection();
+    }
+
+    // 🔍 ライブラリ診断機能
+    function diagnoseLibraryImages() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          // 🚀 UX改善：診断結果も上部メッセージ表示に統一
+          showTopMessage(result, 'info', 10000);
+        })
+        .withFailureHandler(function(error) {
+          showResult('診断エラー: ' + error.message, true);
+        })
+        .diagnoseLibraryImageIssues();
+    }
+
+    // �� 全ボタンを強制有効化（軽量化モード）
+    function forceEnableAllButtons() {
+      console.log('🔥 全ボタンを強制有効化（軽量化モード）');
+      
+      // 全ボタンを強制的に有効化
+      const buttons = ['setupBtn', 'generateBtn', 'backupBtn', 'restoreBtn'];
+      buttons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('disabled');
+          btn.title = '';
+        }
+      });
+      
+      // 管理セクションを表示
+      const managementSection = document.getElementById('managementSection');
+      if (managementSection) {
+        managementSection.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html> 

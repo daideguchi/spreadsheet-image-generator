@@ -1,0 +1,145 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# テストガイドライン
+
+## テスト戦略
+
+### テストピラミッド
+```
+        E2E Tests
+       /           \
+    Integration Tests
+   /                   \
+   Unit Tests (基盤)
+```
+
+### テストタイプ
+1. **Unit Tests (単体テスト)**
+   - 個別関数・メソッドのテスト
+   - カバレッジ: 80%以上
+   - 実行時間: 高速（< 1秒）
+
+2. **Integration Tests (統合テスト)**
+   - コンポーネント間の連携テスト
+   - API エンドポイントのテスト
+   - データベース操作のテスト
+
+3. **E2E Tests (エンドツーエンドテスト)**
+   - ユーザーシナリオのテスト
+   - ブラウザ自動化テスト
+   - 重要な業務フローのテスト
+
+## テスト命名規則
+
+### ファイル命名
+- **Unit Tests**: `*.test.js`, `*.spec.js`
+- **Integration Tests**: `*.integration.test.js`
+- **E2E Tests**: `*.e2e.test.js`
+
+### テストケース命名
+```javascript
+describe('UserService', () => {
+  describe('createUser', () => {
+    it('should create user with valid data', () => {
+      // テスト実装
+    });
+    
+    it('should throw error when email is invalid', () => {
+      // テスト実装
+    });
+  });
+});
+```
+
+## テスト実装のベストプラクティス
+
+### AAA パターン
+```javascript
+it('should calculate total price correctly', () => {
+  // Arrange (準備)
+  const items = [{ price: 100 }, { price: 200 }];
+  const service = new PriceCalculator();
+  
+  // Act (実行)
+  const result = service.calculateTotal(items);
+  
+  // Assert (検証)
+  expect(result).toBe(300);
+});
+```
+
+### モックとスタブ
+1. **外部依存の分離**
+   - API呼び出し
+   - データベースアクセス
+   - ファイルシステム操作
+
+2. **テストダブルの使用**
+   ```javascript
+   const mockUserRepository = {
+     findById: jest.fn().mockResolvedValue(mockUser),
+     save: jest.fn().mockResolvedValue(savedUser)
+   };
+   ```
+
+### テストデータ管理
+1. **Factory Pattern**
+   ```javascript
+   const UserFactory = {
+     create: (overrides = {}) => ({
+       id: 1,
+       name: 'Test User',
+       email: 'test@example.com',
+       ...overrides
+     })
+   };
+   ```
+
+2. **Fixture Files**
+   - `__fixtures__/` ディレクトリに配置
+   - JSON形式でテストデータを管理
+
+## テスト実行とCI/CD
+
+### ローカル実行
+```bash
+# 全テスト実行
+npm test
+
+# ウォッチモード
+npm test -- --watch
+
+# カバレッジレポート
+npm test -- --coverage
+```
+
+### CI/CD パイプライン
+1. **プルリクエスト時**
+   - 全テストの実行
+   - カバレッジチェック
+   - リント検査
+
+2. **マージ時**
+   - E2Eテストの実行
+   - パフォーマンステスト
+   - セキュリティスキャン
+
+## テストメンテナンス
+
+### 定期的な見直し
+1. **テストの価値評価**
+   - バグ検出率の確認
+   - メンテナンスコストの評価
+
+2. **テストの改善**
+   - 冗長なテストの削除
+   - テスト実行時間の最適化
+   - テストデータの整理
+
+### テスト報告
+- カバレッジレポートの定期的な確認
+- 失敗テストの分析と対応
+- テスト実行時間の監視

@@ -1,0 +1,47 @@
+# 機密情報
+*.env
+.env*
+api_keys.txt
+secrets/
+
+# SpecStoryの履歴ファイル（機密情報が含まれる可能性があるため）
+.specstory/
+
+# GAS pull時に不要なファイル
+# docs/ フォルダは保持して、プライベートリポジトリで参照可能にする
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Temporary folders
+tmp/
+temp/ 
